@@ -1,0 +1,43 @@
+# application.yaml (The Ultimate, Simplest Version)
+
+server:
+  port: 8080
+
+# ===============================================
+# SPRING BOOT OFFICIAL CONFIGURATION
+# ===============================================
+spring:
+  # --- 主数据源 ---
+  # 我们只为 Spring Boot 的自动配置提供主数据源
+  datasource:
+    url: jdbc:sqlite:data/app_data.db # 明确使用 data/ 目录
+    driver-class-name: org.sqlite.JDBC
+
+  # --- JPA 配置 ---
+  jpa:
+    hibernate:
+      ddl-auto: none # 我们完全手动控制数据库初始化
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+    show-sql: true
+    open-in-view: false
+
+# ===============================================
+# CUSTOM APPLICATION CONFIGURATION
+# ===============================================
+app:
+  # --- 词典 (第二) 数据源 ---
+  dictionary:
+    datasource:
+      url: jdbc:sqlite::resource:dictionary.sqlite
+      driver-class-name: org.sqlite.JDBC
+
+# --- 自定义配置 ---
+# 我们只在这里定义第二数据源的 URL
+
+# --- 日志配置 ---
+logging:
+ level:
+  org.springframework.jdbc.datasource.init: DEBUG
+  org.hibernate.SQL: debug

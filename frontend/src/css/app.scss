@@ -1,0 +1,61 @@
+// app global css in SCSS form
+
+// 覆盖 Quasar 变量 (可选，但推荐)
+$primary: #007AFF; // 强调色
+$dark: #1D1D1F;   // 主文字颜色
+
+// 全局字体
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// 移除默认阴影
+.q-card, .q-toolbar, .q-drawer {
+  box-shadow: none !important;
+}
+
+// 统一边框
+.bordered {
+  border: 1px solid #E5E5E5;
+}
+
+// 统一圆角
+.rounded-borders {
+  border-radius: 8px;
+}
+
+// 自定义样式
+.text-primary {
+  color: #007AFF;
+}
+
+.bg-primary {
+  background: #007AFF;
+}
+
+.text-secondary {
+  color: #34C759;
+}
+
+.bg-secondary {
+  background: #34C759;
+}
+
+// 现代简约风格的卡片
+.modern-card {
+  border-radius: 8px;
+  border: 1px solid #E5E5E5;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+// 清晰的分隔线
+.clean-divider {
+  border-color: #E5E5E5;
+}
+
+// .full-height {
+//   height: 100% !important;
+// }

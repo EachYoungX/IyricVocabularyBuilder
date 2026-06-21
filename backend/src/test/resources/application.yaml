@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  # --- JPA 和主数据源 (app_data.sqlite) 配置 ---
+  datasource:
+    # 测试环境使用内存数据库
+    url: jdbc:sqlite:file:testdb?mode=memory&cache=shared
+    driver-class-name: org.sqlite.JDBC
+    
+  jpa:
+    hibernate:
+      # 自动根据 Entity 更新或创建表结构
+      ddl-auto: create-drop
+    show-sql: true # 开发时开启，方便调试
+    properties:
+      hibernate:
+        # 必须为 SQLite 指定方言
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+        # 优化 SQLite 的批量插入/更新
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+
+# --- 自定义配置 ---
+app:
+  dictionary:
+    # 词典数据库的位置，使用 classpath 资源协议
+    db-path: "classpath:dictionary.sqlite"

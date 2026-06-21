@@ -1,0 +1,521 @@
+openapi: 3.1.0
+info:
+  title: Lyric Vocabulary Builder API
+  description: |-
+    英语歌词词汇构建器应用程序的后台 API。
+    用于管理英文歌曲库、构建词汇索引并提供英英词典查询，专为英语学习设计。
+
+    Backend API for the Lyric Vocabulary Builder application (English learning only).
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: 本地开发服务器 / Local development server
+
+tags:
+  - name: Vocabulary
+    description: 词汇索引相关操作 / Vocabulary index operations
+  - name: Songs
+    description: 英文歌曲库管理 / English song library management
+  - name: Dictionary
+    description: 英英词典查询（仅英文） / English dictionary lookup
+
+paths:
+  # ===============================================================
+  # Vocabulary Endpoints
+  # ===============================================================
+  /api/vocabulary/words:
+    get:
+      tags: [Vocabulary]
+      summary: 获取唯一单词分页列表 / Get paginated unique words
+      description: |-
+        返回所有英文歌词中提取的唯一单词（已排序、不区分大小写去重），支持前缀过滤和分页。
+      operationId: getWordList
+      parameters:
+        - name: prefix
+          in: query
+          schema:
+            type: string
+          description: 前缀过滤（不区分大小写） / Case-insensitive prefix filter
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: 页码（从0开始） / Page number (0-indexed)
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: 每页条数 / Page size
+      responses:
+        '200':
+          description: 分页单词列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WordPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/vocabulary/words/{word}/occurrences:
+    get:
+      tags: [Vocabulary]
+      summary: 获取单词出现位置 / Get word occurrences in lyrics
+      operationId: getWordOccurrences
+      parameters:
+        - name: word
+          in: path
+          required: true
+          description: 要查询的英文单词（不区分大小写）
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 出现位置列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WordOccurrence'
+        '404':
+          description: 词汇表中未找到该单词
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/vocabulary/refresh:
+    post:
+      tags: [Vocabulary]
+      summary: 重新构建词汇索引 / Rebuild vocabulary index
+      description: 触发异步任务重新从所有歌曲提取词汇索引
+      operationId: refreshVocabularyIndex
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: 异步重建任务已接受
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCreationResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/vocabulary/refresh/tasks/{taskId}:
+    get:
+      tags: [Vocabulary]
+      summary: 查询词汇索引刷新任务状态
+      description: 根据任务 ID 查询词汇索引重建任务的当前进度和最终结果。
+      operationId: getRefreshTaskStatus
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          description: 从 /refresh 接口获取的任务 ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 任务的当前状态或最终结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportTaskResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ===============================================================
+  # Songs Endpoints
+  # ===============================================================
+  /api/songs:
+    get:
+      tags: [Songs]
+      summary: 获取所有歌曲 / Get all songs
+      operationId: getAllSongs
+      responses:
+        '200':
+          description: 歌曲列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Song'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/songs/import:
+    post:
+      tags: [Songs]
+      summary: 异步批量导入歌曲（推荐方式）
+      operationId: importSongsAsync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/SongImportRequest'
+      responses:
+        '202':
+          description: 导入任务已接受，正在后台处理
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SongImportTaskResponse'
+              example:
+                taskId: "1a2b3c4d-5678-90ef-..."
+                total: 87
+                message: "87 songs queued for import"
+
+  /api/songs/import/tasks/{taskId}:
+    get:
+      tags: [Songs]
+      summary: 查询导入任务完整结果（包含失败详情）
+      operationId: getImportTaskResult
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: |
+            任务结束（无论成功还是部分失败）后，调用此接口可直接拿到**每首歌的成功/失败原因**。
+            任务状态为 COMPLETED 或 FAILED 时返回完整详情。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportTaskResult'
+              example:
+                taskId: "1a2b3c4d-5678-90ef-..."
+                status: COMPLETED
+                total: 87
+                successCount: 85
+                failedCount: 2
+                finishedAt: "2025-04-05T12:05:33Z"
+                failedItems:
+                  - index: 12
+                    title: "Let It Be"
+                    artist: "The Beatles"
+                    error: "Song already exists (duplicate)"
+                  - index: 56
+                    title: ""
+                    artist: "Taylor Swift"
+                    error: "Title cannot be empty"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/songs/{id}:
+    put:
+      tags: [Songs]
+      summary: 更新歌曲 / Update song
+      operationId: updateSong
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SongUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Song'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    delete:
+      tags: [Songs]
+      summary: 删除歌曲 / Delete song
+      operationId: deleteSong
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: 删除成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/dictionary/{word}:
+    get:
+      tags: [Dictionary]
+      summary: 查询英英词典 / Lookup English word
+      operationId: lookupDictionaryWord
+      parameters:
+        - name: word
+          in: path
+          required: true
+          description: 英文单词（不区分大小写）
+          schema:
+            type: string
+          example: voyage
+      responses:
+        '200':
+          description: 词典条目
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DictionaryEntry'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+# ===============================================================
+# Components
+# ===============================================================
+components:
+  responses:
+    BadRequest:
+      description: 请求参数错误 / Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: BAD_REQUEST
+            message: page must be >= 0
+            timestamp: "2025-04-05T12:34:56Z"
+
+    NotFound:
+      description: 资源未找到 / Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: NOT_FOUND
+            message: Word 'xyzabc' not found in vocabulary
+            timestamp: "2025-04-05T12:34:56Z"
+
+    InternalError:
+      description: 服务器内部错误 / Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: INTERNAL_ERROR
+            message: Unexpected error occurred
+            timestamp: "2025-04-05T12:34:56Z"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: BAD_REQUEST
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      required: [error, message, timestamp]
+
+    WordPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            type: string
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        number:
+          type: integer
+        size:
+          type: integer
+      required: [content, totalElements, totalPages, number, size]
+
+    WordOccurrence:
+      type: object
+      properties:
+        songTitle:
+          type: string
+          example: "Yesterday"
+        lyricLine:
+          type: string
+          example: "Yesterday, all my troubles seemed so far away"
+      required: [songTitle, lyricLine]
+
+    Song:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        title:
+          type: string
+          example: "Yesterday"
+        artist:
+          type: string
+          example: "The Beatles"
+        lyrics:
+          type: string
+          example: "Yesterday, all my troubles seemed so far away\n..."
+      required: [id, title, artist, lyrics]
+
+    SongImportRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Bohemian Rhapsody"
+        artist:
+          type: string
+          example: "Queen"
+        lyrics:
+          type: string
+      required: [title, artist, lyrics]
+
+    SongImportTaskResponse:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        total:
+          type: integer
+          example: 87
+        message:
+          type: string
+          example: "87 songs queued for import"
+      required: [taskId]
+
+    ImportTaskResult:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, RUNNING, COMPLETED, FAILED]
+        total:
+          type: integer
+        successCount:
+          type: integer
+        failedCount:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        failedItems:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+                description: 在本次提交的数组中的下标（前端可据此高亮显示）
+              title:
+                type: string
+                nullable: true
+              artist:
+                type: string
+                nullable: true
+              lyricsSnippet:
+                type: string
+                nullable: true
+              error:
+                type: string
+                example: "Title cannot be empty"
+            required: [index, error]
+      required:
+        - taskId
+        - status
+        - total
+        - successCount
+        - failedCount
+
+    SongUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        artist:
+          type: string
+        lyrics:
+          type: string
+
+    DictionaryEntry:
+      type: object
+      properties:
+        word:
+          type: string
+          example: "voyage"
+        phonetic:
+          type: string
+          example: "/ˈvɔɪ.ɪdʒ/"
+        definition:
+          type: string
+          example: "a long journey, especially by ship or in space"
+        translation:
+          type: string
+          example: "航行；旅行"
+        pos:
+          type: string
+          example: "noun, verb"
+        collins:
+          type: integer
+        bnc:
+          type: integer
+        frq:
+          type: integer
+      required: [word, definition]
+
+    TaskCreationResponse:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        message:
+          type: string
+      required: [taskId]
