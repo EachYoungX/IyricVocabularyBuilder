@@ -1,10 +1,11 @@
 package com.each17.backend.controller;
 
+import com.each17.backend.song.controller.SongController;
 import com.each17.backend.dto.SongDto;
 import com.each17.backend.dto.SongImportRequestDto;
 import com.each17.backend.dto.SongImportResponseDto;
 import com.each17.backend.dto.SongUpdateRequestDto;
-import com.each17.backend.service.SongService;
+import com.each17.backend.song.service.SongService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,11 +60,12 @@ class SongControllerTest {
         mockMvc.perform(get("/api/songs"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].title").value("Yesterday"))
-                .andExpect(jsonPath("$[1].id").value(2))
-                .andExpect(jsonPath("$[1].title").value("Hey Jude"));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].title").value("Yesterday"))
+                .andExpect(jsonPath("$.data[1].id").value(2))
+                .andExpect(jsonPath("$.data[1].title").value("Hey Jude"));
     }
 
     @Test
@@ -90,8 +92,8 @@ class SongControllerTest {
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.title").value("Yesterday"));
+                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.title").value("Yesterday"));
     }
 
     @Test
@@ -119,8 +121,8 @@ class SongControllerTest {
                 .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value(songId))
-                .andExpect(jsonPath("$.title").value("Updated Yesterday"));
+                .andExpect(jsonPath("$.data.id").value(songId))
+                .andExpect(jsonPath("$.data.title").value("Updated Yesterday"));
     }
 
     @Test
@@ -164,8 +166,9 @@ class SongControllerTest {
                 .content(objectMapper.writeValueAsString(requestDtos)))
                 .andExpect(status().isAccepted())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.taskId").value(taskId.toString()))
-                .andExpect(jsonPath("$.total").value(2))
-                .andExpect(jsonPath("$.message").value("2 songs queued for import"));
+                .andExpect(jsonPath("$.code").value(202))
+                .andExpect(jsonPath("$.data.taskId").value(taskId.toString()))
+                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.message").value("2 songs queued for import"));
     }
 }

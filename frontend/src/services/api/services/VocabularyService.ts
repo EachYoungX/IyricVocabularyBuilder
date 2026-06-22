@@ -2,8 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ImportTaskResult } from '../models/ImportTaskResult';
 import type { TaskCreationResponse } from '../models/TaskCreationResponse';
+import type { VocabularyRebuildTask } from '../models/VocabularyRebuildTask';
 import type { WordOccurrence } from '../models/WordOccurrence';
 import type { WordPage } from '../models/WordPage';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -84,12 +84,12 @@ export class VocabularyService {
      * 查询词汇索引刷新任务状态
      * 根据任务 ID 查询词汇索引重建任务的当前进度和最终结果。
      * @param taskId 从 /refresh 接口获取的任务 ID
-     * @returns ImportTaskResult 任务的当前状态或最终结果
+     * @returns VocabularyRebuildTask 任务的当前状态或最终结果
      * @throws ApiError
      */
     public static getRefreshTaskStatus(
         taskId: string,
-    ): CancelablePromise<ImportTaskResult> {
+    ): CancelablePromise<VocabularyRebuildTask> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/vocabulary/refresh/tasks/{taskId}',

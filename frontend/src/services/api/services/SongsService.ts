@@ -1,6 +1,7 @@
 /* generated using openapi-typescript-codegen -- do not edit */
 /* istanbul ignore file */
 /* tslint:disable */
+/* eslint-disable */
 import type { ImportTaskResult } from '../models/ImportTaskResult';
 import type { Song } from '../models/Song';
 import type { SongImportRequest } from '../models/SongImportRequest';
@@ -21,6 +22,25 @@ export class SongsService {
             url: '/api/songs',
             errors: {
                 500: `服务器内部错误 / Internal server error`,
+            },
+        });
+    }
+    /**
+     * 新建歌曲 / Create song
+     * @param requestBody
+     * @returns Song 新建成功 / Song created
+     * @throws ApiError
+     */
+    public static createSong(
+        requestBody: SongImportRequest,
+    ): CancelablePromise<Song> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/songs',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                400: `请求参数错误 / Invalid request parameters`,
             },
         });
     }
@@ -56,6 +76,46 @@ export class SongsService {
             url: '/api/songs/import/tasks/{taskId}',
             path: {
                 'taskId': taskId,
+            },
+            errors: {
+                404: `资源未找到 / Resource not found`,
+            },
+        });
+    }
+    /**
+     * 批量删除歌曲 / Delete songs in batch
+     * @param requestBody
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteSongsBatch(
+        requestBody: Array<number>,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/songs/batch',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                400: `请求参数错误 / Invalid request parameters`,
+                404: `资源未找到 / Resource not found`,
+            },
+        });
+    }
+    /**
+     * 获取歌曲详情 / Get song details
+     * @param id
+     * @returns Song 歌曲详情 / Song details
+     * @throws ApiError
+     */
+    public static getSongById(
+        id: number,
+    ): CancelablePromise<Song> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/songs/{id}',
+            path: {
+                'id': id,
             },
             errors: {
                 404: `资源未找到 / Resource not found`,
@@ -103,26 +163,6 @@ export class SongsService {
                 'id': id,
             },
             errors: {
-                404: `资源未找到 / Resource not found`,
-            },
-        });
-    }
-    /**
-     * 批量删除歌曲 / Delete songs in batch
-     * @param requestBody
-     * @returns void
-     * @throws ApiError
-     */
-    public static deleteSongsBatch(
-        requestBody: Array<number>,
-    ): CancelablePromise<void> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/songs/batch',
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                400: `请求参数错误 / Invalid request parameters`,
                 404: `资源未找到 / Resource not found`,
             },
         });

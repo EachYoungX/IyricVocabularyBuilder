@@ -5,8 +5,7 @@
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
 
         <q-toolbar-title class="text-weight-bold">{{ t('appTitle') }}</q-toolbar-title>
-
-
+        <q-btn flat dense :label="locale === 'zh-CN' ? 'English' : '中文'" @click="toggleLanguage" />
       </q-toolbar>
     </q-header>
 
@@ -63,7 +62,7 @@
           </q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple class="q-mx-md rounded-borders" @click="refreshVocabulary">
+        <q-item clickable v-ripple class="q-mx-md rounded-borders" @click="requestVocabularyRebuild">
           <q-item-section avatar>
             <q-icon name="refresh" color="primary" size="22px" />
           </q-item-section>
@@ -84,25 +83,17 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Loading, Notify } from 'quasar'
-import { VocabularyService } from 'src/services/api'
-import { ImportTaskResult as ImportTaskResultEnum } from 'src/services/api/models/ImportTaskResult'
 import SongImportDialog from 'components/SongImportDialog.vue'
-import { useVocabularyStore } from 'src/stores/vocabularyStore'
-import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
+import { useVocabularyRebuild } from 'src/composables/useVocabularyRebuild'
 
-const $q = useQuasar()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const { requestVocabularyRebuild } = useVocabularyRebuild()
 
 // --- 组件状态 ---
 const leftDrawerOpen = ref(false)
 const importDialogVisible = ref(false)
 
-// --- Pinia Store ---
-const vocabularyStore = useVocabularyStore()
-
-// --- UI 控制函数 ---
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
@@ -111,119 +102,8 @@ function showImportDialog() {
   importDialogVisible.value = true
 }
 
-// --- [核心] 词汇刷新逻辑 ---
-// 1. 用户点击左侧「 Tear Down Index」时，只弹出对话框
-function refreshVocabulary() {
-  // 直接弹出 Quasar 美美的对话框
-  $q.dialog({
-    title: t('tearDownIndexTitle'),
-    message: t('tearDownIndexMessage'),
-    html: true,
-    ok: {
-      label: t('tearDownNow'),
-      color: 'primary',
-      unelevated: true
-    },
-    cancel: {
-      label: t('cancel'),
-      flat: true,
-      color: 'grey'
-    },
-    persistent: true
-  }).onOk(() => {
-    void startVocabularyRebuild()  // 用户确认后才真正开始
-  })
-}
-
-// 2. 真正的重建逻辑抽离出来（原来 refreshVocabulary 的内容）
-async function startVocabularyRebuild() {
-  if (Loading.isActive) {
-    Notify.create({ message: t('rebuildInProgress'), type: 'info' })
-    return
-  }
-
-  Loading.show({
-    message: t('startingRebuild'),
-    spinnerColor: 'primary'
-  })
-
-  try {
-    const response = await VocabularyService.refreshVocabularyIndex()
-    if (response?.taskId) {
-      await pollRefreshStatus(response.taskId)
-    } else {
-      throw new Error(t('noTaskIdReturned'))
-    }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : t('unknownError')
-    Notify.create({
-      type: 'negative',
-      message: `${t('rebuildFailed')}: ${msg}`,
-      icon: 'error'
-    })
-  } finally {
-    Loading.hide()
-  }
-}
-
-function pollRefreshStatus(taskId: string): Promise<void> {
-  // [核心修复] 函数现在返回一个 Promise
-  return new Promise((resolve, reject) => {
-    const pollInterval = 2000
-    const maxAttempts = 90
-    let attempts = 0
-
-    const poll = async () => {
-      attempts++
-
-      try {
-        const taskResult = await VocabularyService.getRefreshTaskStatus(taskId)
-
-        // 更新加载信息 (可选，但体验很好)
-        if (Loading.isActive && taskResult?.total) {
-          const processed = (taskResult.successCount ?? 0) + (taskResult.failedCount ?? 0)
-          const progress = taskResult.total > 0 ? (processed / taskResult.total * 100).toFixed(0) : 0
-          Loading.show({
-            message: t('rebuildingIndexProgress', { progress })
-          })
-        }
-
-        const isFinished = taskResult?.status === ImportTaskResultEnum.status.COMPLETED ||
-          taskResult?.status === ImportTaskResultEnum.status.FAILED
-
-        if (isFinished) {
-          if (taskResult.status === ImportTaskResultEnum.status.COMPLETED) {
-            Notify.create({
-              message: t('rebuildSuccess'),
-              type: 'positive', icon: 'check_circle', position: 'top'
-            })
-            // 调用 store action 刷新前端数据
-            await vocabularyStore.fetchWords({ page: 0, size: 50 })
-            resolve() // 成功完成，解决 Promise
-          } else {
-            Notify.create({
-              message: t('rebuildTaskFailed'),
-              type: 'negative', icon: 'error', position: 'top'
-            })
-            reject(new Error(t('rebuildTaskFailedOnServer'))) // 失败，拒绝 Promise
-          }
-          return
-        }
-
-        if (attempts >= maxAttempts) {
-          Notify.create({ message: t('rebuildTaskTimeout'), type: 'warning', icon: 'timer_off' })
-          reject(new Error(t('refreshTaskTimedOut'))) // 超时，拒绝 Promise
-          return
-        }
-
-        setTimeout(() => void poll(), pollInterval)
-      } catch {
-        Notify.create({ type: 'negative', message: t('checkStatusFailed'), icon: 'cloud_off' })
-        reject(new Error(t('failedToCheckRefreshStatus'))) // 发生连接错误等，拒绝 Promise
-      }
-    }
-
-    void poll()
-  })
+function toggleLanguage() {
+  locale.value = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
+  localStorage.setItem('app-locale', locale.value)
 }
 </script>

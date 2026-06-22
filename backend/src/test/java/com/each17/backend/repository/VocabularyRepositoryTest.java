@@ -1,6 +1,7 @@
 package com.each17.backend.repository;
 
-import com.each17.backend.entity.Vocabulary;
+import com.each17.backend.vocabulary.entity.Vocabulary;
+import com.each17.backend.vocabulary.repository.VocabularyRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;

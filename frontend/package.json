@@ -12,7 +12,7 @@
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
     "build": "quasar build",
-    "gen-api": "npx openapi-typescript-codegen --input ./api-docs.yaml --output ./src/services/api --client axios",
+    "gen-api": "npx openapi-typescript-codegen --input ../backend/src/main/resources/api-docs.yaml --output ./src/services/api --client axios && node ./scripts/patch-generated-api.mjs",
     "postinstall": "quasar prepare"
   },
   "dependencies": {

@@ -1,12 +1,11 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { VocabularyService, SongsService, type Song, type WordOccurrence } from 'src/services/api';
+import { VocabularyService, type WordOccurrence } from 'src/services/api';
 import { useDictionaryStore } from './dictionaryStore';
 
 export const useVocabularyStore = defineStore('vocabulary', () => {
   // State
   const words = ref<string[]>([]);
-  const songs = ref<Song[]>([]);
   const selectedWord = ref<string>('');
   const wordOccurrences = ref<WordOccurrence[]>([]);
   const totalPages = ref<number>(0);
@@ -73,19 +72,6 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     }
   }
 
-  async function fetchSongs() {
-    isLoading.value = true;
-    try {
-      const songList: Song[] = await SongsService.getAllSongs();
-      songs.value = songList;
-    } catch (error) {
-      console.error('Failed to fetch songs:', error);
-      // 这里可以添加错误处理，比如显示通知
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
   function selectWord(word: string) {
     selectedWord.value = word;
   }
@@ -98,7 +84,6 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   return {
     // State
     words,
-    songs,
     selectedWord,
     wordOccurrences,
     totalPages,
@@ -119,7 +104,6 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     // Actions
     fetchWords,
     fetchWordOccurrences,
-    fetchSongs,
     selectWord,
     clearSelectedWord,
   };

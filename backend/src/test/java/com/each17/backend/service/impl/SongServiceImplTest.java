@@ -1,12 +1,13 @@
 package com.each17.backend.service.impl;
 
+import com.each17.backend.song.service.SongServiceImpl;
 import com.each17.backend.dto.SongDto;
 import com.each17.backend.dto.SongImportRequestDto;
 import com.each17.backend.dto.SongUpdateRequestDto;
-import com.each17.backend.entity.Song;
-import com.each17.backend.mapper.SongMapper;
-import com.each17.backend.repository.SongRepository;
-import com.each17.backend.service.VocabularyService;
+import com.each17.backend.song.entity.Song;
+import com.each17.backend.song.mapper.SongMapper;
+import com.each17.backend.song.repository.SongRepository;
+import com.each17.backend.vocabulary.service.VocabularyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;

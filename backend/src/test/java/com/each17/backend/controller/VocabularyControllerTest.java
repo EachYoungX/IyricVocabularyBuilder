@@ -1,8 +1,9 @@
 package com.each17.backend.controller;
 
+import com.each17.backend.vocabulary.controller.VocabularyController;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
-import com.each17.backend.service.VocabularyService;
+import com.each17.backend.vocabulary.service.VocabularyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,11 +53,11 @@ class VocabularyControllerTest {
                 .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.content[0]").value("love"))
-                .andExpect(jsonPath("$.content[1]").value("yesterday"))
-                .andExpect(jsonPath("$.totalElements").value(2))
-                .andExpect(jsonPath("$.totalPages").value(1));
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content[0]").value("love"))
+                .andExpect(jsonPath("$.data.content[1]").value("yesterday"))
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.totalPages").value(1));
     }
 
     @Test
@@ -80,9 +81,9 @@ class VocabularyControllerTest {
         mockMvc.perform(get("/api/vocabulary/words/{word}/occurrences", "love"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].songTitle").value("Yesterday"))
-                .andExpect(jsonPath("$[1].songTitle").value("Love Me Do"));
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].songTitle").value("Yesterday"))
+                .andExpect(jsonPath("$.data[1].songTitle").value("Love Me Do"));
     }
 
     @Test
@@ -95,7 +96,8 @@ class VocabularyControllerTest {
         mockMvc.perform(post("/api/vocabulary/refresh"))
                 .andExpect(status().isAccepted())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.message").value("Vocabulary index rebuild task started"))
-                .andExpect(jsonPath("$.taskId").value(taskId.toString()));
+                .andExpect(jsonPath("$.code").value(202))
+                .andExpect(jsonPath("$.data.message").value("Vocabulary index rebuild task started"))
+                .andExpect(jsonPath("$.data.taskId").value(taskId.toString()));
     }
 }

@@ -6,7 +6,14 @@ info:
     用于管理英文歌曲库、构建词汇索引并提供英英词典查询，专为英语学习设计。
 
     Backend API for the Lyric Vocabulary Builder application (English learning only).
-  version: 1.0.0
+
+    所有包含响应体的接口统一返回 `{ code, message, data }`。本文档中的成功响应 schema
+    描述 `data` 字段的业务内容；前端生成客户端会在传输层自动解包该字段。
+
+    All responses with a body use the `{ code, message, data }` envelope. Successful
+    response schemas below describe the business payload inside `data`; the generated
+    frontend transport unwraps this field automatically.
+  version: 1.1.0
 
 servers:
   - url: http://localhost:8080
@@ -138,7 +145,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImportTaskResult'
+                $ref: '#/components/schemas/VocabularyRebuildTask'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -161,6 +168,26 @@ paths:
                   $ref: '#/components/schemas/Song'
         '500':
           $ref: '#/components/responses/InternalError'
+
+    post:
+      tags: [Songs]
+      summary: 新建歌曲 / Create song
+      operationId: createSong
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SongImportRequest'
+      responses:
+        '200':
+          description: 新建成功 / Song created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Song'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /api/songs/import:
     post:
@@ -227,7 +254,50 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/songs/batch:
+    delete:
+      tags: [Songs]
+      summary: 批量删除歌曲 / Delete songs in batch
+      operationId: deleteSongsBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: integer
+                format: int64
+      responses:
+        '204':
+          description: 批量删除成功 / Songs deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/songs/{id}:
+    get:
+      tags: [Songs]
+      summary: 获取歌曲详情 / Get song details
+      operationId: getSongById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 歌曲详情 / Song details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Song'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
     put:
       tags: [Songs]
       summary: 更新歌曲 / Update song
@@ -311,9 +381,9 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            error: BAD_REQUEST
+            code: 40001
             message: page must be >= 0
-            timestamp: "2025-04-05T12:34:56Z"
+            data: null
 
     NotFound:
       description: 资源未找到 / Resource not found
@@ -322,9 +392,9 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            error: NOT_FOUND
+            code: 40401
             message: Word 'xyzabc' not found in vocabulary
-            timestamp: "2025-04-05T12:34:56Z"
+            data: null
 
     InternalError:
       description: 服务器内部错误 / Internal server error
@@ -333,23 +403,43 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           example:
-            error: INTERNAL_ERROR
-            message: Unexpected error occurred
-            timestamp: "2025-04-05T12:34:56Z"
+            code: 50000
+            message: Internal server error
+            data: null
 
   schemas:
     ErrorResponse:
       type: object
       properties:
-        error:
-          type: string
-          example: BAD_REQUEST
+        code:
+          type: integer
+          example: 40001
         message:
           type: string
-        timestamp:
+        data:
+          nullable: true
+      required: [code, message, data]
+
+    VocabularyRebuildTask:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, RUNNING, COMPLETED, FAILED]
+        startedAt:
           type: string
           format: date-time
-      required: [error, message, timestamp]
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+      required: [taskId, status, startedAt]
 
     WordPage:
       type: object

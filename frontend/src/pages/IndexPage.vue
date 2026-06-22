@@ -1,10 +1,5 @@
 <template>
   <q-page class="window-height column no-wrap overflow-hidden q-pa-sm-md">
-    <!-- 语言切换按钮 -->
-    <div class="row justify-end q-mb-md col-auto">
-      <q-btn :label="locale === 'zh-CN' ? 'English' : '中文'" @click="toggleLanguage" outline color="primary" size="sm" />
-    </div>
-
     <!-- 主体内容区域 -->
     <div class="col overflow-hidden">
       <q-splitter v-model="splitterModel" class="fit desktop-splitter" unit="%" :limits="[20, 80]">
@@ -115,53 +110,22 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { onMounted } from 'vue';
-import { useVocabularyStore } from 'src/stores/vocabularyStore';
-import { useDictionaryStore } from 'src/stores/dictionaryStore';
 import { useI18n } from 'vue-i18n';
+import { useVocabularyExplorer } from 'src/composables/useVocabularyExplorer';
 
-const vocabularyStore = useVocabularyStore();
-const dictionaryStore = useDictionaryStore();
-const { t, locale } = useI18n();
+const { t } = useI18n();
+const {
+  currentPage,
+  dictionaryStore,
+  onPageChange,
+  onSearchChange,
+  searchTerm,
+  selectWord,
+  vocabularyStore,
+} = useVocabularyExplorer();
 
 const splitterModel = ref<number>(30);
 const horizontalSplitter = ref<number>(50);
-const searchTerm = ref<string>('');
-const currentPage = ref<number>(1);
-
-// 语言切换函数
-const toggleLanguage = () => {
-  const newLocale = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN';
-  locale.value = newLocale;
-  localStorage.setItem('app-locale', newLocale);
-};
-
-onMounted(() => {
-  void vocabularyStore.fetchWords({ page: 0, size: 50 })
-});
-
-function selectWord(word: string) {
-  vocabularyStore.selectWord(word);
-  void vocabularyStore.fetchWordOccurrences(word);
-}
-
-function onSearchChange(value: string | null) {
-  void vocabularyStore.fetchWords({
-    page: 0,
-    size: 50,
-    prefix: value || undefined
-  })
-  currentPage.value = 1
-}
-
-// 分页
-function onPageChange(page: number) {
-  void vocabularyStore.fetchWords({
-    page: page - 1,
-    size: 50,
-    prefix: searchTerm.value || undefined
-  })
-}
 </script>
 
 <style lang="scss" scoped>

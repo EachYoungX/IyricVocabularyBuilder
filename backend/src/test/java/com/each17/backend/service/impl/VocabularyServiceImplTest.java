@@ -1,9 +1,11 @@
 package com.each17.backend.service.impl;
 
+import com.each17.backend.vocabulary.service.VocabularyServiceImpl;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
-import com.each17.backend.entity.Vocabulary;
-import com.each17.backend.repository.VocabularyRepository;
+import com.each17.backend.vocabulary.entity.Vocabulary;
+import com.each17.backend.vocabulary.repository.VocabularyRepository;
+import com.each17.backend.song.repository.SongRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

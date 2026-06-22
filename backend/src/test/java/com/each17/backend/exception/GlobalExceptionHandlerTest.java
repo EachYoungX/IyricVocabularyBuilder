@@ -1,6 +1,8 @@
 package com.each17.backend.exception;
 
-import com.each17.backend.dto.ErrorResponseDto;
+import com.each17.backend.common.exception.NotFoundException;
+import com.each17.backend.common.exception.GlobalExceptionHandler;
+import com.each17.backend.common.response.ApiResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
@@ -13,15 +15,17 @@ class GlobalExceptionHandlerTest {
     @Test
     void testHandleResourceNotFound() {
         // Given
-        RuntimeException exception = new RuntimeException("Resource not found");
+        NotFoundException exception = new NotFoundException("Resource not found");
 
         // When
-        ErrorResponseDto response = exceptionHandler.handleResourceNotFound(exception);
+        ResponseEntity<ApiResponse<Void>> response = exceptionHandler.handleBusinessException(exception);
 
         // Then
-        assertEquals("NOT_FOUND", response.getError());
-        assertEquals("Resource not found", response.getMessage());
-        assertNotNull(response.getTimestamp());
+        assertEquals(404, response.getStatusCode().value());
+        assertNotNull(response.getBody());
+        assertEquals(40401, response.getBody().code());
+        assertEquals("Resource not found", response.getBody().message());
+        assertNull(response.getBody().data());
     }
 
     @Test
@@ -30,11 +34,12 @@ class GlobalExceptionHandlerTest {
         Exception exception = new Exception("Validation error");
 
         // When
-        ErrorResponseDto response = exceptionHandler.handleValidationExceptions(exception);
+        ResponseEntity<ApiResponse<Void>> response = exceptionHandler.handleUnexpectedException(exception);
 
         // Then
-        assertEquals("BadRequest", response.getError());
-        assertEquals("Validation error", response.getMessage());
-        assertNotNull(response.getTimestamp());
+        assertEquals(500, response.getStatusCode().value());
+        assertNotNull(response.getBody());
+        assertEquals(50000, response.getBody().code());
+        assertEquals("Internal server error", response.getBody().message());
     }
 }

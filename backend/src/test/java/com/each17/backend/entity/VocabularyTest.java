@@ -1,5 +1,6 @@
 package com.each17.backend.entity;
 
+import com.each17.backend.vocabulary.entity.Vocabulary;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

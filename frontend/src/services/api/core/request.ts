@@ -244,7 +244,11 @@ export const getResponseHeader = (response: AxiosResponse<any>, responseHeader?:
 
 export const getResponseBody = (response: AxiosResponse<any>): any => {
     if (response.status !== 204) {
-        return response.data;
+        const body = response.data;
+        if (body && typeof body === 'object' && 'code' in body && 'message' in body && 'data' in body) {
+            return body.data;
+        }
+        return body;
     }
     return undefined;
 };

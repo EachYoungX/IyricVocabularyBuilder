@@ -7,7 +7,6 @@ import {
   type ImportTaskResult,
   type SongUpdateRequest,
 } from 'src/services/api';
-import { ExtendedSongsService } from 'src/services/ExtendedSongsService';
 import { Notify } from 'quasar';
 import { useI18n } from 'vue-i18n';
 
@@ -52,7 +51,7 @@ export const useSongsStore = defineStore('songs', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const result = await ExtendedSongsService.importSongsAsync(songsToImport);
+      const result = await SongsService.importSongsAsync(songsToImport);
       Notify.create({ type: 'positive', message: t('importTaskStartedSuccessfully') });
       return result;
     } catch (err) {
@@ -69,7 +68,7 @@ export const useSongsStore = defineStore('songs', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const taskResult: ImportTaskResult = await ExtendedSongsService.getImportTaskResult(taskId);
+      const taskResult: ImportTaskResult = await SongsService.getImportTaskResult(taskId);
       importTask.value = taskResult;
       return taskResult;
     } catch (err) {
@@ -89,7 +88,7 @@ export const useSongsStore = defineStore('songs', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const updatedSong: Song = await ExtendedSongsService.updateSong(id, songUpdate);
+      const updatedSong: Song = await SongsService.updateSong(id, songUpdate);
       // 更新歌曲列表中的歌曲
       const index = songs.value.findIndex((song: Song) => song.id === id);
       if (index !== -1) {
@@ -115,7 +114,7 @@ export const useSongsStore = defineStore('songs', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      await ExtendedSongsService.deleteSong(id);
+      await SongsService.deleteSong(id);
       // 从歌曲列表中移除歌曲
       songs.value = songs.value.filter((song: Song) => song.id !== id);
       Notify.create({ type: 'positive', message: t('songDeletedSuccessfully') });

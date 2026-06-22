@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { type DictionaryEntry } from 'src/services/api';
-import { DictionaryService } from 'src/services/DictionaryService';
+import { DictionaryService, type DictionaryEntry } from 'src/services/api';
 import { useI18n } from 'vue-i18n';
 
 export const useDictionaryStore = defineStore('dictionary', () => {

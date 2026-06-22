@@ -1,15 +1,18 @@
 package com.each17.backend.service.impl;
 
+import com.each17.backend.dictionary.service.DictionaryServiceImpl;
 import com.each17.backend.dto.DictionaryEntryDto;
+import com.each17.backend.common.exception.DictionaryNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
@@ -19,13 +22,7 @@ import static org.mockito.Mockito.*;
 class DictionaryServiceImplTest {
 
     @Mock
-    private DataSource dictionaryDataSource;
-
-    @Mock
-    private Connection connection;
-
-    @Mock
-    private PreparedStatement preparedStatement;
+    private JdbcTemplate jdbcTemplate;
 
     @Mock
     private ResultSet resultSet;
@@ -34,11 +31,8 @@ class DictionaryServiceImplTest {
     private DictionaryServiceImpl dictionaryService;
 
     @BeforeEach
-    void setUp() throws SQLException {
+    void setUp() {
         MockitoAnnotations.openMocks(this);
-        when(dictionaryDataSource.getConnection()).thenReturn(connection);
-        when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
-        when(preparedStatement.executeQuery()).thenReturn(resultSet);
     }
 
     @Test
@@ -55,6 +49,11 @@ class DictionaryServiceImplTest {
         when(resultSet.getInt("bnc_rank")).thenReturn(3025);
         when(resultSet.getInt("frq_rank")).thenReturn(2632);
         when(resultSet.getString("forms")).thenReturn("p:voyaged/d:voyaged/i:voyaging/s:voyages");
+        when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), eq(word)))
+                .thenAnswer(invocation -> {
+                    RowMapper<DictionaryEntryDto> rowMapper = invocation.getArgument(1);
+                    return rowMapper.mapRow(resultSet, 0);
+                });
 
         // When
         DictionaryEntryDto result = dictionaryService.lookupWord(word);
@@ -71,38 +70,31 @@ class DictionaryServiceImplTest {
         assertEquals(Integer.valueOf(2632), result.getFrq());
         assertEquals("p:voyaged/d:voyaged/i:voyaging/s:voyages", result.getForms());
 
-        verify(dictionaryDataSource, times(1)).getConnection();
-        verify(connection, times(1)).prepareStatement(anyString());
-        verify(preparedStatement, times(1)).setString(1, word.toLowerCase());
-        verify(preparedStatement, times(1)).executeQuery();
-        verify(resultSet, times(1)).next();
+        verify(jdbcTemplate).queryForObject(anyString(), any(RowMapper.class), eq(word));
     }
 
     @Test
-    void testLookupWordNotFound() throws SQLException {
+    void testLookupWordNotFound() {
         // Given
         String word = "nonexistent";
-        when(resultSet.next()).thenReturn(false);
+        when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), eq(word)))
+                .thenThrow(new EmptyResultDataAccessException(1));
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> dictionaryService.lookupWord(word));
-
-        verify(dictionaryDataSource, times(1)).getConnection();
-        verify(connection, times(1)).prepareStatement(anyString());
-        verify(preparedStatement, times(1)).setString(1, word.toLowerCase());
-        verify(preparedStatement, times(1)).executeQuery();
-        verify(resultSet, times(1)).next();
+        assertThrows(DictionaryNotFoundException.class, () -> dictionaryService.lookupWord(word));
+        verify(jdbcTemplate).queryForObject(anyString(), any(RowMapper.class), eq(word));
     }
 
     @Test
-    void testLookupWordSQLException() throws SQLException {
+    void testLookupWordSQLException() {
         // Given
         String word = "voyage";
-        when(dictionaryDataSource.getConnection()).thenThrow(new SQLException("Database error"));
+        when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), eq(word)))
+                .thenThrow(new DataAccessResourceFailureException("Database error"));
 
         // When & Then
         assertThrows(RuntimeException.class, () -> dictionaryService.lookupWord(word));
 
-        verify(dictionaryDataSource, times(1)).getConnection();
+        verify(jdbcTemplate).queryForObject(anyString(), any(RowMapper.class), eq(word));
     }
 }

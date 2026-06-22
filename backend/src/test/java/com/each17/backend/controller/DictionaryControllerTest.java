@@ -1,7 +1,8 @@
 package com.each17.backend.controller;
 
+import com.each17.backend.dictionary.controller.DictionaryController;
 import com.each17.backend.dto.DictionaryEntryDto;
-import com.each17.backend.service.DictionaryService;
+import com.each17.backend.dictionary.service.DictionaryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,9 +49,11 @@ class DictionaryControllerTest {
         mockMvc.perform(get("/api/dictionary/{word}", "voyage"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.word").value("voyage"))
-                .andExpect(jsonPath("$.phonetic").value("/ˈvɔɪ.ɪdʒ/"))
-                .andExpect(jsonPath("$.definition").value("a long journey, especially by ship or in space"))
-                .andExpect(jsonPath("$.translation").value("航行；旅行"));
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message").value("success"))
+                .andExpect(jsonPath("$.data.word").value("voyage"))
+                .andExpect(jsonPath("$.data.phonetic").value("/ˈvɔɪ.ɪdʒ/"))
+                .andExpect(jsonPath("$.data.definition").value("a long journey, especially by ship or in space"))
+                .andExpect(jsonPath("$.data.translation").value("航行；旅行"));
     }
 }
