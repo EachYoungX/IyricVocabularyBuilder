@@ -4,6 +4,29 @@
 
 This file records only completed and verified refactoring stages. Internal plans and audit notes are excluded from the repository.
 
+## Stage 2 - 2026-06-22
+
+### 歌词导入、清洗与结构化 / Lyric Import, Normalization, and Structuring
+
+- 在保留旧接口兼容的同时，新增原始歌词、标准化歌词、SHA-256 hash、导入版本和更新时间。
+- 新增结构化歌词行模型，支持歌词、段落标签、角色标签、演奏说明、元信息、空行和未识别类型。
+- 标准化规则支持统一换行、LRC 时间戳移除、全角字符归一、空白清理和重复空行合并。
+- 非歌词内容采用默认隐藏而非不可逆删除，并记录分类置信度。
+- 新增逐行用户修正 API；覆盖导入时，匹配原始文本的用户 override 优先保留。
+- 相同歌词重复导入保持 hash、版本和结构行不变；不同歌词在未明确允许覆盖时返回 `409`。
+- 既有 SQLite 数据库采用增量迁移，并在启动时自动补建结构化歌词行。
+- 词汇索引改为读取标准化歌词，同时保留原始歌词用于恢复和对照。
+- 歌曲管理页新增双语结构化歌词对话框，可查看原文/标准化结果、分类、隐藏状态、置信度并逐行修正。
+
+### Verification
+
+- Backend: 49 tests passed with 0 failures and 0 errors.
+- Frontend: ESLint, TypeScript checks, and Quasar production build passed.
+- Canonical OpenAPI client regeneration passed.
+- Existing 6-song SQLite database migration and lyric-line backfill passed.
+- Same-content idempotency, different-content `409`, overwrite versioning, and override preservation passed real API regression.
+- Structured lyric UI and portrait/landscape responsive layouts passed browser regression.
+
 ## Stage 1 - 2026-06-21
 
 ### 结构重构与职责拆分 / Structural Refactoring

@@ -12,6 +12,8 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
+import java.util.HashSet;
+import java.util.Set;
 
 @Configuration
 public class DataSourceConfig {
@@ -44,12 +46,39 @@ public class DataSourceConfig {
             System.out.println(">>> schema.sql found. Executing initialization script...");
             ResourceDatabasePopulator populator = new ResourceDatabasePopulator(schema);
             populator.execute(dataSource);
+            migrateSongColumns(dataSource);
             System.out.println(">>> schema.sql execution finished.");
         } else {
             System.err.println("!!! WARNING: schema.sql not found! Tables will not be created.");
         }
 
         return dataSource;
+    }
+
+    private void migrateSongColumns(DataSource dataSource) {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        Set<String> columns = new HashSet<>(jdbcTemplate.query(
+                "PRAGMA table_info(songs)",
+                (rs, rowNum) -> rs.getString("name")
+        ));
+
+        addColumnIfMissing(jdbcTemplate, columns, "raw_lyrics", "TEXT");
+        addColumnIfMissing(jdbcTemplate, columns, "normalized_lyrics", "TEXT");
+        addColumnIfMissing(jdbcTemplate, columns, "lyrics_hash", "TEXT");
+        addColumnIfMissing(jdbcTemplate, columns, "import_version", "INTEGER NOT NULL DEFAULT 1");
+        addColumnIfMissing(jdbcTemplate, columns, "updated_at", "TEXT");
+
+        jdbcTemplate.update("UPDATE songs SET raw_lyrics = lyrics WHERE raw_lyrics IS NULL");
+        jdbcTemplate.update("UPDATE songs SET normalized_lyrics = raw_lyrics WHERE normalized_lyrics IS NULL");
+        jdbcTemplate.update("UPDATE songs SET import_version = 1 WHERE import_version IS NULL");
+        jdbcTemplate.update("UPDATE songs SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL");
+    }
+
+    private void addColumnIfMissing(JdbcTemplate jdbcTemplate, Set<String> columns, String name, String definition) {
+        if (!columns.contains(name)) {
+            jdbcTemplate.execute("ALTER TABLE songs ADD COLUMN " + name + " " + definition);
+            columns.add(name);
+        }
     }
 
     /**

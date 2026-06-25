@@ -13,7 +13,7 @@ info:
     All responses with a body use the `{ code, message, data }` envelope. Successful
     response schemas below describe the business payload inside `data`; the generated
     frontend transport unwraps this field automatically.
-  version: 1.1.0
+  version: 1.2.0
 
 servers:
   - url: http://localhost:8080
@@ -26,6 +26,8 @@ tags:
     description: 英文歌曲库管理 / English song library management
   - name: Dictionary
     description: 英英词典查询（仅英文） / English dictionary lookup
+  - name: Lyrics
+    description: 歌词标准化、结构化与用户修正 / Lyric normalization, structuring, and correction
 
 paths:
   # ===============================================================
@@ -369,10 +371,96 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /api/songs/{songId}/lyrics:
+    get:
+      tags: [Lyrics]
+      summary: 获取结构化歌词 / Get structured lyrics
+      operationId: getStructuredLyrics
+      parameters:
+        - $ref: '#/components/parameters/SongId'
+      responses:
+        '200':
+          description: 原始、标准化与逐行结构化歌词 / Raw, normalized, and structured lyrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LyricDocument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/songs/{songId}/lyrics/import:
+    post:
+      tags: [Lyrics]
+      summary: 导入或覆盖歌词 / Import or overwrite lyrics
+      operationId: importLyrics
+      parameters:
+        - $ref: '#/components/parameters/SongId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LyricImportRequest'
+      responses:
+        '200':
+          description: 导入后的结构化歌词 / Structured lyrics after import
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LyricDocument'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 歌词内容不同且未允许覆盖 / Different lyrics without overwrite permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/songs/{songId}/lyrics/lines/{lineId}:
+    put:
+      tags: [Lyrics]
+      summary: 修正歌词行 / Correct a lyric line
+      operationId: updateLyricLine
+      parameters:
+        - $ref: '#/components/parameters/SongId'
+        - name: lineId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LyricLineUpdateRequest'
+      responses:
+        '200':
+          description: 已保存的用户修正 / Saved user correction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LyricLine'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 # ===============================================================
 # Components
 # ===============================================================
 components:
+  parameters:
+    SongId:
+      name: songId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
   responses:
     BadRequest:
       description: 请求参数错误 / Invalid request parameters
@@ -408,6 +496,76 @@ components:
             data: null
 
   schemas:
+    LyricLineType:
+      type: string
+      enum: [LYRIC, SECTION_LABEL, SPEAKER_LABEL, PERFORMANCE_NOTE, META_INFO, EMPTY, UNKNOWN]
+
+    LyricLine:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        lineIndex:
+          type: integer
+        originalText:
+          type: string
+        normalizedText:
+          type: string
+        lineType:
+          $ref: '#/components/schemas/LyricLineType'
+        hidden:
+          type: boolean
+        confidence:
+          type: number
+          format: double
+        userOverride:
+          type: boolean
+      required: [id, lineIndex, originalText, normalizedText, lineType, hidden, confidence, userOverride]
+
+    LyricDocument:
+      type: object
+      properties:
+        songId:
+          type: integer
+          format: int64
+        rawLyrics:
+          type: string
+        normalizedLyrics:
+          type: string
+        lyricsHash:
+          type: string
+        importVersion:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/LyricLine'
+      required: [songId, rawLyrics, normalizedLyrics, lyricsHash, importVersion, updatedAt, lines]
+
+    LyricImportRequest:
+      type: object
+      properties:
+        lyrics:
+          type: string
+        overwrite:
+          type: boolean
+          default: false
+      required: [lyrics]
+
+    LyricLineUpdateRequest:
+      type: object
+      properties:
+        normalizedText:
+          type: string
+        lineType:
+          $ref: '#/components/schemas/LyricLineType'
+        hidden:
+          type: boolean
+
     ErrorResponse:
       type: object
       properties:

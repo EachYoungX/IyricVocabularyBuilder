@@ -7,6 +7,7 @@ import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.mapper.SongMapper;
 import com.each17.backend.song.repository.SongRepository;
 import com.each17.backend.vocabulary.service.VocabularyService;
+import com.each17.backend.lyric.service.LyricStructureService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,6 +32,7 @@ public class SongServiceImpl implements SongService {
     private final SongRepository songRepository;
     private final SongMapper songMapper;
     private final VocabularyService vocabularyService;
+    private final LyricStructureService lyricStructureService;
 
     // [核心] 使用 ConcurrentHashMap 在内存中存储任务状态，保证线程安全
     private final ConcurrentMap<UUID, ImportTaskResultDto> importTasks = new ConcurrentHashMap<>();
@@ -93,19 +95,21 @@ public class SongServiceImpl implements SongService {
         for (SongImportRequestDto songDto : songsToImport) {
             int index = currentIndex.getAndIncrement();
             try {
-                if (songDto.getTitle() == null || songDto.getTitle().isBlank()) {
-                    throw new ValidationException("Title cannot be empty");
-                }
+                validateSong(songDto.getTitle(), songDto.getArtist(), songDto.getLyrics());
 
                 Song song = songMapper.toEntity(songDto);
-
-                // [核心修复] 在 save 之前，先检查是否存在
-                // 注意：这在高并发下不是完美的，但对于我们的单用户应用足够了
-                if (songRepository.existsByTitleAndArtist(song.getTitle(), song.getArtist())) {
-                    throw new DataIntegrityViolationException("Song already exists (duplicate)");
+                var existing = songRepository.findByTitleAndArtist(song.getTitle(), song.getArtist());
+                if (existing.isPresent()) {
+                    if (lyricStructureService.isSameContent(existing.get(), songDto.getLyrics())) {
+                        lyricStructureService.structureSong(existing.get(), songDto.getLyrics(), false);
+                        taskResult.setSuccessCount(taskResult.getSuccessCount() + 1);
+                        continue;
+                    }
+                    throw new DataIntegrityViolationException("Song exists with different lyrics");
                 }
 
-                songRepository.save(song); // 逐个保存，每个 save 都是一个独立的事务
+                Song savedSong = songRepository.save(song);
+                lyricStructureService.structureSong(savedSong, songDto.getLyrics(), true);
 
                 taskResult.setSuccessCount(taskResult.getSuccessCount() + 1);
 
@@ -160,19 +164,11 @@ public class SongServiceImpl implements SongService {
     
     @Override
     public SongDto createSong(SongImportRequestDto songDto) {
-        // 校验歌曲数据
-        if (songDto.getTitle() == null || songDto.getTitle().isBlank()) {
-            throw new ValidationException("Title cannot be empty");
-        }
-        if (songDto.getArtist() == null || songDto.getArtist().isBlank()) {
-            throw new ValidationException("Artist cannot be empty");
-        }
-        if (songDto.getLyrics() == null || songDto.getLyrics().isBlank()) {
-            throw new ValidationException("Lyrics cannot be empty");
-        }
+        validateSong(songDto.getTitle(), songDto.getArtist(), songDto.getLyrics());
         
         Song song = songMapper.toEntity(songDto);
         Song savedSong = songRepository.save(song);
+        lyricStructureService.structureSong(savedSong, songDto.getLyrics(), true);
         
         // 创建歌曲后自动刷新词汇索引
         log.info("Song created, triggering vocabulary index refresh...");
@@ -183,12 +179,14 @@ public class SongServiceImpl implements SongService {
     
     @Override
     public SongDto updateSong(Long id, SongUpdateRequestDto songDto) {
+        validateSong(songDto.getTitle(), songDto.getArtist(), songDto.getLyrics());
         Song existingSong = songRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Song not found with id: " + id));
         
         // 更新歌曲信息
         songMapper.updateEntityFromDto(songDto, existingSong);
         Song updatedSong = songRepository.save(existingSong);
+        lyricStructureService.structureSong(updatedSong, songDto.getLyrics(), true);
         
         // 更新歌曲后自动刷新词汇索引
         log.info("Song updated, triggering vocabulary index refresh...");
@@ -202,6 +200,7 @@ public class SongServiceImpl implements SongService {
         if (!songRepository.existsById(id)) {
             throw new NotFoundException("Song not found with id: " + id);
         }
+        lyricStructureService.deleteLinesForSong(id);
         songRepository.deleteById(id);
         
         // 删除歌曲后自动刷新词汇索引
@@ -230,7 +229,14 @@ public class SongServiceImpl implements SongService {
         }
 
         // 批量删除歌曲
+        ids.forEach(lyricStructureService::deleteLinesForSong);
         songRepository.deleteAllById(ids);
         vocabularyService.refreshVocabularyIndexAsync();
+    }
+
+    private void validateSong(String title, String artist, String lyrics) {
+        if (title == null || title.isBlank()) throw new ValidationException("Title cannot be empty");
+        if (artist == null || artist.isBlank()) throw new ValidationException("Artist cannot be empty");
+        if (lyrics == null || lyrics.isBlank()) throw new ValidationException("Lyrics cannot be empty");
     }
 }

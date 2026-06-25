@@ -181,9 +181,11 @@ public class VocabularyServiceImpl implements VocabularyService {
         Map<String, List<WordOccurrenceDto>> index = new HashMap<>();
 
         for (Song song : songs) {
-            if (song.getLyrics() == null) continue;
+            String lyrics = song.getNormalizedLyrics() != null ? song.getNormalizedLyrics()
+                    : (song.getRawLyrics() != null ? song.getRawLyrics() : song.getLyrics());
+            if (lyrics == null) continue;
 
-            Arrays.stream(song.getLyrics().split("\r?\n|\r"))
+            Arrays.stream(lyrics.split("\r?\n|\r"))
                     .forEach(line -> tokenizeLine(line).stream()
                             .map(this::cleanAndValidateWord)
                             .filter(word -> word != null && !STOP_WORDS.contains(word))

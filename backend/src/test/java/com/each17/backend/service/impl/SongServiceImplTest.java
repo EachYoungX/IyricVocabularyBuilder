@@ -8,6 +8,7 @@ import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.mapper.SongMapper;
 import com.each17.backend.song.repository.SongRepository;
 import com.each17.backend.vocabulary.service.VocabularyService;
+import com.each17.backend.lyric.service.LyricStructureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -32,6 +33,9 @@ class SongServiceImplTest {
 
     @Mock
     private VocabularyService vocabularyService;
+
+    @Mock
+    private LyricStructureService lyricStructureService;
 
     @InjectMocks
     private SongServiceImpl songService;
@@ -119,6 +123,7 @@ class SongServiceImplTest {
         verify(songMapper, times(1)).toEntity(requestDto);
         verify(songRepository, times(1)).save(song);
         verify(songMapper, times(1)).toDto(savedSong);
+        verify(lyricStructureService).structureSong(savedSong, requestDto.getLyrics(), true);
         verify(vocabularyService, times(1)).refreshVocabularyIndexAsync();
     }
 
@@ -127,6 +132,9 @@ class SongServiceImplTest {
         // Given
         Long songId = 1L;
         SongUpdateRequestDto requestDto = new SongUpdateRequestDto();
+        requestDto.setTitle("Updated Song");
+        requestDto.setArtist("Updated Artist");
+        requestDto.setLyrics("Updated lyrics");
         Song existingSong = new Song();
         Song updatedSong = new Song();
         SongDto expectedDto = new SongDto();
@@ -144,6 +152,7 @@ class SongServiceImplTest {
         verify(songRepository, times(1)).save(existingSong);
         verify(songMapper, times(1)).updateEntityFromDto(requestDto, existingSong);
         verify(songMapper, times(1)).toDto(updatedSong);
+        verify(lyricStructureService).structureSong(updatedSong, requestDto.getLyrics(), true);
         verify(vocabularyService, times(1)).refreshVocabularyIndexAsync();
     }
 
@@ -152,6 +161,9 @@ class SongServiceImplTest {
         // Given
         Long songId = 1L;
         SongUpdateRequestDto requestDto = new SongUpdateRequestDto();
+        requestDto.setTitle("Updated Song");
+        requestDto.setArtist("Updated Artist");
+        requestDto.setLyrics("Updated lyrics");
         when(songRepository.findById(songId)).thenReturn(Optional.empty());
 
         // When & Then
@@ -171,6 +183,7 @@ class SongServiceImplTest {
 
         // Then
         verify(songRepository, times(1)).existsById(songId);
+        verify(lyricStructureService).deleteLinesForSong(songId);
         verify(songRepository, times(1)).deleteById(songId);
         verify(vocabularyService, times(1)).refreshVocabularyIndexAsync();
     }

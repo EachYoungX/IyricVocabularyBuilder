@@ -23,4 +23,22 @@ public class Song {
     @Lob // 表示这是一个大的文本字段
     @Column(nullable = false, columnDefinition = "TEXT")
     private String lyrics;
+
+    @Lob
+    @Column(name = "raw_lyrics", columnDefinition = "TEXT")
+    private String rawLyrics;
+
+    @Lob
+    @Column(name = "normalized_lyrics", columnDefinition = "TEXT")
+    private String normalizedLyrics;
+
+    @Column(name = "lyrics_hash")
+    private String lyricsHash;
+
+    @Column(name = "import_version", nullable = false)
+    @Builder.Default
+    private Integer importVersion = 1;
+
+    @Column(name = "updated_at")
+    private String updatedAt;
 }

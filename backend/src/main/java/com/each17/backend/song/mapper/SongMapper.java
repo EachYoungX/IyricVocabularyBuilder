@@ -13,7 +13,7 @@ public class SongMapper {
             .id(Long.valueOf(song.getId()))
             .title(song.getTitle())
             .artist(song.getArtist())
-            .lyrics(song.getLyrics())
+            .lyrics(song.getRawLyrics() != null ? song.getRawLyrics() : song.getLyrics())
             .build();
     }
 
@@ -22,6 +22,8 @@ public class SongMapper {
             .title(dto.getTitle())
             .artist(dto.getArtist())
             .lyrics(dto.getLyrics())
+            .rawLyrics(dto.getLyrics())
+            .importVersion(1)
             .build();
     }
     
@@ -30,6 +32,7 @@ public class SongMapper {
             .title(dto.getTitle())
             .artist(dto.getArtist())
             .lyrics(dto.getLyrics())
+            .rawLyrics(dto.getLyrics())
             .build();
     }
     
@@ -37,5 +40,6 @@ public class SongMapper {
         entity.setTitle(dto.getTitle());
         entity.setArtist(dto.getArtist());
         entity.setLyrics(dto.getLyrics());
+        entity.setRawLyrics(dto.getLyrics());
     }
 }

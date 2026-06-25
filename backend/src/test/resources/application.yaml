@@ -5,7 +5,7 @@ spring:
   # --- JPA 和主数据源 (app_data.sqlite) 配置 ---
   datasource:
     # 测试环境使用内存数据库
-    url: jdbc:sqlite:file:testdb?mode=memory&cache=shared
+    url: jdbc:sqlite:target/test-app.db
     driver-class-name: org.sqlite.JDBC
     
   jpa:
