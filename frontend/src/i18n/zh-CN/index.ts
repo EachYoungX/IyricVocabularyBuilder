@@ -11,6 +11,7 @@ export default {
   navigation: '导航',
   home: '首页',
   songsManager: '歌曲管理',
+  dictionarySource: '词典来源',
 
   // 首页
   vocabularyList: '词汇列表',
@@ -176,6 +177,20 @@ export default {
   lyricLineSaved: '歌词行修正已保存',
   loadStructuredLyricsFailed: '加载结构化歌词失败',
   saveLyricLineFailed: '保存歌词行失败',
+  dictionarySourceTitle: '词典来源与版权说明',
+  dictionarySourceSubtitle: '本项目面向中文用户学习英文歌词词汇，词典数据来源和授权信息在这里透明展示。',
+  dictionarySourceName: '词典源名称',
+  dictionarySourceUrl: '来源地址',
+  dictionaryLicenseName: '许可证',
+  dictionaryAttribution: '署名说明',
+  requiresAttribution: '需要署名',
+  commercialUseAllowed: '允许商用',
+  redistributionAllowed: '允许再分发',
+  dictionarySourceNote: '本应用不分发歌词库；用户仅导入自己拥有使用权的歌词文本。词典数据用于本地英语学习查询。',
+  dictionarySourceLoadFailed: '加载词典来源信息失败',
+  yes: '是',
+  no: '否',
+  unknown: '未知',
   lyricLineTypes: {
     LYRIC: '歌词',
     SECTION_LABEL: '段落标签',

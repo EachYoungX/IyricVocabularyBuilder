@@ -8,6 +8,7 @@ export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
 export type { DictionaryEntry } from './models/DictionaryEntry';
+export type { DictionarySource } from './models/DictionarySource';
 export type { ErrorResponse } from './models/ErrorResponse';
 export { ImportTaskResult } from './models/ImportTaskResult';
 export type { LyricDocument } from './models/LyricDocument';

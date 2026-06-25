@@ -6,6 +6,7 @@ import com.each17.backend.common.exception.ValidationException;
 import com.each17.backend.lyric.dto.*;
 import com.each17.backend.lyric.entity.LyricLine;
 import com.each17.backend.lyric.repository.LyricLineRepository;
+import com.each17.backend.lyric.repository.LyricTokenRepository;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.repository.SongRepository;
 import com.each17.backend.vocabulary.service.VocabularyService;
@@ -27,6 +28,7 @@ public class LyricStructureService {
     private final LyricLineClassifier lyricLineClassifier;
     private final LyricsHashService lyricsHashService;
     private final VocabularyService vocabularyService;
+    private final LyricTokenRepository lyricTokenRepository;
 
     public LyricDocumentDto getDocument(Long songId) {
         Song song = getSong(songId);
@@ -73,6 +75,7 @@ public class LyricStructureService {
                         Collectors.toCollection(ArrayDeque::new)
                 ));
 
+        lyricTokenRepository.deleteBySongId(song.getId());
         lyricLineRepository.deleteBySongId(song.getId());
         lyricLineRepository.flush();
 
@@ -130,6 +133,7 @@ public class LyricStructureService {
     }
 
     public void deleteLinesForSong(Long songId) {
+        lyricTokenRepository.deleteBySongId(songId);
         lyricLineRepository.deleteBySongId(songId);
     }
 

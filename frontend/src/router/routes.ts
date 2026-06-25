@@ -12,6 +12,11 @@ const routes: RouteRecordRaw[] = [
         name: 'SongsManager',
         component: () => import('pages/SongsManagerPage.vue'),
       },
+      {
+        path: '/dictionary-source',
+        name: 'DictionarySource',
+        component: () => import('pages/DictionarySourcePage.vue'),
+      },
     ],
   },
 

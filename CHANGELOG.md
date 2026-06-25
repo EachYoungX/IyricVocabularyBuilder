@@ -4,6 +4,26 @@
 
 This file records only completed and verified refactoring stages. Internal plans and audit notes are excluded from the repository.
 
+## Stage 3 - 2026-06-25
+
+### 词形归一、词汇索引与词典元数据 / Lemma-Based Vocabulary Index and Dictionary Metadata
+
+- 新增 `lyric_tokens` 结构化 token 模型，记录歌词行、原始词形、标准化词形、lemma、文本偏移、token 类型和学习价值评分。
+- 词汇索引重建改为基于结构化歌词行生成 token，再按 lemma 聚合出现位置；搜索 `running`、`ran`、`runs` 可归并到 `run`。
+- 默认词汇列表只展示推荐学习词；低价值词和常见歌词填充词仍可保留为 token，但不会污染默认学习统计。
+- 扩展词汇出现位置返回歌曲 id、歌词行 id、行号、surface form、lemma、offset 和学习评分，保留旧字段兼容前端页面。
+- 新增 `user_vocabulary`、`vocabulary_occurrences` 等用户学习状态表，和开源词典/歌词 token 索引分离。
+- 新增词典来源与授权信息接口，并在前端添加双语“词典来源与版权说明”页面。
+- 后端 OpenAPI 升级到 `1.3.0`，前端 API 客户端从后端契约重新生成。
+
+### Verification
+
+- Backend: 54 tests passed with 0 failures and 0 errors.
+- Frontend: ESLint, TypeScript checks, and Quasar production build passed.
+- Canonical OpenAPI client regeneration passed.
+- Existing SQLite database migration for token, user vocabulary, and occurrence tables passed.
+- Real API regression passed: index rebuild completed, `run` and `running` returned the same 8 occurrences, low-value `yeah` stayed out of the default word list, and dictionary source metadata returned ECDICT / MIT License.
+
 ## Stage 2 - 2026-06-22
 
 ### 歌词导入、清洗与结构化 / Lyric Import, Normalization, and Structuring

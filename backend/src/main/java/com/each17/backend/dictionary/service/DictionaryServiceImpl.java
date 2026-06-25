@@ -1,6 +1,7 @@
 package com.each17.backend.dictionary.service;
 
 import com.each17.backend.dto.DictionaryEntryDto;
+import com.each17.backend.dto.DictionarySourceDto;
 import com.each17.backend.common.exception.DictionaryNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -48,5 +49,20 @@ public class DictionaryServiceImpl implements DictionaryService {
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
             throw new DictionaryNotFoundException(word);
         }
+    }
+
+    @Override
+    public DictionarySourceDto getSourceInfo() {
+        return DictionarySourceDto.builder()
+                .sourceName("ECDICT")
+                .sourceUrl("https://github.com/skywind3000/ECDICT")
+                .dictionaryVersion("Bundled SQLite snapshot")
+                .importedAt("Local build resource")
+                .licenseName("MIT License")
+                .requiresAttribution(true)
+                .commercialUseAllowed(true)
+                .redistributionAllowed(true)
+                .attributionText("Dictionary data is derived from the ECDICT open-source project.")
+                .build();
     }
 }

@@ -3,10 +3,22 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { DictionaryEntry } from '../models/DictionaryEntry';
+import type { DictionarySource } from '../models/DictionarySource';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class DictionaryService {
+    /**
+     * 获取词典来源与授权信息 / Get dictionary source and license metadata
+     * @returns DictionarySource 词典来源与授权信息 / Dictionary source and license metadata
+     * @throws ApiError
+     */
+    public static getDictionarySource(): CancelablePromise<DictionarySource> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/dictionary/source',
+        });
+    }
     /**
      * 查询英英词典 / Lookup English word
      * @param word 英文单词（不区分大小写）

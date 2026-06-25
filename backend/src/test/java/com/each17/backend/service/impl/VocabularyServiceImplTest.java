@@ -1,6 +1,11 @@
 package com.each17.backend.service.impl;
 
 import com.each17.backend.vocabulary.service.VocabularyServiceImpl;
+import com.each17.backend.lyric.repository.LyricLineRepository;
+import com.each17.backend.lyric.repository.LyricTokenRepository;
+import com.each17.backend.lyric.service.EnglishLemmaService;
+import com.each17.backend.lyric.service.LearningValuePolicy;
+import com.each17.backend.lyric.service.LyricTokenizationService;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
 import com.each17.backend.vocabulary.entity.Vocabulary;
@@ -11,7 +16,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
@@ -36,12 +40,31 @@ class VocabularyServiceImplTest {
     @Mock
     private ObjectMapper objectMapper;
 
-    @InjectMocks
     private VocabularyServiceImpl vocabularyService;
+
+    @Mock
+    private SongRepository songRepository;
+
+    @Mock
+    private LyricLineRepository lyricLineRepository;
+
+    @Mock
+    private LyricTokenRepository lyricTokenRepository;
+
+    private EnglishLemmaService lemmaService;
+    private LearningValuePolicy learningValuePolicy;
+    private LyricTokenizationService tokenizationService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        lemmaService = new EnglishLemmaService();
+        learningValuePolicy = new LearningValuePolicy();
+        tokenizationService = new LyricTokenizationService(lemmaService, learningValuePolicy);
+        vocabularyService = new VocabularyServiceImpl(
+                vocabularyRepository, songRepository, lyricLineRepository, lyricTokenRepository,
+                tokenizationService, lemmaService, learningValuePolicy, objectMapper
+        );
     }
 
     @Test
@@ -58,7 +81,7 @@ class VocabularyServiceImplTest {
         
         List<String> expectedWords = Arrays.asList("love", "yesterday");
         
-        when(vocabularyRepository.findAllByOrderByWordAsc(pageable)).thenReturn(vocabPage);
+        when(vocabularyRepository.findByRecommendedTrueOrderByWordAsc(pageable)).thenReturn(vocabPage);
 
         // When
         WordPageDto result = vocabularyService.getWordList(null, page, size);
@@ -70,7 +93,7 @@ class VocabularyServiceImplTest {
         assertEquals(page, result.getNumber());
         assertEquals(size, result.getSize());  // 修改断言
         
-        verify(vocabularyRepository, times(1)).findAllByOrderByWordAsc(pageable);
+        verify(vocabularyRepository, times(1)).findByRecommendedTrueOrderByWordAsc(pageable);
     }
 
     @Test
@@ -88,7 +111,7 @@ class VocabularyServiceImplTest {
         
         List<String> expectedWords = Arrays.asList("love", "lover");
         
-        when(vocabularyRepository.findByWordStartingWithOrderByWordAsc(prefix.toLowerCase(), pageable)).thenReturn(vocabPage);
+        when(vocabularyRepository.findByRecommendedTrueAndWordStartingWithOrderByWordAsc(prefix.toLowerCase(), pageable)).thenReturn(vocabPage);
 
         // When
         WordPageDto result = vocabularyService.getWordList(prefix, page, size);
@@ -100,7 +123,7 @@ class VocabularyServiceImplTest {
         assertEquals(page, result.getNumber());
         assertEquals(size, result.getSize());  // 修改断言
         
-        verify(vocabularyRepository, times(1)).findByWordStartingWithOrderByWordAsc(prefix.toLowerCase(), pageable);
+        verify(vocabularyRepository, times(1)).findByRecommendedTrueAndWordStartingWithOrderByWordAsc(prefix.toLowerCase(), pageable);
     }
 
     @Test

@@ -1,11 +1,18 @@
 package com.each17.backend.vocabulary.service;
 
-import com.each17.backend.dto.ImportTaskResultDto;
 import com.each17.backend.common.exception.NotFoundException;
 import com.each17.backend.common.exception.ValidationException;
 import com.each17.backend.dto.VocabularyRebuildTaskDto;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
+import com.each17.backend.lyric.entity.LyricLine;
+import com.each17.backend.lyric.entity.LyricLineType;
+import com.each17.backend.lyric.entity.LyricToken;
+import com.each17.backend.lyric.repository.LyricLineRepository;
+import com.each17.backend.lyric.repository.LyricTokenRepository;
+import com.each17.backend.lyric.service.EnglishLemmaService;
+import com.each17.backend.lyric.service.LearningValuePolicy;
+import com.each17.backend.lyric.service.LyricTokenizationService;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.vocabulary.entity.Vocabulary;
 import com.each17.backend.song.repository.SongRepository;
@@ -26,7 +33,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -35,33 +41,15 @@ public class VocabularyServiceImpl implements VocabularyService {
 
     private final VocabularyRepository vocabularyRepository;
     private final SongRepository songRepository;
+    private final LyricLineRepository lyricLineRepository;
+    private final LyricTokenRepository lyricTokenRepository;
+    private final LyricTokenizationService tokenizationService;
+    private final EnglishLemmaService lemmaService;
+    private final LearningValuePolicy learningValuePolicy;
     private final ObjectMapper objectMapper;
 
     // 任务状态存储（内存，生产环境可以换成 Redis）
     private final ConcurrentMap<UUID, VocabularyRebuildTaskDto> rebuildTasks = new ConcurrentHashMap<>();
-    // ---------- 停用词 ----------
-    private static final Set<String> STOP_WORDS = Set.of(
-            "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "ain't", "as",
-            "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can't",
-            "cannot", "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing", "don't", "down",
-            "during", "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't", "have", "haven't",
-            "having", "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him", "himself",
-            "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it", "it's",
-            "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself", "no", "nor", "not", "of",
-            "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own",
-            "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some", "such", "than",
-            "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there", "there's", "these",
-            "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to", "too", "under",
-            "until", "up", "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've", "were", "weren't",
-            "what", "what's", "when", "when's", "where", "where's", "which", "while", "who", "who's", "whom",
-            "why", "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll", "you're", "you've",
-            "your", "yours", "yourself", "yourselves", "o", "oh", "ooh", "oooh", "ah", "ahh", "ahhh", "ahhhh", "yeah", "la", "na", "y'all", "ya", "yu",
-            "cause", "em", "fore", "til", "ok"
-    );
-
-    // ---------- 分词正则 ----------
-    private static final Pattern WORD_PATTERN = Pattern.compile("[\\w']+");
-
     // ---------- 对外接口 ----------
     @Override
     public WordPageDto getWordList(String prefix, int page, int size) {
@@ -73,9 +61,10 @@ public class VocabularyServiceImpl implements VocabularyService {
         Page<Vocabulary> vocabularyPage;
 
         if (prefix != null && !prefix.isBlank()) {
-            vocabularyPage = vocabularyRepository.findByWordStartingWithOrderByWordAsc(prefix.toLowerCase(), pageable);
+            String lemmaPrefix = lemmaService.lemma(tokenizationService.normalize(prefix));
+            vocabularyPage = vocabularyRepository.findByRecommendedTrueAndWordStartingWithOrderByWordAsc(lemmaPrefix, pageable);
         } else {
-            vocabularyPage = vocabularyRepository.findAllByOrderByWordAsc(pageable);
+            vocabularyPage = vocabularyRepository.findByRecommendedTrueOrderByWordAsc(pageable);
         }
 
         // 直接从数据库获取已排序的单词列表
@@ -94,7 +83,8 @@ public class VocabularyServiceImpl implements VocabularyService {
 
     @Override
     public List<WordOccurrenceDto> getWordOccurrences(String word) {
-        Optional<Vocabulary> vocabOpt = vocabularyRepository.findById(word.toLowerCase());
+        String lemma = lemmaService.lemma(tokenizationService.normalize(word));
+        Optional<Vocabulary> vocabOpt = vocabularyRepository.findById(lemma);
         if (vocabOpt.isEmpty()) {
             throw new NotFoundException("Word not found: " + word);
         }
@@ -104,7 +94,7 @@ public class VocabularyServiceImpl implements VocabularyService {
             return objectMapper.readValue(vocabOpt.get().getOccurrences(), new TypeReference<>() {
             });
         } catch (JsonProcessingException e) {
-            log.error("Failed to deserialize occurrences for word: {}", word, e);
+            log.error("Failed to deserialize occurrences for lemma: {}", lemma, e);
             throw new RuntimeException("Failed to deserialize occurrences for word: " + word, e);
         }
     }
@@ -142,12 +132,21 @@ public class VocabularyServiceImpl implements VocabularyService {
 
         try {
             List<Song> allSongs = songRepository.findAll();
-            Map<String, List<WordOccurrenceDto>> newIndex = buildInvertedIndex(allSongs);
+            Map<String, LemmaIndex> newIndex = buildInvertedIndex(allSongs);
 
             List<Vocabulary> entities = newIndex.entrySet().stream()
                     .map(e -> {
                         try {
-                            return new Vocabulary(e.getKey(), objectMapper.writeValueAsString(e.getValue()));
+                            LemmaIndex value = e.getValue();
+                            return Vocabulary.builder()
+                                    .word(e.getKey())
+                                    .occurrences(objectMapper.writeValueAsString(value.occurrences()))
+                                    .displayForms(objectMapper.writeValueAsString(value.displayForms()))
+                                    .occurrenceCount(value.occurrences().size())
+                                    .songCount(value.songIds().size())
+                                    .learningScore(value.learningScore())
+                                    .recommended(learningValuePolicy.recommended(value.learningScore()))
+                                    .build();
                         } catch (JsonProcessingException ex) {
                             log.warn("Failed to serialize occurrences for word: {}", e.getKey());
                             return null;
@@ -177,43 +176,95 @@ public class VocabularyServiceImpl implements VocabularyService {
     }
 
     // ==================== 核心倒排索引构建（已去掉进度） ====================
-    private Map<String, List<WordOccurrenceDto>> buildInvertedIndex(List<Song> songs) {
-        Map<String, List<WordOccurrenceDto>> index = new HashMap<>();
+    private Map<String, LemmaIndex> buildInvertedIndex(List<Song> songs) {
+        Map<String, LemmaIndex> index = new HashMap<>();
+        lyricTokenRepository.deleteAllInBatch();
 
         for (Song song : songs) {
-            String lyrics = song.getNormalizedLyrics() != null ? song.getNormalizedLyrics()
-                    : (song.getRawLyrics() != null ? song.getRawLyrics() : song.getLyrics());
-            if (lyrics == null) continue;
+            List<LyricLine> lines = lyricLineRepository.findBySongIdOrderByLineIndexAsc(song.getId());
+            if (lines.isEmpty()) {
+                lines = fallbackLines(song);
+            }
 
-            Arrays.stream(lyrics.split("\r?\n|\r"))
-                    .forEach(line -> tokenizeLine(line).stream()
-                            .map(this::cleanAndValidateWord)
-                            .filter(word -> word != null && !STOP_WORDS.contains(word))
-                            .forEach(word -> index
-                                    .computeIfAbsent(word, k -> new ArrayList<>())
-                                    .add(new WordOccurrenceDto(song.getTitle(), line.trim()))));
+            List<LyricToken> songTokens = lines.stream()
+                    .filter(line -> line.getLineType() == LyricLineType.LYRIC || line.getLineType() == LyricLineType.UNKNOWN)
+                    .flatMap(line -> tokenizationService.tokenize(line).stream())
+                    .toList();
+            List<LyricToken> persistentTokens = songTokens.stream()
+                    .filter(token -> token.getLyricLine().getId() != null)
+                    .toList();
+            if (!persistentTokens.isEmpty()) {
+                lyricTokenRepository.saveAll(persistentTokens);
+            }
+
+            for (LyricToken token : songTokens) {
+                LyricLine line = token.getLyricLine();
+                LemmaIndex lemmaIndex = index.computeIfAbsent(token.getLemma(), ignored -> new LemmaIndex());
+                lemmaIndex.add(token, line, song);
+            }
         }
         return index;
     }
 
-    private List<String> tokenizeLine(String line) {
-        return WORD_PATTERN.matcher(line).results()
-                .map(m -> m.group())
-                .toList();
+    private List<LyricLine> fallbackLines(Song song) {
+        String lyrics = song.getNormalizedLyrics() != null ? song.getNormalizedLyrics()
+                : (song.getRawLyrics() != null ? song.getRawLyrics() : song.getLyrics());
+        if (lyrics == null) return List.of();
+        String[] splitLines = lyrics.split("\\R");
+        List<LyricLine> lines = new ArrayList<>();
+        for (int i = 0; i < splitLines.length; i++) {
+            lines.add(LyricLine.builder()
+                    .song(song)
+                    .lineIndex(i)
+                    .originalText(splitLines[i])
+                    .normalizedText(splitLines[i])
+                    .lineType(LyricLineType.LYRIC)
+                    .hidden(false)
+                    .confidence(0.5)
+                    .userOverride(false)
+                    .build());
+        }
+        return lines;
     }
 
-    private String cleanAndValidateWord(String raw) {
-        if (raw == null || raw.isBlank()) return null;
+    private static final class LemmaIndex {
+        private final List<WordOccurrenceDto> occurrences = new ArrayList<>();
+        private final Set<String> displayForms = new TreeSet<>();
+        private final Set<Long> songIds = new HashSet<>();
+        private double learningScore = 0.0;
 
-        String cleaned = raw.toLowerCase()
-                .strip()
-                .replaceAll("^[\\'\"(\\[.,!?;:\\])]+|[\\'\"(\\[.,!?;:\\])]+$", "");
-
-        if (cleaned.matches("\\d+") ||           // 纯数字
-                cleaned.chars().noneMatch(Character::isLetter) ||  // 没有字母
-                cleaned.isEmpty()) {
-            return null;
+        void add(LyricToken token, LyricLine line, Song song) {
+            displayForms.add(token.getSurfaceForm().toLowerCase());
+            songIds.add(song.getId());
+            learningScore = Math.max(learningScore, token.getLearningScore());
+            occurrences.add(WordOccurrenceDto.builder()
+                    .songId(song.getId())
+                    .songTitle(song.getTitle())
+                    .lyricLineId(line.getId())
+                    .lineIndex(line.getLineIndex())
+                    .lyricLine(line.getNormalizedText())
+                    .surfaceForm(token.getSurfaceForm())
+                    .lemma(token.getLemma())
+                    .startOffset(token.getStartOffset())
+                    .endOffset(token.getEndOffset())
+                    .learningScore(token.getLearningScore())
+                    .build());
         }
-        return cleaned;
+
+        List<WordOccurrenceDto> occurrences() {
+            return occurrences;
+        }
+
+        Set<String> displayForms() {
+            return displayForms;
+        }
+
+        Set<Long> songIds() {
+            return songIds;
+        }
+
+        double learningScore() {
+            return learningScore;
+        }
     }
 }

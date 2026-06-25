@@ -11,6 +11,7 @@ export default {
   navigation: 'Navigation',
   home: 'Home',
   songsManager: 'Songs Manager',
+  dictionarySource: 'Dictionary Source',
 
   // Index page
   vocabularyList: 'Vocabulary List',
@@ -150,6 +151,20 @@ export default {
   lyricLineSaved: 'Lyric line correction saved',
   loadStructuredLyricsFailed: 'Failed to load structured lyrics',
   saveLyricLineFailed: 'Failed to save lyric line',
+  dictionarySourceTitle: 'Dictionary Source and License',
+  dictionarySourceSubtitle: 'This project helps Chinese-speaking learners study English vocabulary from lyrics, so dictionary source and license details are shown transparently.',
+  dictionarySourceName: 'Source name',
+  dictionarySourceUrl: 'Source URL',
+  dictionaryLicenseName: 'License',
+  dictionaryAttribution: 'Attribution',
+  requiresAttribution: 'Requires attribution',
+  commercialUseAllowed: 'Commercial use allowed',
+  redistributionAllowed: 'Redistribution allowed',
+  dictionarySourceNote: 'This app does not distribute a lyric corpus. Users import lyrics they have the right to use. Dictionary data is used for local English-learning lookup.',
+  dictionarySourceLoadFailed: 'Failed to load dictionary source information',
+  yes: 'Yes',
+  no: 'No',
+  unknown: 'Unknown',
   lyricLineTypes: {
     LYRIC: 'Lyric',
     SECTION_LABEL: 'Section Label',

@@ -72,7 +72,7 @@ class VocabularyRepositoryTest {
 
         // When
         Pageable pageable = PageRequest.of(0, 10);
-        Page<Vocabulary> result = vocabularyRepository.findByWordStartingWithOrderByWordAsc("y", pageable);
+        Page<Vocabulary> result = vocabularyRepository.findByRecommendedTrueAndWordStartingWithOrderByWordAsc("y", pageable);
 
         // Then
         assertThat(result).hasSize(1);

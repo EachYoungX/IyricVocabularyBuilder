@@ -2,6 +2,7 @@ package com.each17.backend.controller;
 
 import com.each17.backend.dictionary.controller.DictionaryController;
 import com.each17.backend.dto.DictionaryEntryDto;
+import com.each17.backend.dto.DictionarySourceDto;
 import com.each17.backend.dictionary.service.DictionaryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -55,5 +56,20 @@ class DictionaryControllerTest {
                 .andExpect(jsonPath("$.data.phonetic").value("/ˈvɔɪ.ɪdʒ/"))
                 .andExpect(jsonPath("$.data.definition").value("a long journey, especially by ship or in space"))
                 .andExpect(jsonPath("$.data.translation").value("航行；旅行"));
+    }
+
+    @Test
+    void testGetSourceInfo() throws Exception {
+        when(dictionaryService.getSourceInfo()).thenReturn(DictionarySourceDto.builder()
+                .sourceName("ECDICT")
+                .licenseName("MIT License")
+                .requiresAttribution(true)
+                .build());
+
+        mockMvc.perform(get("/api/dictionary/source"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sourceName").value("ECDICT"))
+                .andExpect(jsonPath("$.data.licenseName").value("MIT License"))
+                .andExpect(jsonPath("$.data.requiresAttribution").value(true));
     }
 }

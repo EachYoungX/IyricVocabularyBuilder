@@ -13,7 +13,7 @@ info:
     All responses with a body use the `{ code, message, data }` envelope. Successful
     response schemas below describe the business payload inside `data`; the generated
     frontend transport unwraps this field automatically.
-  version: 1.2.0
+  version: 1.3.0
 
 servers:
   - url: http://localhost:8080
@@ -346,6 +346,19 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/dictionary/source:
+    get:
+      tags: [Dictionary]
+      summary: 获取词典来源与授权信息 / Get dictionary source and license metadata
+      operationId: getDictionarySource
+      responses:
+        '200':
+          description: 词典来源与授权信息 / Dictionary source and license metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DictionarySource'
+
   /api/dictionary/{word}:
     get:
       tags: [Dictionary]
@@ -619,12 +632,34 @@ components:
     WordOccurrence:
       type: object
       properties:
+        songId:
+          type: integer
+          format: int64
         songTitle:
           type: string
           example: "Yesterday"
+        lyricLineId:
+          type: integer
+          format: int64
+          nullable: true
+        lineIndex:
+          type: integer
         lyricLine:
           type: string
           example: "Yesterday, all my troubles seemed so far away"
+        surfaceForm:
+          type: string
+          example: "running"
+        lemma:
+          type: string
+          example: "run"
+        startOffset:
+          type: integer
+        endOffset:
+          type: integer
+        learningScore:
+          type: number
+          format: double
       required: [songTitle, lyricLine]
 
     Song:
@@ -757,6 +792,33 @@ components:
         frq:
           type: integer
       required: [word, definition]
+
+    DictionarySource:
+      type: object
+      properties:
+        sourceName:
+          type: string
+          example: ECDICT
+        sourceUrl:
+          type: string
+          format: uri
+          example: https://github.com/skywind3000/ECDICT
+        dictionaryVersion:
+          type: string
+        importedAt:
+          type: string
+        licenseName:
+          type: string
+          example: MIT License
+        requiresAttribution:
+          type: boolean
+        commercialUseAllowed:
+          type: boolean
+        redistributionAllowed:
+          type: boolean
+        attributionText:
+          type: string
+      required: [sourceName, licenseName, attributionText]
 
     TaskCreationResponse:
       type: object

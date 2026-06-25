@@ -47,6 +47,7 @@ public class DataSourceConfig {
             ResourceDatabasePopulator populator = new ResourceDatabasePopulator(schema);
             populator.execute(dataSource);
             migrateSongColumns(dataSource);
+            migrateVocabularyColumns(dataSource);
             System.out.println(">>> schema.sql execution finished.");
         } else {
             System.err.println("!!! WARNING: schema.sql not found! Tables will not be created.");
@@ -77,6 +78,27 @@ public class DataSourceConfig {
     private void addColumnIfMissing(JdbcTemplate jdbcTemplate, Set<String> columns, String name, String definition) {
         if (!columns.contains(name)) {
             jdbcTemplate.execute("ALTER TABLE songs ADD COLUMN " + name + " " + definition);
+            columns.add(name);
+        }
+    }
+
+    private void migrateVocabularyColumns(DataSource dataSource) {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        Set<String> columns = new HashSet<>(jdbcTemplate.query(
+                "PRAGMA table_info(vocabulary)",
+                (rs, rowNum) -> rs.getString("name")
+        ));
+
+        addVocabularyColumnIfMissing(jdbcTemplate, columns, "display_forms", "TEXT");
+        addVocabularyColumnIfMissing(jdbcTemplate, columns, "occurrence_count", "INTEGER NOT NULL DEFAULT 0");
+        addVocabularyColumnIfMissing(jdbcTemplate, columns, "song_count", "INTEGER NOT NULL DEFAULT 0");
+        addVocabularyColumnIfMissing(jdbcTemplate, columns, "learning_score", "REAL NOT NULL DEFAULT 1.0");
+        addVocabularyColumnIfMissing(jdbcTemplate, columns, "recommended", "INTEGER NOT NULL DEFAULT 1");
+    }
+
+    private void addVocabularyColumnIfMissing(JdbcTemplate jdbcTemplate, Set<String> columns, String name, String definition) {
+        if (!columns.contains(name)) {
+            jdbcTemplate.execute("ALTER TABLE vocabulary ADD COLUMN " + name + " " + definition);
             columns.add(name);
         }
     }

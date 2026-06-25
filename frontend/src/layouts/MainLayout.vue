@@ -46,6 +46,16 @@
           </q-item-section>
         </q-item>
 
+        <q-item to="/dictionary-source" clickable v-ripple class="q-mx-md q-mb-1 rounded-borders"
+          active-class="bg-primary text-white">
+          <q-item-section avatar>
+            <q-icon name="o_policy" size="22px" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">{{ t('dictionarySource') }}</q-item-label>
+          </q-item-section>
+        </q-item>
+
         <!-- 分隔线 + 功能区（可选） -->
         <q-separator spaced inset class="q-my-lg" />
 

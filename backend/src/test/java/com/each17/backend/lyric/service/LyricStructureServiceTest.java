@@ -4,6 +4,7 @@ import com.each17.backend.common.exception.ConflictException;
 import com.each17.backend.lyric.entity.LyricLine;
 import com.each17.backend.lyric.entity.LyricLineType;
 import com.each17.backend.lyric.repository.LyricLineRepository;
+import com.each17.backend.lyric.repository.LyricTokenRepository;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.repository.SongRepository;
 import com.each17.backend.vocabulary.service.VocabularyService;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.*;
 class LyricStructureServiceTest {
     @Mock SongRepository songRepository;
     @Mock LyricLineRepository lyricLineRepository;
+    @Mock LyricTokenRepository lyricTokenRepository;
     @Mock VocabularyService vocabularyService;
 
     private LyricStructureService service;
@@ -33,7 +35,7 @@ class LyricStructureServiceTest {
     void setUp() {
         service = new LyricStructureService(
                 songRepository, lyricLineRepository, normalizer,
-                new LyricLineClassifier(), hashService, vocabularyService
+                new LyricLineClassifier(), hashService, vocabularyService, lyricTokenRepository
         );
         lenient().when(songRepository.save(any(Song.class))).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(lyricLineRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -48,6 +50,7 @@ class LyricStructureServiceTest {
         service.structureSong(song, "hello", false);
 
         verify(lyricLineRepository, never()).deleteBySongId(anyLong());
+        verify(lyricTokenRepository, never()).deleteBySongId(anyLong());
         verify(songRepository, never()).save(any());
     }
 
