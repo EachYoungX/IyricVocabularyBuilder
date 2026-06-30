@@ -5,13 +5,7 @@ import com.each17.backend.common.exception.ValidationException;
 import com.each17.backend.dto.VocabularyRebuildTaskDto;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
-import com.each17.backend.lyric.entity.LyricLine;
-import com.each17.backend.lyric.entity.LyricLineType;
-import com.each17.backend.lyric.entity.LyricToken;
-import com.each17.backend.lyric.repository.LyricLineRepository;
-import com.each17.backend.lyric.repository.LyricTokenRepository;
 import com.each17.backend.lyric.service.EnglishLemmaService;
-import com.each17.backend.lyric.service.LearningValuePolicy;
 import com.each17.backend.lyric.service.LyricTokenizationService;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.vocabulary.entity.Vocabulary;
@@ -41,11 +35,9 @@ public class VocabularyServiceImpl implements VocabularyService {
 
     private final VocabularyRepository vocabularyRepository;
     private final SongRepository songRepository;
-    private final LyricLineRepository lyricLineRepository;
-    private final LyricTokenRepository lyricTokenRepository;
     private final LyricTokenizationService tokenizationService;
     private final EnglishLemmaService lemmaService;
-    private final LearningValuePolicy learningValuePolicy;
+    private final VocabularyIndexBuilder vocabularyIndexBuilder;
     private final ObjectMapper objectMapper;
 
     // 任务状态存储（内存，生产环境可以换成 Redis）
@@ -132,28 +124,7 @@ public class VocabularyServiceImpl implements VocabularyService {
 
         try {
             List<Song> allSongs = songRepository.findAll();
-            Map<String, LemmaIndex> newIndex = buildInvertedIndex(allSongs);
-
-            List<Vocabulary> entities = newIndex.entrySet().stream()
-                    .map(e -> {
-                        try {
-                            LemmaIndex value = e.getValue();
-                            return Vocabulary.builder()
-                                    .word(e.getKey())
-                                    .occurrences(objectMapper.writeValueAsString(value.occurrences()))
-                                    .displayForms(objectMapper.writeValueAsString(value.displayForms()))
-                                    .occurrenceCount(value.occurrences().size())
-                                    .songCount(value.songIds().size())
-                                    .learningScore(value.learningScore())
-                                    .recommended(learningValuePolicy.recommended(value.learningScore()))
-                                    .build();
-                        } catch (JsonProcessingException ex) {
-                            log.warn("Failed to serialize occurrences for word: {}", e.getKey());
-                            return null;
-                        }
-                    })
-                    .filter(Objects::nonNull)
-                    .toList();
+            List<Vocabulary> entities = vocabularyIndexBuilder.rebuildFromSongs(allSongs);
 
             // 原子替换
             vocabularyRepository.deleteAllInBatch();
@@ -172,99 +143,6 @@ public class VocabularyServiceImpl implements VocabularyService {
             task.setFinishedAt(LocalDateTime.now());
             // 可选：任务结束 30 分钟后自动清理内存
             // refreshTasks.remove(taskId);
-        }
-    }
-
-    // ==================== 核心倒排索引构建（已去掉进度） ====================
-    private Map<String, LemmaIndex> buildInvertedIndex(List<Song> songs) {
-        Map<String, LemmaIndex> index = new HashMap<>();
-        lyricTokenRepository.deleteAllInBatch();
-
-        for (Song song : songs) {
-            List<LyricLine> lines = lyricLineRepository.findBySongIdOrderByLineIndexAsc(song.getId());
-            if (lines.isEmpty()) {
-                lines = fallbackLines(song);
-            }
-
-            List<LyricToken> songTokens = lines.stream()
-                    .filter(line -> line.getLineType() == LyricLineType.LYRIC || line.getLineType() == LyricLineType.UNKNOWN)
-                    .flatMap(line -> tokenizationService.tokenize(line).stream())
-                    .toList();
-            List<LyricToken> persistentTokens = songTokens.stream()
-                    .filter(token -> token.getLyricLine().getId() != null)
-                    .toList();
-            if (!persistentTokens.isEmpty()) {
-                lyricTokenRepository.saveAll(persistentTokens);
-            }
-
-            for (LyricToken token : songTokens) {
-                LyricLine line = token.getLyricLine();
-                LemmaIndex lemmaIndex = index.computeIfAbsent(token.getLemma(), ignored -> new LemmaIndex());
-                lemmaIndex.add(token, line, song);
-            }
-        }
-        return index;
-    }
-
-    private List<LyricLine> fallbackLines(Song song) {
-        String lyrics = song.getNormalizedLyrics() != null ? song.getNormalizedLyrics()
-                : (song.getRawLyrics() != null ? song.getRawLyrics() : song.getLyrics());
-        if (lyrics == null) return List.of();
-        String[] splitLines = lyrics.split("\\R");
-        List<LyricLine> lines = new ArrayList<>();
-        for (int i = 0; i < splitLines.length; i++) {
-            lines.add(LyricLine.builder()
-                    .song(song)
-                    .lineIndex(i)
-                    .originalText(splitLines[i])
-                    .normalizedText(splitLines[i])
-                    .lineType(LyricLineType.LYRIC)
-                    .hidden(false)
-                    .confidence(0.5)
-                    .userOverride(false)
-                    .build());
-        }
-        return lines;
-    }
-
-    private static final class LemmaIndex {
-        private final List<WordOccurrenceDto> occurrences = new ArrayList<>();
-        private final Set<String> displayForms = new TreeSet<>();
-        private final Set<Long> songIds = new HashSet<>();
-        private double learningScore = 0.0;
-
-        void add(LyricToken token, LyricLine line, Song song) {
-            displayForms.add(token.getSurfaceForm().toLowerCase());
-            songIds.add(song.getId());
-            learningScore = Math.max(learningScore, token.getLearningScore());
-            occurrences.add(WordOccurrenceDto.builder()
-                    .songId(song.getId())
-                    .songTitle(song.getTitle())
-                    .lyricLineId(line.getId())
-                    .lineIndex(line.getLineIndex())
-                    .lyricLine(line.getNormalizedText())
-                    .surfaceForm(token.getSurfaceForm())
-                    .lemma(token.getLemma())
-                    .startOffset(token.getStartOffset())
-                    .endOffset(token.getEndOffset())
-                    .learningScore(token.getLearningScore())
-                    .build());
-        }
-
-        List<WordOccurrenceDto> occurrences() {
-            return occurrences;
-        }
-
-        Set<String> displayForms() {
-            return displayForms;
-        }
-
-        Set<Long> songIds() {
-            return songIds;
-        }
-
-        double learningScore() {
-            return learningScore;
         }
     }
 }

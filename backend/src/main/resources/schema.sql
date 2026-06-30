@@ -59,6 +59,9 @@ CREATE TABLE IF NOT EXISTS vocabulary (
                                           recommended      INTEGER NOT NULL DEFAULT 1
 );
 
+CREATE INDEX IF NOT EXISTS idx_vocabulary_recommended_word
+    ON vocabulary(recommended, word);
+
 CREATE TABLE IF NOT EXISTS user_vocabulary (
                                                id            INTEGER PRIMARY KEY AUTOINCREMENT,
                                                user_id       TEXT NOT NULL DEFAULT 'local',
@@ -74,6 +77,9 @@ CREATE TABLE IF NOT EXISTS user_vocabulary (
 
 CREATE INDEX IF NOT EXISTS idx_user_vocabulary_user_status
     ON user_vocabulary(user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_user_vocabulary_user_lemma
+    ON user_vocabulary(user_id, lemma);
 
 CREATE TABLE IF NOT EXISTS vocabulary_occurrences (
                                                      id                 INTEGER PRIMARY KEY AUTOINCREMENT,

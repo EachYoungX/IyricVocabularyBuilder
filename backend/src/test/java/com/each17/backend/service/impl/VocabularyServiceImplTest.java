@@ -1,11 +1,9 @@
 package com.each17.backend.service.impl;
 
 import com.each17.backend.vocabulary.service.VocabularyServiceImpl;
-import com.each17.backend.lyric.repository.LyricLineRepository;
-import com.each17.backend.lyric.repository.LyricTokenRepository;
 import com.each17.backend.lyric.service.EnglishLemmaService;
-import com.each17.backend.lyric.service.LearningValuePolicy;
 import com.each17.backend.lyric.service.LyricTokenizationService;
+import com.each17.backend.vocabulary.service.VocabularyIndexBuilder;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
 import com.each17.backend.vocabulary.entity.Vocabulary;
@@ -46,24 +44,20 @@ class VocabularyServiceImplTest {
     private SongRepository songRepository;
 
     @Mock
-    private LyricLineRepository lyricLineRepository;
-
-    @Mock
-    private LyricTokenRepository lyricTokenRepository;
+    private VocabularyIndexBuilder vocabularyIndexBuilder;
 
     private EnglishLemmaService lemmaService;
-    private LearningValuePolicy learningValuePolicy;
     private LyricTokenizationService tokenizationService;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         lemmaService = new EnglishLemmaService();
-        learningValuePolicy = new LearningValuePolicy();
-        tokenizationService = new LyricTokenizationService(lemmaService, learningValuePolicy);
+        tokenizationService = mock(LyricTokenizationService.class);
+        when(tokenizationService.normalize(anyString())).thenAnswer(invocation -> invocation.getArgument(0, String.class).toLowerCase());
         vocabularyService = new VocabularyServiceImpl(
-                vocabularyRepository, songRepository, lyricLineRepository, lyricTokenRepository,
-                tokenizationService, lemmaService, learningValuePolicy, objectMapper
+                vocabularyRepository, songRepository, tokenizationService, lemmaService,
+                vocabularyIndexBuilder, objectMapper
         );
     }
 

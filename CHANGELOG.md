@@ -4,6 +4,25 @@
 
 This file records only completed and verified refactoring stages. Internal plans and audit notes are excluded from the repository.
 
+## Stage 4 - 2026-06-25
+
+### 稳定性、索引性能与代码可读性 / Stability, Index Performance, and Code Quality
+
+- 将词汇索引构建逻辑从 `VocabularyServiceImpl` 拆分到独立的 `VocabularyIndexBuilder`，让任务状态、分页查询和索引构建职责分离。
+- 词汇重建从逐首歌曲查询歌词行改为一次批量加载结构化歌词行，降低重建阶段的 N+1 查询风险。
+- 结构化 token 仍批量保存，并保持无结构化歌词行时的旧歌词文本 fallback。
+- 为歌词行、token lemma、推荐词列表、用户词汇状态和词汇出现位置补齐 JPA 与 SQLite schema 索引声明。
+- 为离线词典查询增加有上限的本地缓存，避免重复查询同一词条反复访问 SQLite。
+- 关闭开发和测试配置中的 SQL 明细输出，并关闭测试环境 `open-in-view`，减少噪音和隐藏查询风险。
+- 新增索引构建器与词典缓存测试，覆盖批量歌词行加载、lemma 聚合、fallback 和重复词典查询。
+
+### Verification
+
+- Backend: 57 tests passed with 0 failures and 0 errors.
+- Frontend: ESLint, TypeScript checks, and Quasar production build passed.
+- Existing SQLite database migration for the additional indexes passed.
+- Real API regression passed: index rebuild completed, `run` and `running` returned the same 8 occurrences, low-value `yeah` stayed out of the default word list, and dictionary source metadata remained available.
+
 ## Stage 3 - 2026-06-25
 
 ### 词形归一、词汇索引与词典元数据 / Lemma-Based Vocabulary Index and Dictionary Metadata

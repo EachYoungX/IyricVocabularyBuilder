@@ -9,7 +9,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "user_vocabulary", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "lemma"}))
+@Table(
+        name = "user_vocabulary",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "lemma"}),
+        indexes = {
+                @Index(name = "idx_user_vocabulary_user_status", columnList = "user_id, status"),
+                @Index(name = "idx_user_vocabulary_user_lemma", columnList = "user_id, lemma")
+        }
+)
 public class UserVocabulary {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

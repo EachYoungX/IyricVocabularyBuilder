@@ -20,7 +20,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.community.dialect.SQLiteDialect
-    show-sql: true
+    show-sql: false
     open-in-view: false
 
 # ===============================================
@@ -39,5 +39,5 @@ app:
 # --- 日志配置 ---
 logging:
  level:
-  org.springframework.jdbc.datasource.init: DEBUG
-  org.hibernate.SQL: debug
+  org.springframework.jdbc.datasource.init: INFO
+  org.hibernate.SQL: INFO

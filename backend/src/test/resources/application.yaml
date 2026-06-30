@@ -12,7 +12,8 @@ spring:
     hibernate:
       # 自动根据 Entity 更新或创建表结构
       ddl-auto: create-drop
-    show-sql: true # 开发时开启，方便调试
+    show-sql: false
+    open-in-view: false
     properties:
       hibernate:
         # 必须为 SQLite 指定方言

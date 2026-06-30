@@ -10,7 +10,11 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "lyric_lines", uniqueConstraints = @UniqueConstraint(columnNames = {"song_id", "line_index"}))
+@Table(
+        name = "lyric_lines",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"song_id", "line_index"}),
+        indexes = @Index(name = "idx_lyric_lines_song", columnList = "song_id, line_index")
+)
 public class LyricLine {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

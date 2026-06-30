@@ -11,14 +11,18 @@ import org.springframework.jdbc.core.RowMapper; // 导入 RowMapper
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor // 使用 Lombok 进行构造函数注入
 public class DictionaryServiceImpl implements DictionaryService {
+    private static final int MAX_CACHE_SIZE = 2_000;
 
     // [核心修复] 不再注入配置字符串，而是直接注入为 dictionaryDataSource 配置的 JdbcTemplate
     @Qualifier("dictionaryJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
+    private final Map<String, DictionaryEntryDto> lookupCache = new ConcurrentHashMap<>();
 
     // 定义一个可复用的 RowMapper，用于将数据库查询结果映射到 DTO
     private static final class DictionaryEntryRowMapper implements RowMapper<DictionaryEntryDto> {
@@ -40,14 +44,27 @@ public class DictionaryServiceImpl implements DictionaryService {
 
     @Override
     public DictionaryEntryDto lookupWord(String word) {
+        String normalizedWord = word.toLowerCase();
+        DictionaryEntryDto cached = lookupCache.get(normalizedWord);
+        if (cached != null) return cached;
+
+        DictionaryEntryDto entry = queryDictionary(normalizedWord);
+        if (lookupCache.size() >= MAX_CACHE_SIZE) {
+            lookupCache.clear();
+        }
+        lookupCache.put(normalizedWord, entry);
+        return entry;
+    }
+
+    private DictionaryEntryDto queryDictionary(String normalizedWord) {
         // 使用参数化查询，防止 SQL 注入
         String sql = "SELECT * FROM dictionary WHERE word = ?";
 
         // queryForObject 在找不到记录时会抛出 EmptyResultDataAccessException，我们需要处理它
         try {
-            return jdbcTemplate.queryForObject(sql, new DictionaryEntryRowMapper(), word.toLowerCase());
+            return jdbcTemplate.queryForObject(sql, new DictionaryEntryRowMapper(), normalizedWord);
         } catch (org.springframework.dao.EmptyResultDataAccessException e) {
-            throw new DictionaryNotFoundException(word);
+            throw new DictionaryNotFoundException(normalizedWord);
         }
     }
 

@@ -12,7 +12,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "vocabulary_occurrences", uniqueConstraints = @UniqueConstraint(columnNames = {"user_vocabulary_id", "token_id"}))
+@Table(
+        name = "vocabulary_occurrences",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_vocabulary_id", "token_id"}),
+        indexes = {
+                @Index(name = "idx_vocabulary_occurrences_song", columnList = "song_id"),
+                @Index(name = "idx_vocabulary_occurrences_user_vocab", columnList = "user_vocabulary_id")
+        }
+)
 public class VocabularyOccurrence {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

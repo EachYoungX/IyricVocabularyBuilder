@@ -8,7 +8,9 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "vocabulary")
+@Table(name = "vocabulary", indexes = {
+        @Index(name = "idx_vocabulary_recommended_word", columnList = "recommended, word")
+})
 public class Vocabulary {
     @Id
     private String word;
