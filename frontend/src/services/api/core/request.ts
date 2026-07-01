@@ -4,7 +4,6 @@
 /* eslint-disable */
 import axios from 'axios';
 import type { AxiosError, AxiosRequestConfig, AxiosResponse, AxiosInstance } from 'axios';
-import FormData from 'form-data';
 
 import { ApiError } from './ApiError';
 import type { ApiRequestOptions } from './ApiRequestOptions';
@@ -152,7 +151,9 @@ export const getHeaders = async (config: OpenAPIConfig, options: ApiRequestOptio
         resolve(options, config.HEADERS),
     ]);
 
-    const formHeaders = typeof formData?.getHeaders === 'function' && formData?.getHeaders() || {}
+    const formHeaders = typeof (formData as FormData & { getHeaders?: () => Record<string, string> } | undefined)?.getHeaders === 'function'
+        ? (formData as FormData & { getHeaders: () => Record<string, string> }).getHeaders()
+        : {};
 
     const headers = Object.entries({
         Accept: 'application/json',

@@ -22,11 +22,18 @@ export type { SongImportRequest } from './models/SongImportRequest';
 export type { SongImportTaskResponse } from './models/SongImportTaskResponse';
 export type { SongUpdateRequest } from './models/SongUpdateRequest';
 export type { TaskCreationResponse } from './models/TaskCreationResponse';
+export type { UserVocabulary } from './models/UserVocabulary';
+export type { UserVocabularyRequest } from './models/UserVocabularyRequest';
+export type { UserVocabularyReviewItem } from './models/UserVocabularyReviewItem';
+export type { UserVocabularyStats } from './models/UserVocabularyStats';
+export type { UserVocabularyUpdateRequest } from './models/UserVocabularyUpdateRequest';
 export { VocabularyRebuildTask } from './models/VocabularyRebuildTask';
+export { VocabularyStatus } from './models/VocabularyStatus';
 export type { WordOccurrence } from './models/WordOccurrence';
 export type { WordPage } from './models/WordPage';
 
 export { DictionaryService } from './services/DictionaryService';
 export { LyricsService } from './services/LyricsService';
 export { SongsService } from './services/SongsService';
+export { UserVocabularyService } from './services/UserVocabularyService';
 export { VocabularyService } from './services/VocabularyService';

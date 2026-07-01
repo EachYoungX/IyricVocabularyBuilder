@@ -13,7 +13,7 @@
         <div class="q-pa-md col-auto">
           <!-- 1. 文件选择区 -->
           <div class="text-subtitle2 q-mb-sm">1. {{ t('chooseFiles') }}</div>
-          <q-file v-model="selectedFiles" :label="t('dragDropFiles')" outlined dense multiple accept=".txt,.json"
+          <q-file v-model="selectedFiles" :label="t('dragDropFiles')" outlined dense multiple accept=".txt,.json,.lrc,.srt"
             @update:model-value="handleFileSelect" class="q-mb-sm" use-chips>
             <template v-slot:prepend>
               <q-icon name="cloud_upload" />
@@ -114,6 +114,23 @@
                         <q-icon name="warning" size="14px" />
                         {{ t('nonEnglishLyricsDetected') }}
                       </q-item-label>
+                      <div class="q-mt-xs row q-gutter-xs" v-if="song.importSummary">
+                        <q-chip dense size="sm" color="primary" text-color="white" v-if="song.sourceFormat">
+                          {{ song.sourceFormat }}
+                        </q-chip>
+                        <q-chip dense size="sm" color="grey-2">
+                          {{ t('lyricLineCount', { count: song.importSummary.totalLines }) }}
+                        </q-chip>
+                        <q-chip dense size="sm" color="green-1" text-color="green-9">
+                          {{ t('recognizedLyricLines', { count: song.importSummary.lyricLines }) }}
+                        </q-chip>
+                        <q-chip dense size="sm" color="orange-1" text-color="orange-9" v-if="song.importSummary.hiddenLines > 0">
+                          {{ t('hiddenLineCount', { count: song.importSummary.hiddenLines }) }}
+                        </q-chip>
+                        <q-chip dense size="sm" color="red-1" text-color="red-9" v-if="song.importSummary.unknownLines > 0">
+                          {{ t('unknownLineCount', { count: song.importSummary.unknownLines }) }}
+                        </q-chip>
+                      </div>
                     </q-item-section>
 
                     <q-item-section side>
@@ -138,6 +155,9 @@
                       </div>
                       <q-input v-model="song.lyrics" :label="t('lyricsPreview')" outlined dense type="textarea" autogrow
                         input-style="min-height: 100px; max-height: 300px;" />
+                      <q-banner v-if="song.importSummary" rounded class="bg-blue-1 text-blue-10">
+                        {{ formatImportSummary(song.importSummary) }}
+                      </q-banner>
                     </q-card-section>
                   </q-card>
                 </q-expansion-item>
@@ -204,6 +224,8 @@ import type { SongImportRequest, ImportTaskResult } from 'src/services/api'
 import { ImportTaskResult as ImportTaskResultEnum } from 'src/services/api/models/ImportTaskResult'
 import { detectLyricsLanguage } from 'src/utils/languageDetector'
 import type { ExtendedSongImportRequest } from 'src/types/songImport'
+import type { LyricImportSummary } from 'src/types/songImport'
+import { buildImportSummary, parseImportFileContent } from 'src/utils/lyricsImportParser'
 
 const { t } = useI18n()
 
@@ -333,124 +355,48 @@ async function handleFileSelect(files: File[] | null) {
   }
 }
 
-// --- 你的智能解析逻辑 (保持不变) ---
-function isMetadataLine(line: string): boolean {
-  const lower = line.toLowerCase();
-  const roles = [
-    'lyrics', 'composed', 'arranged', 'produced', 'mixed', 'mastered',
-    'vocal', 'guitar', 'bass', 'drum', 'strings', 'piano', 'keyboard',
-    'recording', 'engineering', 'edit', 'background', 'harmony',
-    '作词', '作曲', '编曲', '制作', '吉他', '贝斯', '鼓', '和声', '录音', '混音'
-  ];
-  const rolePattern = new RegExp(`^\\s*(${roles.join('|')})`, 'i');
-  if (rolePattern.test(lower)) return true;
-  if (line.length < 60 && (lower.includes(' by ') || line.includes(':') || line.includes('：'))) {
-    if (/[:：]/.test(line)) return true;
-  }
-  return false;
-}
-
 async function parseFile(file: File): Promise<ExtendedSongImportRequest[]> {
   const content = await file.text();
-  const fileName = file.name;
+  return parseImportFileContent(file.name, content, t).map(attachLanguageDetection);
+}
 
-  if (fileName.toLowerCase().endsWith('.json')) {
-    const data = JSON.parse(content);
-    if (Array.isArray(data)) {
-      return data.map((item: { title?: string; artist?: string; lyrics?: string }) => {
-        const song: ExtendedSongImportRequest = {
-          title: item.title || '',
-          artist: item.artist || '',
-          lyrics: item.lyrics || ''
-        }
-
-        // 检测歌词语言
-        if (song.lyrics) {
-          const languageResult = detectLyricsLanguage(song.lyrics, t);
-          if (languageResult.isNonEnglish) {
-            song.isNonEnglish = true;
-            song.languageWarning = languageResult.warning;
-            song.languageConfidence = languageResult.confidence;
-          }
-        }
-
-        return song;
-      }).filter(song => song.title && song.artist && song.lyrics);
-    }
-    throw new Error(t('invalidJsonFormat'));
-  }
-  else if (fileName.toLowerCase().endsWith('.txt')) {
-    let lines = content.split(/\r?\n/).map(line => line.trim());
-    let title = '';
-    let artist = '';
-    const firstLine = lines[0] || '';
-    const separatorRegex = /\s-\s/;
-
-    if (separatorRegex.test(firstLine)) {
-      const parts = firstLine.split(separatorRegex);
-      title = parts[0]?.trim() || '';
-      artist = parts.slice(1).join(' - ').trim();
-      lines = lines.slice(1);
-    } else {
-      const nameWithoutExt = fileName.replace(/\.txt$/i, '');
-      if (separatorRegex.test(nameWithoutExt)) {
-        const parts = nameWithoutExt.split(separatorRegex);
-        title = parts[0]?.trim() || '';
-        artist = parts.slice(1).join(' - ').trim();
-      } else {
-        title = nameWithoutExt.trim();
-        artist = 'Unknown Artist';
-      }
-    }
-
-    if (!title) throw new Error(t('couldNotDetermineSongTitle'));
-
-    const cleanLyricsLines: string[] = [];
-    let lyricsStarted = false;
-    for (const line of lines) {
-      if (lyricsStarted) {
-        cleanLyricsLines.push(line);
-      } else {
-        if (!line) continue;
-        if (isMetadataLine(line)) continue;
-        lyricsStarted = true;
-        cleanLyricsLines.push(line);
-      }
-    }
-    while (cleanLyricsLines.length > 0 && !cleanLyricsLines[cleanLyricsLines.length - 1]) {
-      cleanLyricsLines.pop();
-    }
-    const lyrics = cleanLyricsLines.join('\n');
-    if (!lyrics) throw new Error(t('noValidLyricContentFound'));
-
-    const song: ExtendedSongImportRequest = { title, artist, lyrics };
-
-    // 检测歌词语言
+function attachLanguageDetection(song: ExtendedSongImportRequest): ExtendedSongImportRequest {
+  if (song.lyrics) {
     const languageResult = detectLyricsLanguage(song.lyrics, t);
     if (languageResult.isNonEnglish) {
       song.isNonEnglish = true;
       song.languageWarning = languageResult.warning;
       song.languageConfidence = languageResult.confidence;
     }
-
-    return [song];
   }
-  throw new Error(t('unsupportedFileFormat'));
+  return song;
+}
+
+function formatImportSummary(summary: LyricImportSummary) {
+  return [
+    t('lyricLineCount', { count: summary.totalLines }),
+    t('recognizedLyricLines', { count: summary.lyricLines }),
+    t('sectionLabelCount', { count: summary.sectionLabels }),
+    t('speakerLabelCount', { count: summary.speakerLabels }),
+    t('performanceNoteCount', { count: summary.performanceNotes }),
+    t('metadataLineCount', { count: summary.metadataLines }),
+    t('hiddenLineCount', { count: summary.hiddenLines }),
+    t('unknownLineCount', { count: summary.unknownLines }),
+  ].join(' · ')
 }
 
 // ==================== 列表管理 ====================
 function addSongToList() {
   if (!isSongValid.value) return
 
-  const song: ExtendedSongImportRequest = { ...newSong.value }
+  const song: ExtendedSongImportRequest = {
+    ...newSong.value,
+    sourceFormat: 'MANUAL',
+    importSummary: buildImportSummary(newSong.value.lyrics),
+  }
 
   // 检测歌词语言
-  const languageResult = detectLyricsLanguage(song.lyrics, t)
-  if (languageResult.isNonEnglish) {
-    song.isNonEnglish = true
-    song.languageWarning = languageResult.warning
-    song.languageConfidence = languageResult.confidence
-  }
+  attachLanguageDetection(song)
 
   songsToImport.value.push(song)
   newSong.value = { title: '', artist: '', lyrics: '' }

@@ -4,6 +4,23 @@
 
 This file records only completed and verified refactoring stages. Internal plans and audit notes are excluded from the repository.
 
+## Stage 5 - 2026-06-30
+
+### 导入增强、个人词库与复习闭环 / Import Enhancements, Personal Vocabulary, and Review Loop
+
+- 歌曲导入支持 JSON、TXT、LRC 和 SRT；LRC/SRT 会去除时间轴与格式标记，并保留更干净的歌词文本用于学习。
+- 导入预览新增双语结构摘要，显示总行数、识别出的歌词行、段落标签、角色标签、演奏说明、元信息、默认隐藏行和未识别行。
+- 新增个人词库 API，支持加入单词、按状态查询、更新学习状态、记录掌握度、统计学习数量和获取待复习队列。
+- 首页新增个人词汇统计和待复习入口；词典面板可将当前词加入个人词库，并更新为新词、学习中、较熟悉、已掌握或忽略。
+- 后端 OpenAPI 增加个人词库契约，前端 API 客户端重新生成；生成后处理兼容浏览器原生 `FormData`。
+- 保留已有逐行歌词修正数据能力，和本阶段新增个人词汇学习数据共同形成可追踪的学习材料。
+
+### Verification
+
+- Backend: 64 tests passed with 0 failures and 0 errors.
+- Frontend: ESLint and Quasar production build passed.
+- Canonical OpenAPI client regeneration passed from the backend specification.
+
 ## Stage 4 - 2026-06-25
 
 ### 稳定性、索引性能与代码可读性 / Stability, Index Performance, and Code Quality

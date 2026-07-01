@@ -28,6 +28,8 @@ tags:
     description: 英英词典查询（仅英文） / English dictionary lookup
   - name: Lyrics
     description: 歌词标准化、结构化与用户修正 / Lyric normalization, structuring, and correction
+  - name: UserVocabulary
+    description: 个人词库、统计与复习 / Personal vocabulary, stats, and review
 
 paths:
   # ===============================================================
@@ -150,6 +152,114 @@ paths:
                 $ref: '#/components/schemas/VocabularyRebuildTask'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/user-vocabulary:
+    post:
+      tags: [UserVocabulary]
+      summary: 加入个人词库 / Add a word to personal vocabulary
+      operationId: addUserVocabularyWord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserVocabularyRequest'
+      responses:
+        '200':
+          description: 已保存的个人词条 / Saved personal vocabulary item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserVocabulary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      tags: [UserVocabulary]
+      summary: 查询个人词库 / List personal vocabulary
+      operationId: listUserVocabularyWords
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/VocabularyStatus'
+      responses:
+        '200':
+          description: 个人词条列表 / Personal vocabulary items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserVocabulary'
+
+  /api/user-vocabulary/{id}:
+    patch:
+      tags: [UserVocabulary]
+      summary: 更新个人词条 / Update a personal vocabulary item
+      operationId: updateUserVocabularyWord
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserVocabularyUpdateRequest'
+      responses:
+        '200':
+          description: 更新后的个人词条 / Updated personal vocabulary item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserVocabulary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/user-vocabulary/stats:
+    get:
+      tags: [UserVocabulary]
+      summary: 获取个人词汇统计 / Get personal vocabulary stats
+      operationId: getUserVocabularyStats
+      responses:
+        '200':
+          description: 个人词汇统计 / Personal vocabulary stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserVocabularyStats'
+
+  /api/user-vocabulary/review:
+    get:
+      tags: [UserVocabulary]
+      summary: 获取待复习词条 / Get review queue
+      operationId: getUserVocabularyReviewQueue
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: 待复习词条 / Review queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserVocabularyReviewItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   # ===============================================================
   # Songs Endpoints
@@ -661,6 +771,115 @@ components:
           type: number
           format: double
       required: [songTitle, lyricLine]
+
+    VocabularyStatus:
+      type: string
+      enum: [NEW, LEARNING, FAMILIAR, MASTERED, IGNORED]
+
+    UserVocabularyRequest:
+      type: object
+      properties:
+        lemma:
+          type: string
+          description: 单词或词形；后端会归一到 lemma / Word or surface form; normalized to lemma by backend
+          example: running
+        note:
+          type: string
+          nullable: true
+      required: [lemma]
+
+    UserVocabularyUpdateRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/VocabularyStatus'
+        masteryScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        note:
+          type: string
+          nullable: true
+
+    UserVocabulary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: string
+        lemma:
+          type: string
+        status:
+          $ref: '#/components/schemas/VocabularyStatus'
+        masteryScore:
+          type: number
+          format: double
+        firstSeenAt:
+          type: string
+        lastSeenAt:
+          type: string
+        reviewDueAt:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+      required: [id, userId, lemma, status, masteryScore, firstSeenAt, lastSeenAt]
+
+    UserVocabularyStats:
+      type: object
+      properties:
+        totalCount:
+          type: integer
+          format: int64
+        newCount:
+          type: integer
+          format: int64
+        learningCount:
+          type: integer
+          format: int64
+        familiarCount:
+          type: integer
+          format: int64
+        masteredCount:
+          type: integer
+          format: int64
+        ignoredCount:
+          type: integer
+          format: int64
+        dueReviewCount:
+          type: integer
+          format: int64
+        recentWords:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserVocabulary'
+      required: [totalCount, newCount, learningCount, familiarCount, masteredCount, ignoredCount, dueReviewCount, recentWords]
+
+    UserVocabularyReviewItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        lemma:
+          type: string
+        status:
+          $ref: '#/components/schemas/VocabularyStatus'
+        masteryScore:
+          type: number
+          format: double
+        reviewDueAt:
+          type: string
+          nullable: true
+        example:
+          allOf:
+            - $ref: '#/components/schemas/WordOccurrence'
+          nullable: true
+      required: [id, lemma, status, masteryScore]
 
     Song:
       type: object

@@ -11,6 +11,31 @@
               <div class="text-caption text-grey q-mb-md">
                 {{ t('totalWords', { count: vocabularyStore.getTotalWords }) }}
               </div>
+              <q-card flat bordered class="q-pa-sm q-mb-md">
+                <div class="row items-center justify-between q-mb-xs">
+                  <div class="text-subtitle2">{{ t('personalVocabulary') }}</div>
+                  <q-chip dense color="primary" text-color="white">
+                    {{ userVocabularyStore.getStats?.totalCount ?? 0 }}
+                  </q-chip>
+                </div>
+                <div class="row q-col-gutter-xs text-caption">
+                  <div class="col-6">{{ t('newWordsCount', { count: userVocabularyStore.getStats?.newCount ?? 0 }) }}</div>
+                  <div class="col-6">{{ t('learningWordsCount', { count: userVocabularyStore.getStats?.learningCount ?? 0 }) }}</div>
+                  <div class="col-6">{{ t('masteredWordsCount', { count: userVocabularyStore.getStats?.masteredCount ?? 0 }) }}</div>
+                  <div class="col-6">{{ t('dueReviewCount', { count: userVocabularyStore.getStats?.dueReviewCount ?? 0 }) }}</div>
+                </div>
+              </q-card>
+              <q-card v-if="userVocabularyStore.getReviewQueue.length" flat bordered class="q-pa-sm q-mb-md">
+                <div class="text-subtitle2 q-mb-xs">{{ t('reviewQueue') }}</div>
+                <q-list dense>
+                  <q-item v-for="item in userVocabularyStore.getReviewQueue" :key="item.id" clickable @click="selectWord(item.lemma)">
+                    <q-item-section>
+                      <q-item-label>{{ item.lemma }}</q-item-label>
+                      <q-item-label caption>{{ formatVocabularyStatus(item.status) }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-card>
 
               <q-input dense outlined v-model="searchTerm" :label="t('searchPlaceholder')" clearable
                 @update:model-value="onSearchChange as (value: string | number | null) => void" class="q-mb-md" />
@@ -87,6 +112,29 @@
                       <div v-if="dictionaryStore.getDictionaryEntry.translation" class="q-mt-sm text-body2 text-grey">
                         {{ dictionaryStore.getDictionaryEntry.translation }}
                       </div>
+                      <q-separator class="q-my-md" />
+                      <div class="row items-center q-col-gutter-sm">
+                        <div class="col-auto">
+                          <q-chip v-if="selectedUserWord" color="secondary" text-color="white">
+                            {{ formatVocabularyStatus(selectedUserWord.status) }}
+                          </q-chip>
+                          <q-chip v-else>
+                            {{ t('notInPersonalVocabulary') }}
+                          </q-chip>
+                        </div>
+                        <div class="col-auto">
+                          <q-btn v-if="!selectedUserWord" color="primary" :loading="personalActionLoading" @click="addSelectedWord">
+                            {{ t('addToPersonalVocabulary') }}
+                          </q-btn>
+                          <q-btn-dropdown v-else color="primary" :loading="personalActionLoading" :label="t('updateLearningStatus')">
+                            <q-list>
+                              <q-item v-for="status in learningStatuses" :key="status" clickable v-close-popup @click="updateSelectedWordStatus(status)">
+                                <q-item-section>{{ formatVocabularyStatus(status) }}</q-item-section>
+                              </q-item>
+                            </q-list>
+                          </q-btn-dropdown>
+                        </div>
+                      </div>
                     </div>
                     <div v-else-if="dictionaryStore.getError" class="text-center text-negative">
                       {{ dictionaryStore.getError }}
@@ -109,9 +157,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useVocabularyExplorer } from 'src/composables/useVocabularyExplorer';
+import { VocabularyStatus } from 'src/services/api';
+import { useUserVocabularyStore } from 'src/stores/userVocabularyStore';
 
 const { t } = useI18n();
 const {
@@ -124,8 +174,66 @@ const {
   vocabularyStore,
 } = useVocabularyExplorer();
 
+const userVocabularyStore = useUserVocabularyStore();
 const splitterModel = ref<number>(30);
 const horizontalSplitter = ref<number>(50);
+const personalActionLoading = ref(false);
+const learningStatuses = [
+  VocabularyStatus.NEW,
+  VocabularyStatus.LEARNING,
+  VocabularyStatus.FAMILIAR,
+  VocabularyStatus.MASTERED,
+  VocabularyStatus.IGNORED,
+];
+
+const selectedUserWord = computed(() => userVocabularyStore.findByLemma(vocabularyStore.getSelectedWord));
+
+onMounted(() => {
+  void userVocabularyStore.fetchDashboard();
+});
+
+function formatVocabularyStatus(status: VocabularyStatus | undefined) {
+  return status ? t(`vocabularyStatuses.${status}`) : t('unknown');
+}
+
+async function addSelectedWord() {
+  if (!vocabularyStore.getSelectedWord) return;
+  personalActionLoading.value = true;
+  try {
+    await userVocabularyStore.addWord(vocabularyStore.getSelectedWord);
+  } finally {
+    personalActionLoading.value = false;
+  }
+}
+
+async function updateSelectedWordStatus(status: VocabularyStatus) {
+  if (!selectedUserWord.value?.id) return;
+  personalActionLoading.value = true;
+  try {
+    await userVocabularyStore.updateWord(
+      selectedUserWord.value.id,
+      status,
+      masteryScoreForStatus(status),
+    );
+  } finally {
+    personalActionLoading.value = false;
+  }
+}
+
+function masteryScoreForStatus(status: VocabularyStatus) {
+  switch (status) {
+    case VocabularyStatus.NEW:
+      return 0;
+    case VocabularyStatus.LEARNING:
+      return 0.35;
+    case VocabularyStatus.FAMILIAR:
+      return 0.7;
+    case VocabularyStatus.MASTERED:
+      return 1;
+    case VocabularyStatus.IGNORED:
+      return 0;
+  }
+}
 </script>
 
 <style lang="scss" scoped>

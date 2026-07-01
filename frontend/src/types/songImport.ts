@@ -3,7 +3,29 @@
  */
 import type { SongImportRequest } from 'src/services/api';
 
+export interface LyricImportSummary {
+  totalLines: number;
+  lyricLines: number;
+  sectionLabels: number;
+  speakerLabels: number;
+  performanceNotes: number;
+  metadataLines: number;
+  emptyLines: number;
+  hiddenLines: number;
+  unknownLines: number;
+}
+
 export interface ExtendedSongImportRequest extends SongImportRequest {
+  /**
+   * 导入来源格式
+   */
+  sourceFormat?: 'JSON' | 'TXT' | 'LRC' | 'SRT' | 'MANUAL';
+
+  /**
+   * 导入前清洗/结构识别摘要
+   */
+  importSummary?: LyricImportSummary;
+
   /**
    * 是否为非英语歌词
    */
