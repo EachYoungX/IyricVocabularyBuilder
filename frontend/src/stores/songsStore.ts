@@ -27,20 +27,23 @@ export const useSongsStore = defineStore('songs', () => {
   const getImportTask = computed(() => importTask.value);
 
   // Actions
-  async function fetchAllSongs() {
+  async function fetchAllSongs(showSuccessNotify = true) {
     isLoading.value = true;
     error.value = null;
     try {
       const songList: Song[] = await SongsService.getAllSongs();
       songs.value = songList;
-      Notify.create({
-        type: 'positive',
-        message: t('songsLoadedSuccessfully', { count: songList.length }),
-      });
+      if (showSuccessNotify) {
+        Notify.create({
+          type: 'positive',
+          message: t('songsLoadedSuccessfully', { count: songList.length }),
+          position: 'top-right',
+        });
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('unknownError');
       error.value = errorMessage;
-      Notify.create({ type: 'negative', message: t('fetchSongsFailed', { error: errorMessage }) });
+      Notify.create({ type: 'negative', message: t('fetchSongsFailed', { error: errorMessage }), position: 'top-right' });
       console.error('Error fetching songs:', err);
     } finally {
       isLoading.value = false;
@@ -52,12 +55,11 @@ export const useSongsStore = defineStore('songs', () => {
     error.value = null;
     try {
       const result = await SongsService.importSongsAsync(songsToImport);
-      Notify.create({ type: 'positive', message: t('importTaskStartedSuccessfully') });
       return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('unknownError');
       error.value = errorMessage;
-      Notify.create({ type: 'negative', message: t('importSongsFailed', { error: errorMessage }) });
+      Notify.create({ type: 'negative', message: t('importSongsFailed', { error: errorMessage }), position: 'top-right' });
       console.error('Error importing songs:', err);
     } finally {
       isLoading.value = false;
@@ -77,6 +79,7 @@ export const useSongsStore = defineStore('songs', () => {
       Notify.create({
         type: 'negative',
         message: t('checkImportTaskStatusFailed', { error: errorMessage }),
+        position: 'top-right',
       });
       console.error('Error checking import task status:', err);
     } finally {
@@ -97,12 +100,13 @@ export const useSongsStore = defineStore('songs', () => {
       Notify.create({
         type: 'positive',
         message: t('songUpdatedSuccessfully', { title: updatedSong.title }),
+        position: 'top-right',
       });
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('unknownError');
       error.value = errorMessage;
-      Notify.create({ type: 'negative', message: t('updateSongFailed', { error: errorMessage }) });
+      Notify.create({ type: 'negative', message: t('updateSongFailed', { error: errorMessage }), position: 'top-right' });
       console.error('Error updating song:', err);
       return false;
     } finally {
@@ -117,12 +121,12 @@ export const useSongsStore = defineStore('songs', () => {
       await SongsService.deleteSong(id);
       // 从歌曲列表中移除歌曲
       songs.value = songs.value.filter((song: Song) => song.id !== id);
-      Notify.create({ type: 'positive', message: t('songDeletedSuccessfully') });
+      Notify.create({ type: 'positive', message: t('songDeletedSuccessfully'), position: 'top-right' });
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('unknownError');
       error.value = errorMessage;
-      Notify.create({ type: 'negative', message: t('deleteSongFailed', { error: errorMessage }) });
+      Notify.create({ type: 'negative', message: t('deleteSongFailed', { error: errorMessage }), position: 'top-right' });
       console.error('Error deleting song:', err);
       return false;
     } finally {
@@ -137,12 +141,12 @@ export const useSongsStore = defineStore('songs', () => {
       await SongsService.deleteSongsBatch(ids);
       // 从歌曲列表中移除歌曲
       songs.value = songs.value.filter((song: Song) => !ids.includes(song.id));
-      Notify.create({ type: 'positive', message: t('songsDeletedSuccessfully') });
+      Notify.create({ type: 'positive', message: t('songsDeletedSuccessfully'), position: 'top-right' });
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('unknownError');
       error.value = errorMessage;
-      Notify.create({ type: 'negative', message: t('deleteSongsFailed', { error: errorMessage }) });
+      Notify.create({ type: 'negative', message: t('deleteSongsFailed', { error: errorMessage }), position: 'top-right' });
       console.error('Error deleting songs:', err);
       return false;
     } finally {

@@ -70,7 +70,7 @@
             <!-- 底部固定区域：分页控件 -->
             <div class="col-auto q-pa-md pagination-container">
               <div class="flex justify-center">
-                <q-pagination v-model="currentPage" :max="vocabularyStore.getTotalPages" :max-pages="6" boundary-numbers
+                <q-pagination v-model="currentPage" :max="vocabularyStore.getTotalPages" :max-pages="paginationMaxPages" boundary-numbers
                   @update:model-value="onPageChange" />
               </div>
             </div>
@@ -84,7 +84,7 @@
               <!-- 上部: Occurrences 面板 -->
               <template v-slot:before>
                 <div class="column fit no-wrap">
-                  <div class="q-pa-md col overflow-auto">
+                  <div class="detail-panel q-pa-md col overflow-auto">
                     <div class="text-h6 q-mb-md">{{ t('occurrencePositions') }}</div>
                     <div v-if="vocabularyStore.getIsLoading" class="text-center">
                       <q-spinner color="primary" size="3em" />
@@ -104,14 +104,14 @@
               <!-- 下部: Dictionary 面板 -->
               <template v-slot:after>
                 <div class="column fit no-wrap">
-                  <div class="q-pa-md col overflow-auto">
+                  <div class="detail-panel q-pa-md col overflow-auto">
                     <div class="text-h6 q-mb-md">{{ t('dictionaryDefinition') }}</div>
                     <div v-if="dictionaryStore.getIsLoading" class="text-center">
                       <q-spinner color="primary" size="3em" />
                       <div class="q-mt-sm">{{ t('lookingUpDictionary') }}</div>
                     </div>
                     <div v-else-if="dictionaryStore.getDictionaryEntry" class="dictionary-entry">
-                      <div class="text-h5">{{ dictionaryStore.getDictionaryEntry.word }}</div>
+                      <div class="text-h5 dictionary-word">{{ dictionaryStore.getDictionaryEntry.word }}</div>
                       <div v-if="dictionaryStore.getDictionaryEntry.phonetic" class="text-subtitle1 text-grey">
                         {{ dictionaryStore.getDictionaryEntry.phonetic }}
                       </div>
@@ -127,20 +127,20 @@
                         {{ dictionaryStore.getDictionaryEntry.translation }}
                       </div>
                       <q-separator class="q-my-md" />
-                      <div class="row items-center q-col-gutter-sm">
-                        <div class="col-auto">
-                          <q-chip v-if="selectedUserWord" color="secondary" text-color="white">
+                      <div class="word-status-row">
+                        <div class="word-status-left">
+                          <q-chip v-if="selectedUserWord" color="secondary" text-color="white" class="status-chip">
                             {{ formatVocabularyStatus(selectedUserWord.status) }}
                           </q-chip>
-                          <q-chip v-else>
+                          <q-chip v-else class="status-chip">
                             {{ t('notInPersonalVocabulary') }}
                           </q-chip>
                         </div>
-                        <div class="col-auto">
-                          <q-btn v-if="!selectedUserWord" color="primary" :loading="personalActionLoading" @click="addSelectedWord">
+                        <div class="word-status-action">
+                          <q-btn v-if="!selectedUserWord" color="primary" size="sm" :loading="personalActionLoading" @click="addSelectedWord">
                             {{ t('addToPersonalVocabulary') }}
                           </q-btn>
-                          <q-btn-dropdown v-else color="primary" :loading="personalActionLoading" :label="t('updateLearningStatus')">
+                          <q-btn-dropdown v-else color="primary" size="sm" dense unelevated :loading="personalActionLoading" :label="t('updateLearningStatus')">
                             <q-list>
                               <q-item v-for="status in learningStatuses" :key="status" clickable v-close-popup @click="updateSelectedWordStatus(status)">
                                 <q-item-section>{{ formatVocabularyStatus(status) }}</q-item-section>
@@ -194,6 +194,11 @@ const userVocabularyStore = useUserVocabularyStore();
 const splitterModel = ref<number>(30);
 const horizontalSplitter = ref<number>(50);
 const personalActionLoading = ref(false);
+const paginationMaxPages = computed(() => {
+  if ($q.screen.lt.sm) return 3;
+  if ($q.screen.lt.md || splitterModel.value < 28) return 4;
+  return 5;
+});
 const learningStatuses = [
   VocabularyStatus.NEW,
   VocabularyStatus.LEARNING,
@@ -401,11 +406,70 @@ function masteryScoreForStatus(status: VocabularyStatus) {
   min-height: 0; /* 允许内容收缩 */
 }
 
+.detail-panel {
+  padding-inline: 18px;
+  border: 1px solid rgba(210, 193, 182, 0.38);
+  border-radius: var(--lv-radius-md);
+  margin: 12px;
+  background: rgba(255, 253, 251, 0.68);
+}
+
+.occurrence-list,
+.dictionary-entry {
+  width: 100%;
+}
+
+.occurrence-list {
+  border-color: rgba(210, 193, 182, 0.42);
+  background: rgba(249, 243, 239, 0.22);
+}
+
+.occurrence-list :deep(.q-item) {
+  padding-inline: 14px;
+}
+
+.dictionary-entry {
+  padding-inline: 14px;
+}
+
+.dictionary-word {
+  line-height: 1.1;
+}
+
+.word-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.word-status-left,
+.word-status-action {
+  min-width: 0;
+}
+
+.word-status-action :deep(.q-btn),
+.word-status-action :deep(.q-btn-dropdown) {
+  font-size: 13px;
+}
+
+.status-chip {
+  min-height: 28px;
+  padding-inline: 12px;
+  font-size: 13px;
+}
+
 .pagination-container {
   flex-shrink: 0; /* 防止分页被压缩 */
   border-top: 1px solid var(--lv-line); /* 添加分隔线 */
-  padding-top: 16px;
+  padding: 12px 8px;
   background-color: var(--lv-surface-solid); /* 确保背景色一致 */
+}
+
+.pagination-container :deep(.q-pagination) {
+  max-width: 100%;
+  justify-content: center;
+  row-gap: 2px;
 }
 
 /* 确保分割器面板正确填充 */

@@ -1,5 +1,9 @@
 <template>
-  <router-view />
+  <router-view v-slot="{ Component, route }">
+    <transition name="lv-page" mode="out-in" appear>
+      <component :is="Component" :key="route.fullPath" />
+    </transition>
+  </router-view>
 </template>
 
 <script setup lang="ts">

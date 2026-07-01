@@ -17,6 +17,11 @@ This file records only completed and verified refactoring stages. Internal plans
 - 修正 QQ 音乐式 LRC 文件名的歌手/标题推断；加密 QRC 改为明确提示不支持直接解析，并引导用户使用 TXT/LRC/SRT 或手动粘贴。
 - 修正非英语歌词预览文案参数缺失，避免显示“检测到 个文件”。
 - 修正后端 CORS 漏放 `PATCH` 导致浏览器无法更新个人词汇学习状态的问题。
+- 根据真实交互反馈优化导入弹窗、分页、详情区域视觉分隔、状态操作区、导航间距和通知位置。
+- 新增多套完整主题 token 与深色主题 token，为后续设置页面管理主题预留基础。
+- 简化 README Mermaid 图语法，避免 GitHub 无法渲染 rich display。
+- 新增统一页面与元素浮现动效，并预留 `setMotionPreference` / `toggleMotionPreference` 一键禁用入口；默认遵循系统 reduced motion 设置。
+- 新增设置页面入口，迁移词典来源展示，并以低耦合方式预留外观阅读、学习偏好、歌词处理、词典词库、数据管理和隐私说明框架。
 
 ### Verification
 
@@ -24,6 +29,7 @@ This file records only completed and verified refactoring stages. Internal plans
 - Frontend: ESLint and Quasar production build passed.
 - README screenshot links and public documentation paths verified.
 - Browser flow passed for manual paste import, multi-song import, index rebuild, word lookup, dictionary display, adding a word to personal vocabulary, and updating vocabulary status.
+- Browser layout audit passed for desktop and mobile import dialog overflow, mobile pagination, and vocabulary detail alignment.
 
 ## Stage 6 - 2026-07-01
 

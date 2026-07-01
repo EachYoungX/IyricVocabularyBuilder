@@ -26,13 +26,13 @@ The project focuses on one practical learning loop: import lyrics you are allowe
 
 ```mermaid
 flowchart TD
-  A["Import lyrics<br/>TXT / JSON / LRC / SRT / paste"] --> B["Normalize and classify lines"]
-  B --> C["Review structured lyrics<br/>hide, restore, correct"]
+  A["Import lyrics"] --> B["Normalize lines"]
+  B --> C["Review structured lyrics"]
   C --> D["Tokenize and lemmatize"]
-  D --> E["Build searchable vocabulary index"]
-  E --> F["Lookup word in song context"]
-  F --> G["Add to personal vocabulary"]
-  G --> H["Track status and review queue"]
+  D --> E["Build vocabulary index"]
+  E --> F["Lookup words in context"]
+  F --> G["Add personal vocabulary"]
+  G --> H["Track status and reviews"]
 ```
 
 ## Tech Stack
@@ -49,11 +49,11 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  User["Learner"] --> UI["Quasar Vue Frontend"]
+  User["Learner"] --> UI["Vue and Quasar frontend"]
   UI --> API["Spring Boot API"]
-  API --> SongDB["SQLite user data<br/>songs, lyric lines, tokens, user vocabulary"]
-  API --> DictDB["Bundled ECDICT SQLite<br/>dictionary lookup"]
-  API --> Indexer["Vocabulary Index Builder<br/>normalization, tokens, lemma aggregation"]
+  API --> SongDB["SQLite user database"]
+  API --> DictDB["ECDICT SQLite dictionary"]
+  API --> Indexer["Vocabulary index builder"]
   Indexer --> SongDB
 ```
 

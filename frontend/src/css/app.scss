@@ -1,5 +1,5 @@
-// Global visual system based on the "Midnight Sail" palette:
-// #1B3C53 #456882 #D2C1B6 #F9F3EF.
+// Theme tokens. "Midnight Sail" stays the default palette.
+// Additional complete palettes are exposed for the upcoming settings page.
 
 :root {
   --lv-navy: #1b3c53;
@@ -24,8 +24,81 @@
   --lv-radius-md: 14px;
   --lv-radius-lg: 22px;
   --lv-shadow-soft: 0 18px 50px rgba(27, 60, 83, 0.08);
+  --lv-motion-fast: 140ms;
+  --lv-motion-medium: 220ms;
+  --lv-motion-slow: 360ms;
+  --lv-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --lv-font-scale: 1;
+  --lv-control-scale: 1;
   --lv-font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", "Songti SC", serif;
   --lv-font-sans: Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+[data-font-scale='compact'] {
+  --lv-font-scale: 0.94;
+}
+
+[data-font-scale='large'] {
+  --lv-font-scale: 1.08;
+}
+
+[data-interface-scale='compact'] {
+  --lv-control-scale: 0.94;
+}
+
+[data-interface-scale='large'] {
+  --lv-control-scale: 1.08;
+}
+
+[data-theme="sage-library"] {
+  --lv-navy: #2f3e36;
+  --lv-blue: #6f8f72;
+  --lv-sand: #d9c7a3;
+  --lv-shell: #f7f4ea;
+  --lv-ink-soft: #607a62;
+  --lv-paper-warm: #fffdf5;
+  --lv-surface: rgba(255, 253, 245, 0.88);
+  --lv-surface-solid: #fffdf7;
+  --lv-line: rgba(111, 143, 114, 0.26);
+  --lv-line-strong: rgba(111, 143, 114, 0.48);
+  --lv-muted: rgba(47, 62, 54, 0.56);
+  --lv-accent-soft: rgba(217, 199, 163, 0.26);
+}
+
+[data-theme="coral-study"] {
+  --lv-navy: #26324a;
+  --lv-blue: #4f6f9f;
+  --lv-sand: #f0a98c;
+  --lv-shell: #fff2e9;
+  --lv-ink-soft: #4f6f9f;
+  --lv-paper-warm: #fffaf3;
+  --lv-surface: rgba(255, 250, 243, 0.88);
+  --lv-surface-solid: #fffaf6;
+  --lv-line: rgba(240, 169, 140, 0.34);
+  --lv-line-strong: rgba(240, 169, 140, 0.62);
+  --lv-muted: rgba(38, 50, 74, 0.58);
+  --lv-accent-soft: rgba(240, 169, 140, 0.22);
+}
+
+[data-theme="dusk-minimal"],
+[data-theme="midnight-sail-dark"] {
+  --lv-navy: #f5efe7;
+  --lv-blue: #9fb8c9;
+  --lv-sand: #b99d86;
+  --lv-shell: #101821;
+  --lv-ink: #f5efe7;
+  --lv-ink-soft: #b8c8d5;
+  --lv-paper: #101821;
+  --lv-paper-warm: #141f2a;
+  --lv-surface: rgba(23, 35, 47, 0.88);
+  --lv-surface-solid: #17232f;
+  --lv-line: rgba(245, 239, 231, 0.14);
+  --lv-line-strong: rgba(245, 239, 231, 0.24);
+  --lv-muted: rgba(245, 239, 231, 0.58);
+  --lv-accent: #b99d86;
+  --lv-accent-strong: #d2b79f;
+  --lv-accent-soft: rgba(185, 157, 134, 0.18);
+  --lv-shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.26);
 }
 
 html,
@@ -37,6 +110,7 @@ body,
 
 body {
   color: var(--lv-ink);
+  font-size: calc(16px * var(--lv-font-scale));
   font-family: var(--lv-font-sans);
   background:
     radial-gradient(circle at 12% 8%, rgba(69, 104, 130, 0.10), transparent 30%),
@@ -44,6 +118,108 @@ body {
     linear-gradient(135deg, var(--lv-paper) 0%, var(--lv-paper-warm) 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.q-btn {
+  min-height: calc(36px * var(--lv-control-scale));
+}
+
+.q-field__control,
+.q-item {
+  min-height: calc(48px * var(--lv-control-scale));
+}
+
+.lv-page-enter-active,
+.lv-page-leave-active {
+  transition:
+    opacity var(--lv-motion-medium) var(--lv-motion-ease),
+    transform var(--lv-motion-medium) var(--lv-motion-ease),
+    filter var(--lv-motion-medium) var(--lv-motion-ease);
+}
+
+.lv-page-enter-from {
+  opacity: 0;
+  filter: blur(2px);
+  transform: translateY(10px);
+}
+
+.lv-page-leave-to {
+  opacity: 0;
+  filter: blur(1px);
+  transform: translateY(-4px);
+}
+
+.page-masthead,
+.modern-card,
+.lv-panel,
+.q-table__card,
+.q-card,
+.q-list,
+.q-banner {
+  animation: lv-rise-in var(--lv-motion-slow) var(--lv-motion-ease) both;
+}
+
+.q-item,
+.q-btn,
+.q-chip,
+.q-field {
+  transition:
+    background-color var(--lv-motion-fast) var(--lv-motion-ease),
+    border-color var(--lv-motion-fast) var(--lv-motion-ease),
+    color var(--lv-motion-fast) var(--lv-motion-ease),
+    opacity var(--lv-motion-fast) var(--lv-motion-ease),
+    transform var(--lv-motion-fast) var(--lv-motion-ease);
+}
+
+.q-btn:not(.q-btn--disabled):hover,
+.q-item:not(.q-item--disable):hover {
+  transform: translateY(-1px);
+}
+
+.q-dialog__inner > .q-card,
+.q-menu,
+.q-notification {
+  animation: lv-pop-in var(--lv-motion-medium) var(--lv-motion-ease) both;
+}
+
+@keyframes lv-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lv-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+[data-motion="off"] *,
+[data-motion="off"] *::before,
+[data-motion="off"] *::after {
+  animation: none !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="on"]) *,
+  :root:not([data-motion="on"]) *::before,
+  :root:not([data-motion="on"]) *::after {
+    animation: none !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .q-page-container {
@@ -127,11 +303,21 @@ body {
 
 .q-btn {
   border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
   letter-spacing: 0.01em;
+  padding: 6px 14px;
 }
 
 .q-btn:not(.q-btn--dense) {
   min-height: 38px;
+}
+
+.q-btn.q-btn--dense,
+.q-btn--dense {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 13px;
 }
 
 .q-chip {
@@ -154,6 +340,12 @@ body {
 }
 
 .q-pagination .q-btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin: 2px;
+  padding: 0;
   color: var(--lv-ink-soft);
 }
 
@@ -215,12 +407,26 @@ body {
 
 .q-dialog {
   .q-card {
+    min-width: 0 !important;
     max-height: 92dvh !important;
     width: 95vw !important;
     max-width: 95vw !important;
     margin: 16px;
     border-radius: var(--lv-radius-md);
   }
+}
+
+.q-dialog .q-dialog-plugin,
+.q-dialog .q-dialog-plugin.q-card,
+.compact-confirm-dialog {
+  width: min(520px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
+}
+
+.q-notification {
+  border: 1px solid var(--lv-line);
+  border-radius: var(--lv-radius-md);
+  box-shadow: var(--lv-shadow-soft);
 }
 
 @supports (padding-bottom: env(safe-area-inset-bottom)) {

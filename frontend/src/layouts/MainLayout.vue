@@ -28,7 +28,7 @@
         </q-item-label>
 
         <!-- Vocabulary 主页 -->
-        <q-item to="/" exact clickable v-ripple class="q-mx-md q-mb-1 rounded-borders"
+        <q-item to="/" exact clickable v-ripple class="drawer-nav-item q-mx-md rounded-borders"
           active-class="drawer-active">
           <q-item-section avatar>
             <q-icon name="o_class" size="22px" />
@@ -39,7 +39,7 @@
         </q-item>
 
         <!-- 歌曲管理 -->
-        <q-item to="/songs" clickable v-ripple class="q-mx-md q-mb-1 rounded-borders"
+        <q-item to="/songs" clickable v-ripple class="drawer-nav-item q-mx-md rounded-borders"
           active-class="drawer-active">
           <q-item-section avatar>
             <q-icon name="o_library_music" size="22px" />
@@ -49,13 +49,13 @@
           </q-item-section>
         </q-item>
 
-        <q-item to="/dictionary-source" clickable v-ripple class="q-mx-md q-mb-1 rounded-borders"
+        <q-item to="/settings" clickable v-ripple class="drawer-nav-item q-mx-md rounded-borders"
           active-class="drawer-active">
           <q-item-section avatar>
-            <q-icon name="o_policy" size="22px" />
+            <q-icon name="o_settings" size="22px" />
           </q-item-section>
           <q-item-section>
-            <q-item-label class="text-weight-medium">{{ t('dictionarySource') }}</q-item-label>
+            <q-item-label class="text-weight-medium">{{ t('settings') }}</q-item-label>
           </q-item-section>
         </q-item>
 
@@ -66,7 +66,7 @@
           {{ t('actions') }}
         </q-item-label>
 
-        <q-item clickable v-ripple class="q-mx-md q-mb-1 rounded-borders" @click="showImportDialog">
+        <q-item clickable v-ripple class="drawer-nav-item q-mx-md rounded-borders" @click="showImportDialog">
           <q-item-section avatar>
             <q-icon name="add" color="accent" size="22px" />
           </q-item-section>
@@ -75,7 +75,7 @@
           </q-item-section>
         </q-item>
 
-        <q-item clickable v-ripple class="q-mx-md rounded-borders" @click="requestVocabularyRebuild">
+        <q-item clickable v-ripple class="drawer-nav-item q-mx-md rounded-borders" @click="requestVocabularyRebuild">
           <q-item-section avatar>
             <q-icon name="refresh" color="primary" size="22px" />
           </q-item-section>
@@ -190,6 +190,10 @@ function toggleLanguage() {
 
 :deep(.q-item) {
   color: var(--lv-ink-soft);
+}
+
+.drawer-nav-item {
+  margin-bottom: 8px;
 }
 
 :deep(.drawer-active) {

@@ -1,7 +1,6 @@
 <template>
   <q-dialog v-model="showDialog">
-    <q-card
-      style="min-width: 800px; width: 90vw; max-width: 1000px; display: flex; flex-direction: column; height: 80vh;">
+    <q-card class="song-import-card">
       <!-- 顶部标题 -->
       <q-card-section class="row items-center q-pb-none col-auto">
         <div class="text-h6">{{ t('importDialogTitle') }}</div>
@@ -10,7 +9,7 @@
       </q-card-section>
 
       <q-card-section class="col column q-pa-none">
-        <div class="q-pa-md col-auto">
+        <div class="import-top-section q-pa-md col-auto">
           <!-- 1. 文件选择区 -->
           <div class="text-subtitle2 q-mb-sm">1. {{ t('chooseFiles') }}</div>
           <q-file v-model="selectedFiles" :label="t('dragDropFiles')" outlined dense multiple accept=".txt,.json,.lrc,.srt,.qrc"
@@ -25,10 +24,10 @@
             <q-card class="bg-grey-1">
               <q-card-section>
                 <q-form @submit.prevent="addSongToList" class="row q-col-gutter-sm">
-                  <div class="col-6">
+                  <div class="col-12 col-sm-6">
                     <q-input v-model="newSong.title" :label="t('title') + ' *'" outlined dense bg-color="white" />
                   </div>
-                  <div class="col-6">
+                  <div class="col-12 col-sm-6">
                     <q-input v-model="newSong.artist" :label="t('artist') + ' *'" outlined dense bg-color="white" />
                   </div>
                   <div class="col-12">
@@ -71,7 +70,7 @@
             </q-item-section>
           </template>
 
-          <q-card class="q-pa-md">
+            <q-card class="preview-card q-pa-md">
             <div class="row items-center justify-between q-mb-sm">
               <div class="text-subtitle1">
                 {{ t('previewAndEdit') }} ({{ songsToImport.length }})
@@ -82,7 +81,7 @@
             </div>
 
             <!-- 滚动区域 -->
-            <div class="scroll q-pr-sm" style="max-height: 400px;">
+            <div class="preview-scroll scroll q-pr-sm">
               <!-- 导入数量限制提示 -->
               <div v-if="songsToImport.length > 100"
                 class="q-pa-sm bg-warning text-warning-dark rounded-borders q-mb-sm">
@@ -298,7 +297,8 @@ async function handleFileSelect(files: File[] | null) {
     spinner: true,
     message: t('parsingFiles', { count: totalFiles }),
     timeout: 0,
-    type: 'ongoing'
+    type: 'ongoing',
+    position: 'top-right',
   })
 
   try {
@@ -332,7 +332,7 @@ async function handleFileSelect(files: File[] | null) {
       icon: 'check_circle',
       message,
       timeout: totalSongs > 20 ? 6000 : 4000,
-      actions: [{ label: t('gotIt'), color: 'white' }]
+      position: 'top-right',
     })
 
     // 更新待导入列表
@@ -348,6 +348,7 @@ async function handleFileSelect(files: File[] | null) {
       message: t('parsingError'),
       caption: errorMessage,
       timeout: 5000,
+      position: 'top-right',
       actions: [{ label: t('gotIt'), color: 'white' }]
     })
   } finally {
@@ -400,7 +401,7 @@ function addSongToList() {
 
   songsToImport.value.push(song)
   newSong.value = { title: '', artist: '', lyrics: '' }
-  Notify.create({ message: t('songAddedToPreviewList'), color: 'positive', timeout: 1000 })
+  Notify.create({ group: 'import-local-action', message: t('songAddedToPreviewList'), color: 'positive', timeout: 800, position: 'top-right' })
 }
 
 function removeSongFromList(index: number) {
@@ -414,7 +415,8 @@ async function importSongs() {
     Notify.create({
       type: 'warning',
       message: t('noSongsToImport'),
-      timeout: 3000
+      timeout: 3000,
+      position: 'top-right',
     })
     return
   }
@@ -425,7 +427,8 @@ async function importSongs() {
       type: 'warning',
       message: t('importLimitExceeded', { max: 100 }),
       caption: t('pleaseReduceSongs'),
-      timeout: 5000
+      timeout: 5000,
+      position: 'top-right',
     })
     return
   }
@@ -442,6 +445,7 @@ async function importSongs() {
     spinner: true,
     message: t('importingSongs', { count: total }),
     timeout: 0, // 不自动关闭
+    position: 'top-right',
   })
 
   try {
@@ -483,13 +487,15 @@ async function importSongs() {
       group: 'import-progress',
       type: 'negative',
       message: msg,
-      timeout: 5000
+      timeout: 5000,
+      position: 'top-right',
     })
     Notify.create({
       group: 'import-progress',
       type: 'negative',
       message: t('importFailed'),
-      timeout: 5000
+      timeout: 5000,
+      position: 'top-right',
     })
     isImporting.value = false
   }
@@ -519,7 +525,7 @@ function pollTaskStatus(currentTaskId: string) {
           // 导入完成后自动刷新歌曲列表
           if (taskResult.status === ImportTaskResultEnum.status.COMPLETED) {
             try {
-              await songsStore.fetchAllSongs()
+              await songsStore.fetchAllSongs(false)
             } catch (error) {
               console.error('Failed to refresh songs list after import:', error)
             }
@@ -540,6 +546,7 @@ function pollTaskStatus(currentTaskId: string) {
             icon: failed === 0 ? 'check_circle' : 'warning',
             message,
             timeout: 6000,
+            position: 'top-right',
             actions: [{ label: t('gotIt'), color: 'white' }]
           })
 
@@ -558,7 +565,7 @@ function pollTaskStatus(currentTaskId: string) {
         setTimeout(() => void poll(), pollInterval)
       } else {
         isImporting.value = false
-        Notify.create({ type: 'warning', message: t('taskTimedOut') })
+        Notify.create({ type: 'warning', message: t('taskTimedOut'), position: 'top-right' })
       }
     } catch {
       // 忽略网络抖动错误，继续重试，直到超时
@@ -594,6 +601,63 @@ function handleImportDone() {
 </script>
 
 <style scoped lang="scss">
+.song-import-card {
+  display: flex;
+  width: min(1000px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  height: min(80vh, 760px);
+  min-width: 0;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.song-import-card :deep(.q-card__section),
+.song-import-card :deep(.q-card__actions) {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.import-top-section,
+.preview-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.preview-card {
+  margin: 0 !important;
+}
+
+.preview-scroll {
+  max-height: min(400px, 42vh);
+  padding: 12px;
+  border: 1px solid rgba(210, 193, 182, 0.42);
+  border-radius: var(--lv-radius-sm);
+  background: rgba(249, 243, 239, 0.18);
+}
+
+.preview-card :deep(.q-expansion-item__container),
+.preview-card :deep(.q-expansion-item__content),
+.preview-card :deep(.q-item),
+.song-import-card :deep(.q-card__section),
+.song-import-card :deep(.q-expansion-item),
+.song-import-card :deep(.q-field) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.preview-card :deep(.q-item__section--main) {
+  min-width: 0;
+}
+
+.preview-card :deep(.q-item__label) {
+  overflow-wrap: anywhere;
+}
+
 .bordered-top {
   border-top: 1px solid var(--lv-line);
 }
@@ -617,5 +681,29 @@ function handleImportDone() {
 
 :deep(.q-item) {
   border-radius: var(--lv-radius-sm);
+}
+
+@media (max-width: 600px) {
+  .song-import-card {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    height: min(88vh, 760px);
+  }
+
+  .song-import-card :deep(.q-card__section),
+  .song-import-card :deep(.q-card__actions) {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .preview-scroll {
+    max-height: 36vh;
+    padding: 8px;
+  }
+
+  :deep(.q-card__actions) {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 }
 </style>

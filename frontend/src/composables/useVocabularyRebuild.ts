@@ -20,6 +20,7 @@ export function useVocabularyRebuild() {
       ok: { label: t('tearDownNow'), color: 'primary', unelevated: true },
       cancel: { label: t('cancel'), flat: true, color: 'grey' },
       persistent: true,
+      class: 'compact-confirm-dialog',
     }).onOk(() => void startVocabularyRebuild());
   }
 

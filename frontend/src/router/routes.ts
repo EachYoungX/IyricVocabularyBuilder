@@ -13,9 +13,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/SongsManagerPage.vue'),
       },
       {
+        path: '/settings',
+        name: 'Settings',
+        component: () => import('pages/SettingsPage.vue'),
+      },
+      {
         path: '/dictionary-source',
-        name: 'DictionarySource',
-        component: () => import('pages/DictionarySourcePage.vue'),
+        redirect: '/settings',
       },
     ],
   },

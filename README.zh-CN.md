@@ -26,13 +26,13 @@ Lyric Vocabulary Builder 是一个面向中文母语者的英文歌词词汇学�
 
 ```mermaid
 flowchart TD
-  A["导入歌词<br/>TXT / JSON / LRC / SRT / 粘贴"] --> B["标准化并识别歌词行"]
-  B --> C["检查结构化歌词<br/>隐藏、恢复、修正"]
-  C --> D["分词并做词形归一"]
-  D --> E["生成可搜索词汇索引"]
-  E --> F["在歌曲语境中查询单词"]
+  A["导入歌词"] --> B["标准化歌词行"]
+  B --> C["检查结构化歌词"]
+  C --> D["分词与词形归一"]
+  D --> E["生成词汇索引"]
+  E --> F["在语境中查词"]
   F --> G["加入个人词库"]
-  G --> H["跟踪状态并进入复习队列"]
+  G --> H["跟踪状态与复习"]
 ```
 
 ## 技术栈
@@ -51,9 +51,9 @@ flowchart TD
 flowchart LR
   User["学习者"] --> UI["Quasar Vue Frontend"]
   UI --> API["Spring Boot API"]
-  API --> SongDB["SQLite user data<br/>songs, lyric lines, tokens, user vocabulary"]
-  API --> DictDB["Bundled ECDICT SQLite<br/>dictionary lookup"]
-  API --> Indexer["Vocabulary Index Builder<br/>normalization, tokens, lemma aggregation"]
+  API --> SongDB["SQLite user database"]
+  API --> DictDB["ECDICT SQLite dictionary"]
+  API --> Indexer["Vocabulary index builder"]
   Indexer --> SongDB
 ```
 
