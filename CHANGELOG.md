@@ -4,6 +4,44 @@
 
 This file records only completed and verified refactoring stages. Internal plans and audit notes are excluded from the repository.
 
+## Stage 7 - 2026-07-01
+
+### 发布前整理与作品集化 / Release Readiness and Portfolio Packaging
+
+- 将 README 拆分为默认英文版和独立中文版，并在开头提供语言切换入口；补齐项目定位、核心卖点、技术栈、系统架构、学习流程、本地运行、验证命令、部署说明和数据边界。
+- 新增公开截图资源，展示词汇学习首页和歌曲管理页的当前视觉效果。
+- 更新前端 README，说明页面结构、主题色卡、生成式 API 客户端、本地开发和构建方式。
+- 更新后端 README，说明 Spring Boot 服务、SQLite 数据、结构化歌词、词汇索引、个人词库、OpenAPI 契约和词典授权来源。
+- 明确歌词版权边界：仓库不内置第三方歌词，用户仅导入自己有权使用的文本；仓库内置词典来源为 ECDICT / MIT License。
+- 使用真实歌词样本完成导入流程审计，覆盖单首导入、多首导入、TXT、LRC、加密 QRC、英文为主、夹杂中文/日文、纯中文和纯日文边界。
+- 修正 QQ 音乐式 LRC 文件名的歌手/标题推断；加密 QRC 改为明确提示不支持直接解析，并引导用户使用 TXT/LRC/SRT 或手动粘贴。
+- 修正非英语歌词预览文案参数缺失，避免显示“检测到 个文件”。
+- 修正后端 CORS 漏放 `PATCH` 导致浏览器无法更新个人词汇学习状态的问题。
+
+### Verification
+
+- Backend: 64 tests passed with 0 failures and 0 errors.
+- Frontend: ESLint and Quasar production build passed.
+- README screenshot links and public documentation paths verified.
+- Browser flow passed for manual paste import, multi-song import, index rebuild, word lookup, dictionary display, adding a word to personal vocabulary, and updating vocabulary status.
+
+## Stage 6 - 2026-07-01
+
+### 页面美化与跨端体验 / Visual System and Responsive Experience
+
+- 以单一完整色卡 `Midnight Sail`（`#1B3C53`、`#456882`、`#D2C1B6`、`#F9F3EF`）建立主视觉，保留极简白底与衬线标题气质。
+- 新增全局设计 token，统一颜色、字体、圆角、边线、阴影、按钮、卡片、列表、表格、输入框、分页和 banner 的基础样式。
+- 重做主布局视觉：顶部栏、侧边栏、品牌文字徽标、导航 active 状态和页面 masthead 形成一致的学习工具主视觉。
+- 首页和歌曲管理页增加桌面、手机竖屏、手机横屏的响应式策略，减少横向溢出与移动端挤压。
+- 导入弹窗与结构化歌词弹窗接入主题样式，增强歌词预览、行编辑和移动端换行体验。
+- 清理重复的全局布局 CSS，将页面基础布局、安全区、触控尺寸和 dialog 规则集中到全局样式中维护。
+
+### Verification
+
+- Frontend: ESLint and Quasar production build passed.
+- Browser responsive smoke test passed for desktop, mobile portrait, and mobile landscape on the vocabulary and songs pages.
+- No backend code changed in this stage.
+
 ## Stage 5 - 2026-06-30
 
 ### 导入增强、个人词库与复习闭环 / Import Enhancements, Personal Vocabulary, and Review Loop

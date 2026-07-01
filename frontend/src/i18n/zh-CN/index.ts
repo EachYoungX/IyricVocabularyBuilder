@@ -16,6 +16,7 @@ export default {
   // 首页
   vocabularyList: '词汇列表',
   totalWords: '总共 {count} 个单词',
+  englishLearningWorkspace: '英文歌词学习工作台',
   searchPlaceholder: '搜索单词...',
   word: '单词',
   frequency: '频率',
@@ -77,7 +78,7 @@ export default {
 
   // 导入对话框
   importDialogTitle: '导入歌曲',
-  chooseFiles: '选择文件 (TXT / JSON / LRC / SRT)',
+  chooseFiles: '选择文件 (TXT / JSON / LRC / SRT / QRC)',
   addSongManually: '或手动添加歌曲',
   addToPreviewList: '添加到预览列表',
   previewAndEdit: '预览与编辑',
@@ -102,6 +103,7 @@ export default {
   couldNotDetermineSongTitle: '无法确定歌曲标题',
   noValidLyricContentFound: '未找到有效的歌词内容',
   unsupportedFileFormat: '不支持的文件格式',
+  encryptedQrcUnsupported: '加密 QRC 暂不支持直接导入，请改用 TXT/LRC/SRT，或复制歌词后手动粘贴。',
   songAddedToPreviewList: '歌曲已添加到预览列表',
   importingSongs: '正在导入 {count} 首歌曲，请稍候...',
   importFailedMessage: '导入失败，请重试',
@@ -112,9 +114,9 @@ export default {
   nonEnglishLyricsWarning: '检测到 {count} 个文件可能含非英语歌词，是否继续导入？',
   gotIt: '知道了',
   dragDropFiles: '拖放文件到这里，或点击选择文件',
-  supportedFormats: '支持格式：JSON、TXT、LRC、SRT',
+  supportedFormats: '支持格式：JSON、TXT、LRC、SRT；加密 QRC 会给出提示但不会解析。',
   parsingComplete: '解析完成',
-  nonEnglishLyricsDetected: '检测到 {count} 个文件包含非英语歌词',
+  nonEnglishLyricsDetected: '检测到可能含非英语歌词',
   importProgress: '导入进度',
   importComplete: '导入完成',
   importSuccessMessage: '成功导入 {success} 首歌曲',

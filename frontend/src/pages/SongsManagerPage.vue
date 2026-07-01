@@ -1,7 +1,7 @@
 <template>
   <q-page class="window-height column no-wrap overflow-hidden q-pa-sm-md">
     <!-- 顶部标题 -->
-    <div class="text-h5 q-mb-sm col-auto q-px-sm">{{ t('songsManagerTitle') }}</div>
+    <div class="page-title serif-display q-mb-sm col-auto q-px-sm">{{ t('songsManagerTitle') }}</div>
 
     <!-- 主体容器 -->
     <div class="col full-width" style="display: flex">
@@ -12,7 +12,7 @@
         <template v-slot:before>
           <div class="column no-wrap fit">
             <!-- 工具栏 (固定高度) -->
-            <div class="q-pa-sm bg-white col-auto" style="border-bottom: 1px solid #e0e0e0;">
+            <div class="q-pa-sm bg-white col-auto song-toolbar">
               <q-input v-model="filter" dense outlined clearable :label="t('searchPlaceholder')" class="q-mb-sm" />
               <div class="row items-center q-gutter-sm">
                 <template v-if="isBatchMode">
@@ -76,7 +76,7 @@
 
             <!-- 批量选择状态 -->
             <div v-else class="col column flex-center text-center">
-              <q-icon name="playlist_remove" size="50px" color="orange" class="q-mb-md" />
+              <q-icon name="playlist_remove" size="50px" color="secondary" class="q-mb-md" />
               <div class="text-h6 text-grey-7">
                 {{ selectedSongs.length }} {{ t('selected') }}
               </div>
@@ -309,6 +309,18 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
+.page-title {
+  color: var(--lv-ink);
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.song-toolbar {
+  border-bottom: 1px solid var(--lv-line);
+  background: var(--lv-surface-solid) !important;
+}
+
 /* 确保表格组件作为 Flex 子项正确填充 */
 .my-sticky-header-table {
   display: flex;
@@ -346,6 +358,22 @@ onMounted(() => {
   .q-pa-sm-md {
     padding: 8px;
   }
+
+  .page-title {
+    font-size: 28px;
+  }
+
+  .song-list-container {
+    padding: 6px;
+  }
+
+  :deep(.q-splitter__before) {
+    min-height: 38dvh;
+  }
+
+  :deep(.q-splitter__after) {
+    min-height: 42dvh;
+  }
 }
 
 @media (min-width: 601px) {
@@ -357,8 +385,9 @@ onMounted(() => {
 /* 桌面端分割器样式 - 与旧版保持一致 */
 @media (min-width: 768px) {
   .desktop-splitter {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border: 1px solid var(--lv-line);
+    border-radius: var(--lv-radius-md);
+    background: var(--lv-surface-solid);
   }
 
   /* 隐藏桌面端的分隔线，让边框看起来是连续的 */
@@ -376,22 +405,29 @@ onMounted(() => {
 
     /* 添加悬停效果，让用户知道这里可以拖动 */
     &:hover {
-      background-color: rgba(0, 0, 0, 0.05);
+      background-color: rgba(27, 60, 83, 0.06);
     }
   }
 
   /* 为分割器面板添加内部边框，模拟旧版效果 */
   :deep(.q-splitter__panel) {
     &:first-child {
-      border-right: 1px solid #e0e0e0;
+      border-right: 1px solid var(--lv-line);
     }
   }
 }
 
 /* 移动端分割器样式 */
 @media (max-width: 767px) {
+  .desktop-splitter {
+    border: 1px solid var(--lv-line);
+    border-radius: var(--lv-radius-md);
+    background: var(--lv-surface-solid);
+    overflow: hidden;
+  }
+
   :deep(.q-splitter__separator) {
-    background-color: #e0e0e0;
+    background-color: var(--lv-line);
 
     /* 移动端添加水平分割线样式 */
     &::before {
@@ -402,7 +438,7 @@ onMounted(() => {
       transform: translate(-50%, -50%);
       height: 4px;
       width: 40px;
-      background-color: #bdbdbd;
+      background-color: var(--lv-line-strong);
       border-radius: 2px;
       opacity: 0.7;
     }
@@ -411,6 +447,16 @@ onMounted(() => {
   :deep(.q-splitter__separator-area) {
     cursor: row-resize;
     z-index: 10;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .page-title {
+    font-size: 26px;
+  }
+
+  :deep(.q-splitter__before) {
+    min-height: 48dvh;
   }
 }
 </style>

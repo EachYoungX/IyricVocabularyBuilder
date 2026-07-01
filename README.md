@@ -1,13 +1,182 @@
 # Lyric Vocabulary Builder
 
-面向中文用户的英语歌词词汇学习应用。用户可以导入英文歌词，在歌曲语境中查词，并查看中英文释义。
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-An English vocabulary learning application for Chinese-speaking learners. It turns user-provided lyrics into searchable vocabulary with song context and bilingual definitions.
+Lyric Vocabulary Builder is a local-first vocabulary learning app for Chinese-speaking English learners. It is not a lyrics player and does not ship a lyrics library. Instead, it turns user-provided English lyrics into structured, searchable, reviewable vocabulary study material.
 
-## 项目状态 / Project Status
+The project focuses on one practical learning loop: import lyrics you are allowed to use, clean and structure them, search words in real lyric context, check bilingual dictionary entries, and track personal vocabulary status.
 
-项目正在按阶段进行重构。只有已完成并通过验证的阶段会记录到公开变更日志。
+## Screenshots
 
-The project is being refactored in stages. Only completed and verified stages are recorded in the public changelog.
+![Vocabulary workspace](assets/screenshots/vocabulary-workspace.png)
 
-- [变更日志 / Changelog](CHANGELOG.md)
+![Songs manager](assets/screenshots/songs-manager.png)
+
+## Highlights
+
+- **Structured lyric import**: TXT, JSON, LRC, SRT, and manual paste workflows are designed for learning material preparation.
+- **Recoverable cleanup**: the app keeps raw lyrics, normalized lyrics, line classification, and user corrections instead of silently deleting context.
+- **Lemma-based search**: related forms such as `running`, `ran`, and `runs` can be grouped under `run`.
+- **Vocabulary in context**: words are reviewed inside the lyric lines where they actually appear.
+- **Offline dictionary integration**: the bundled ECDICT SQLite snapshot provides English definitions and Chinese explanations.
+- **Personal vocabulary loop**: learners can add words, update status, track familiarity, view stats, and review pending words.
+- **Chinese learner friendly**: product copy, edge cases, and documentation are written around Chinese-native learners studying English through songs.
+
+## What The App Does
+
+```mermaid
+flowchart TD
+  A["Import lyrics<br/>TXT / JSON / LRC / SRT / paste"] --> B["Normalize and classify lines"]
+  B --> C["Review structured lyrics<br/>hide, restore, correct"]
+  C --> D["Tokenize and lemmatize"]
+  D --> E["Build searchable vocabulary index"]
+  E --> F["Lookup word in song context"]
+  F --> G["Add to personal vocabulary"]
+  G --> H["Track status and review queue"]
+```
+
+## Tech Stack
+
+| Layer | Stack |
+|---|---|
+| Frontend | Vue 3, Quasar 2, TypeScript, Pinia, Vue Router, Axios |
+| Backend | Java 21, Spring Boot 3.5, Spring Web, Spring Data JPA |
+| Database | SQLite user database + bundled ECDICT SQLite dictionary |
+| API Contract | OpenAPI 3.1, generated TypeScript client |
+| Tooling | Maven Wrapper, pnpm, ESLint, Vite |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  User["Learner"] --> UI["Quasar Vue Frontend"]
+  UI --> API["Spring Boot API"]
+  API --> SongDB["SQLite user data<br/>songs, lyric lines, tokens, user vocabulary"]
+  API --> DictDB["Bundled ECDICT SQLite<br/>dictionary lookup"]
+  API --> Indexer["Vocabulary Index Builder<br/>normalization, tokens, lemma aggregation"]
+  Indexer --> SongDB
+```
+
+## Local Development
+
+### Backend
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+```
+
+Default API URL:
+
+```text
+http://localhost:8080
+```
+
+The development profile uses a local SQLite database:
+
+```text
+backend/data/app_data.db
+```
+
+If the database does not exist, the backend initializes it from `schema.sql` and applies the required lightweight migrations.
+
+### Frontend
+
+```powershell
+cd frontend
+pnpm install
+pnpm dev
+```
+
+Quasar prints the dev URL in the terminal. It is usually:
+
+```text
+http://localhost:9000
+```
+
+### Generate The API Client
+
+The backend OpenAPI contract lives at:
+
+```text
+backend/src/main/resources/api-docs.yaml
+```
+
+Generate the frontend client:
+
+```powershell
+cd frontend
+pnpm gen-api
+```
+
+The post-generation script adapts the generated client to the backend response envelope.
+
+## Verification
+
+Backend:
+
+```powershell
+cd backend
+.\mvnw.cmd clean test
+```
+
+Frontend:
+
+```powershell
+cd frontend
+pnpm lint
+pnpm build
+```
+
+## Deployment Notes
+
+The current project is best suited for local learning, demos, or a small self-hosted deployment.
+
+1. Build and run the backend:
+
+```powershell
+cd backend
+.\mvnw.cmd clean package
+java -jar target/backend-0.0.1-SNAPSHOT.jar
+```
+
+2. Build the frontend:
+
+```powershell
+cd frontend
+pnpm build
+```
+
+3. Serve `frontend/dist/spa` as a static site and proxy API requests to the backend.
+
+Before making a public deployment, configure the frontend API base URL or reverse proxy, keep `backend/data/app_data.db` out of git, avoid publishing user-imported lyrics, and keep the ECDICT source and MIT License notice visible.
+
+## Data And Copyright Boundary
+
+- This repository does not include or distribute a lyrics database.
+- Users should only import lyrics they are allowed to use or process.
+- Imported lyrics, cleanup results, vocabulary indexes, and personal learning state are stored locally.
+- Dictionary data comes from [ECDICT](https://github.com/skywind3000/ECDICT), licensed under the MIT License.
+- The app includes a dictionary source page so public demos can keep data attribution transparent.
+
+## Repository Layout
+
+```text
+.
+├── backend/                 # Spring Boot API
+│   ├── src/main/java/       # domain code
+│   ├── src/main/resources/  # schema, OpenAPI, dictionary resource
+│   └── data/                # local runtime database, ignored by git
+├── frontend/                # Quasar Vue app
+│   ├── src/components/
+│   ├── src/pages/
+│   ├── src/services/api/    # generated OpenAPI client
+│   └── src/css/             # visual tokens and global styles
+├── assets/screenshots/      # README screenshots
+├── CHANGELOG.md             # completed and verified stages
+└── README.zh-CN.md          # Chinese README
+```
+
+## Status
+
+Stages 0 through 7 have been completed and verified. See [CHANGELOG.md](CHANGELOG.md) for the refactoring history.

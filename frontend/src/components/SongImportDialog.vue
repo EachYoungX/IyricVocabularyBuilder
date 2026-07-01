@@ -13,7 +13,7 @@
         <div class="q-pa-md col-auto">
           <!-- 1. 文件选择区 -->
           <div class="text-subtitle2 q-mb-sm">1. {{ t('chooseFiles') }}</div>
-          <q-file v-model="selectedFiles" :label="t('dragDropFiles')" outlined dense multiple accept=".txt,.json,.lrc,.srt"
+          <q-file v-model="selectedFiles" :label="t('dragDropFiles')" outlined dense multiple accept=".txt,.json,.lrc,.srt,.qrc"
             @update:model-value="handleFileSelect" class="q-mb-sm" use-chips>
             <template v-slot:prepend>
               <q-icon name="cloud_upload" />
@@ -110,7 +110,7 @@
                     <q-item-section>
                       <q-item-label class="text-weight-bold">{{ song.title }}</q-item-label>
                       <q-item-label caption>{{ song.artist }}</q-item-label>
-                      <q-item-label caption class="text-orange" v-if="song.isNonEnglish">
+                      <q-item-label caption class="text-secondary" v-if="song.isNonEnglish">
                         <q-icon name="warning" size="14px" />
                         {{ t('nonEnglishLyricsDetected') }}
                       </q-item-label>
@@ -121,10 +121,10 @@
                         <q-chip dense size="sm" color="grey-2">
                           {{ t('lyricLineCount', { count: song.importSummary.totalLines }) }}
                         </q-chip>
-                        <q-chip dense size="sm" color="green-1" text-color="green-9">
+                        <q-chip dense size="sm" color="secondary" text-color="white">
                           {{ t('recognizedLyricLines', { count: song.importSummary.lyricLines }) }}
                         </q-chip>
-                        <q-chip dense size="sm" color="orange-1" text-color="orange-9" v-if="song.importSummary.hiddenLines > 0">
+                        <q-chip dense size="sm" color="accent" text-color="primary" v-if="song.importSummary.hiddenLines > 0">
                           {{ t('hiddenLineCount', { count: song.importSummary.hiddenLines }) }}
                         </q-chip>
                         <q-chip dense size="sm" color="red-1" text-color="red-9" v-if="song.importSummary.unknownLines > 0">
@@ -593,12 +593,29 @@ function handleImportDone() {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .bordered-top {
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--lv-line);
 }
 
 .border-bottom {
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--lv-line);
+}
+
+:deep(.q-card) {
+  background: var(--lv-surface-solid);
+}
+
+:deep(.q-stepper) {
+  border-radius: var(--lv-radius-md);
+  box-shadow: none;
+}
+
+:deep(.q-stepper__header) {
+  border-bottom-color: var(--lv-line);
+}
+
+:deep(.q-item) {
+  border-radius: var(--lv-radius-sm);
 }
 </style>

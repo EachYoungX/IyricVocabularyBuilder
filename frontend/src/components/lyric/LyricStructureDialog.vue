@@ -1,9 +1,9 @@
 <template>
   <q-dialog :model-value="modelValue" maximized-on-mobile @update:model-value="updateDialogVisibility">
     <q-card class="lyric-dialog column no-wrap">
-      <q-card-section class="row items-center q-pb-sm">
+      <q-card-section class="row items-center q-pb-sm lyric-dialog-header">
         <div>
-          <div class="text-h6">{{ t('structuredLyrics') }}</div>
+          <div class="text-h6 serif-display">{{ t('structuredLyrics') }}</div>
           <div class="text-caption text-grey-7">{{ songTitle }}</div>
         </div>
         <q-space />
@@ -18,10 +18,10 @@
             {{ t('lyricLineCount', { count: document.lines.length }) }}
           </q-chip>
           <q-chip dense>{{ t('importVersion', { version: document.importVersion }) }}</q-chip>
-          <q-chip dense color="orange-2">
+          <q-chip dense color="accent" text-color="primary">
             {{ t('hiddenLineCount', { count: hiddenCount }) }}
           </q-chip>
-          <q-chip dense color="blue-1">
+          <q-chip dense color="secondary" text-color="white">
             {{ t('overrideCount', { count: overrideCount }) }}
           </q-chip>
         </div>
@@ -63,7 +63,7 @@
                 class="line-type"
               />
               <q-toggle v-model="line.hidden" :label="t('hidden')" dense />
-              <q-chip v-if="line.userOverride" dense color="blue-1" text-color="blue-9">
+              <q-chip v-if="line.userOverride" dense color="secondary" text-color="white">
                 {{ t('userOverride') }}
               </q-chip>
               <q-space />
@@ -172,6 +172,13 @@ async function saveLine(line: LyricLine) {
 .lyric-dialog {
   width: min(1200px, 96vw);
   height: min(900px, 92vh);
+  background: var(--lv-surface-solid);
+}
+
+.lyric-dialog-header {
+  background:
+    linear-gradient(90deg, rgba(210, 193, 182, 0.18), transparent),
+    var(--lv-surface-solid);
 }
 
 .lyrics-preview {
@@ -181,9 +188,12 @@ async function saveLine(line: LyricLine) {
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  border-radius: 8px;
-  background: #f5f5f5;
-  font-family: inherit;
+  border: 1px solid var(--lv-line);
+  border-radius: var(--lv-radius-sm);
+  background: var(--lv-paper);
+  color: var(--lv-ink);
+  font-family: var(--lv-font-serif);
+  line-height: 1.7;
 }
 
 .line-index {
@@ -195,7 +205,19 @@ async function saveLine(line: LyricLine) {
 }
 
 .original-line {
+  color: var(--lv-muted);
   overflow-wrap: anywhere;
+}
+
+:deep(.q-item) {
+  margin: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--lv-radius-sm);
+}
+
+:deep(.q-item:hover) {
+  border-color: var(--lv-line);
+  background: rgba(249, 243, 239, 0.62);
 }
 
 @media (max-width: 600px) {
@@ -204,8 +226,22 @@ async function saveLine(line: LyricLine) {
     height: 100dvh;
   }
 
+  :deep(.q-card__section) {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  :deep(.q-item > .row) {
+    align-items: flex-start;
+  }
+
   .line-type {
-    min-width: 150px;
+    min-width: 100%;
+    order: 4;
+  }
+
+  .line-index {
+    width: auto;
   }
 }
 </style>

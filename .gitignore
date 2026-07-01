@@ -43,6 +43,7 @@ temp/
 *.swp
 *.swo
 *~
+test
 
 # Java / Maven / Gradle build output
 **/target/

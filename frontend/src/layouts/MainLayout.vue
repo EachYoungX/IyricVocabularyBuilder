@@ -1,21 +1,24 @@
 <template>
-  <q-layout view="hHh lpR fFf">
-    <q-header elevated class="bg-white text-dark">
-      <q-toolbar>
+  <q-layout view="hHh lpR fFf" class="app-shell">
+    <q-header class="app-header">
+      <q-toolbar class="q-px-md">
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
 
-        <q-toolbar-title class="text-weight-bold">{{ t('appTitle') }}</q-toolbar-title>
-        <q-btn flat dense :label="locale === 'zh-CN' ? 'English' : '中文'" @click="toggleLanguage" />
+        <q-toolbar-title class="row items-center no-wrap q-gutter-sm">
+          <span class="brand-mark">Lv</span>
+          <span class="brand-title serif-display">{{ t('appTitle') }}</span>
+        </q-toolbar-title>
+        <q-btn flat dense class="language-toggle" :label="locale === 'zh-CN' ? 'English' : '中文'" @click="toggleLanguage" />
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered :width="260" class="bg-grey-1">
-      <!-- Logo / 标题区（可选，更高级） -->
-      <div class="q-pa-lg border-b border-grey-3">
-        <div class="text-h6 text-weight-bold text-grey-8">
+    <q-drawer v-model="leftDrawerOpen" show-if-above bordered :width="280" class="app-drawer">
+      <div class="drawer-hero q-pa-lg">
+        <div class="drawer-kicker">{{ t('appSubtitle') }}</div>
+        <div class="text-h5 serif-display drawer-title">
           {{ t('appTitle') }}
         </div>
-        <div class="text-caption text-grey-6">{{ t('appSubtitle') }}</div>
+        <div class="drawer-rule"></div>
       </div>
 
       <q-list class="q-mt-md">
@@ -26,7 +29,7 @@
 
         <!-- Vocabulary 主页 -->
         <q-item to="/" exact clickable v-ripple class="q-mx-md q-mb-1 rounded-borders"
-          active-class="bg-primary text-white">
+          active-class="drawer-active">
           <q-item-section avatar>
             <q-icon name="o_class" size="22px" />
           </q-item-section>
@@ -37,7 +40,7 @@
 
         <!-- 歌曲管理 -->
         <q-item to="/songs" clickable v-ripple class="q-mx-md q-mb-1 rounded-borders"
-          active-class="bg-primary text-white">
+          active-class="drawer-active">
           <q-item-section avatar>
             <q-icon name="o_library_music" size="22px" />
           </q-item-section>
@@ -47,7 +50,7 @@
         </q-item>
 
         <q-item to="/dictionary-source" clickable v-ripple class="q-mx-md q-mb-1 rounded-borders"
-          active-class="bg-primary text-white">
+          active-class="drawer-active">
           <q-item-section avatar>
             <q-icon name="o_policy" size="22px" />
           </q-item-section>
@@ -65,7 +68,7 @@
 
         <q-item clickable v-ripple class="q-mx-md q-mb-1 rounded-borders" @click="showImportDialog">
           <q-item-section avatar>
-            <q-icon name="add" color="positive" size="22px" />
+            <q-icon name="add" color="accent" size="22px" />
           </q-item-section>
           <q-item-section>
             <q-item-label class="text-weight-medium">{{ t('importSongs') }}</q-item-label>
@@ -117,3 +120,89 @@ function toggleLanguage() {
   localStorage.setItem('app-locale', locale.value)
 }
 </script>
+
+<style lang="scss" scoped>
+.app-header {
+  color: var(--lv-ink);
+  background: rgba(255, 253, 251, 0.88);
+  border-bottom: 1px solid var(--lv-line);
+  backdrop-filter: blur(18px);
+}
+
+.brand-mark {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--lv-paper);
+  font-family: var(--lv-font-serif);
+  font-size: 17px;
+  line-height: 1;
+  background: var(--lv-ink);
+  border: 1px solid rgba(27, 60, 83, 0.18);
+  border-radius: 50%;
+  box-shadow: 0 8px 18px rgba(27, 60, 83, 0.12);
+}
+
+.brand-title {
+  color: var(--lv-ink);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.language-toggle {
+  color: var(--lv-ink-soft);
+}
+
+.app-drawer {
+  color: var(--lv-ink);
+  background:
+    linear-gradient(180deg, rgba(249, 243, 239, 0.98), rgba(249, 248, 246, 0.98)),
+    var(--lv-paper);
+  border-right-color: var(--lv-line);
+}
+
+.drawer-hero {
+  border-bottom: 1px solid var(--lv-line);
+}
+
+.drawer-kicker {
+  color: var(--lv-ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.drawer-title {
+  color: var(--lv-ink);
+  margin-top: 6px;
+  line-height: 1.05;
+}
+
+.drawer-rule {
+  width: 42px;
+  height: 2px;
+  margin-top: 16px;
+  background: linear-gradient(90deg, var(--lv-blue), var(--lv-sand));
+  border-radius: 999px;
+}
+
+:deep(.q-item) {
+  color: var(--lv-ink-soft);
+}
+
+:deep(.drawer-active) {
+  color: var(--lv-paper) !important;
+  background: var(--lv-ink) !important;
+}
+
+:deep(.drawer-active .q-icon) {
+  color: var(--lv-paper) !important;
+}
+
+:deep(.q-item__label--header) {
+  color: var(--lv-muted);
+  letter-spacing: 0.12em;
+}
+</style>

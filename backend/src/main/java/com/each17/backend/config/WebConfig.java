@@ -15,7 +15,7 @@ public class WebConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**") // 允许 /api/ 下的所有路径
                         .allowedOrigins("http://localhost:9000") // 允许来自前端开发服务器的请求
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // 允许所有常用方法
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS") // 允许所有常用方法
                         .allowedHeaders("*") // 允许所有请求头
                         .allowCredentials(true); // 是否允许发送 Cookie
             }

@@ -1,61 +1,263 @@
-// app global css in SCSS form
+// Global visual system based on the "Midnight Sail" palette:
+// #1B3C53 #456882 #D2C1B6 #F9F3EF.
 
-// 覆盖 Quasar 变量 (可选，但推荐)
-$primary: #007AFF; // 强调色
-$dark: #1D1D1F;   // 主文字颜色
+:root {
+  --lv-navy: #1b3c53;
+  --lv-blue: #456882;
+  --lv-sand: #d2c1b6;
+  --lv-shell: #f9f3ef;
+  --lv-ink: var(--lv-navy);
+  --lv-ink-soft: #456882;
+  --lv-paper: var(--lv-shell);
+  --lv-paper-warm: #fffaf7;
+  --lv-surface: rgba(255, 255, 255, 0.86);
+  --lv-surface-solid: #fffdfb;
+  --lv-line: rgba(210, 193, 182, 0.58);
+  --lv-line-strong: var(--lv-sand);
+  --lv-muted: rgba(27, 60, 83, 0.58);
+  --lv-accent: var(--lv-sand);
+  --lv-accent-strong: var(--lv-blue);
+  --lv-accent-soft: rgba(210, 193, 182, 0.24);
+  --lv-success: var(--lv-blue);
+  --lv-danger: var(--lv-navy);
+  --lv-radius-sm: 8px;
+  --lv-radius-md: 14px;
+  --lv-radius-lg: 22px;
+  --lv-shadow-soft: 0 18px 50px rgba(27, 60, 83, 0.08);
+  --lv-font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", "Songti SC", serif;
+  --lv-font-sans: Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
 
-// 全局字体
+html,
+body,
+#q-app {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  color: var(--lv-ink);
+  font-family: var(--lv-font-sans);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(69, 104, 130, 0.10), transparent 30%),
+    radial-gradient(circle at 82% 12%, rgba(210, 193, 182, 0.18), transparent 26%),
+    linear-gradient(135deg, var(--lv-paper) 0%, var(--lv-paper-warm) 100%);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-// 移除默认阴影
-.q-card, .q-toolbar, .q-drawer {
+.q-page-container {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.q-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.window-height {
+  height: 100dvh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.q-card,
+.q-dialog .q-card,
+.modern-card {
+  border: 1px solid var(--lv-line);
+  border-radius: var(--lv-radius-md);
+  background: var(--lv-surface-solid);
+  box-shadow: none;
+}
+
+.q-card--bordered,
+.q-list--bordered,
+.q-table__card {
+  border-color: var(--lv-line);
+}
+
+.q-table thead th {
+  color: var(--lv-ink-soft);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(249, 243, 239, 0.72);
+  border-bottom-color: var(--lv-line);
+}
+
+.q-table tbody td {
+  color: var(--lv-ink);
+  border-bottom-color: rgba(210, 193, 182, 0.34);
+}
+
+.q-table tbody tr:hover td {
+  background: rgba(69, 104, 130, 0.055);
+}
+
+.q-toolbar,
+.q-drawer {
   box-shadow: none !important;
 }
 
-// 统一边框
-.bordered {
-  border: 1px solid #E5E5E5;
+.q-field--outlined .q-field__control::before,
+.q-table__card,
+.q-list--bordered {
+  border-color: var(--lv-line);
 }
 
-// 统一圆角
-.rounded-borders {
-  border-radius: 8px;
+.q-field--outlined.q-field--focused .q-field__control::after {
+  border-color: var(--lv-ink-soft);
 }
 
-// 自定义样式
+.q-field__label,
+.q-field__native,
+.q-field__input {
+  color: var(--lv-ink);
+}
+
+.q-field__label {
+  color: var(--lv-muted);
+}
+
+.q-btn {
+  border-radius: 999px;
+  letter-spacing: 0.01em;
+}
+
+.q-btn:not(.q-btn--dense) {
+  min-height: 38px;
+}
+
+.q-chip {
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.q-banner {
+  border: 1px solid var(--lv-line);
+}
+
+.q-item {
+  border-radius: var(--lv-radius-sm);
+  min-height: 44px;
+}
+
+.q-item.q-router-link--active,
+.q-item--active {
+  color: var(--lv-ink);
+}
+
+.q-pagination .q-btn {
+  color: var(--lv-ink-soft);
+}
+
+.q-pagination .q-btn.bg-primary {
+  color: var(--lv-paper) !important;
+}
+
+.q-separator {
+  background: var(--lv-line);
+}
+
 .text-primary {
-  color: #007AFF;
+  color: var(--lv-ink) !important;
 }
 
 .bg-primary {
-  background: #007AFF;
+  background: var(--lv-ink) !important;
 }
 
 .text-secondary {
-  color: #34C759;
+  color: var(--lv-ink-soft) !important;
 }
 
 .bg-secondary {
-  background: #34C759;
+  background: var(--lv-ink-soft) !important;
 }
 
-// 现代简约风格的卡片
-.modern-card {
-  border-radius: 8px;
-  border: 1px solid #E5E5E5;
-  box-shadow: none;
-  overflow: hidden;
+.text-accent {
+  color: var(--lv-accent-strong) !important;
 }
 
-// 清晰的分隔线
+.bg-accent {
+  background: var(--lv-accent) !important;
+}
+
+.bordered {
+  border: 1px solid var(--lv-line);
+}
+
+.rounded-borders {
+  border-radius: var(--lv-radius-sm);
+}
+
 .clean-divider {
-  border-color: #E5E5E5;
+  border-color: var(--lv-line);
 }
 
-// .full-height {
-//   height: 100% !important;
-// }
+.serif-display {
+  font-family: var(--lv-font-serif);
+  letter-spacing: -0.02em;
+}
+
+.lv-panel {
+  border: 1px solid var(--lv-line);
+  border-radius: var(--lv-radius-lg);
+  background: var(--lv-surface);
+  box-shadow: var(--lv-shadow-soft);
+}
+
+.q-dialog {
+  .q-card {
+    max-height: 92dvh !important;
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 16px;
+    border-radius: var(--lv-radius-md);
+  }
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .q-page {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    font-size: 15px;
+  }
+
+  .q-page {
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+
+  .q-dialog__inner {
+    padding: 8px;
+  }
+
+  .q-dialog .q-card {
+    width: 100vw !important;
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px;
+    border-radius: var(--lv-radius-md);
+  }
+
+  .q-table th,
+  .q-table td {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .q-dialog .q-card {
+    max-height: 88dvh !important;
+  }
+}

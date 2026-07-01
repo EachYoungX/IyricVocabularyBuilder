@@ -21,6 +21,7 @@ export function parseImportFileContent(
   if (lowerName.endsWith('.lrc')) return [parseTimedText(fileName, content, 'LRC', t)];
   if (lowerName.endsWith('.srt')) return [parseTimedText(fileName, content, 'SRT', t)];
   if (lowerName.endsWith('.txt')) return [parsePlainText(fileName, content, t)];
+  if (lowerName.endsWith('.qrc')) throw new Error(t('encryptedQrcUnsupported'));
   throw new Error(t('unsupportedFileFormat'));
 }
 
@@ -150,6 +151,9 @@ function inferTitleArtist(fileName: string, firstLine: string, extension: string
   }
 
   const nameWithoutExt = fileName.replace(new RegExp(`${escapeRegex(extension)}$`, 'i'), '');
+  const qqMusic = inferQqMusicFileName(nameWithoutExt);
+  if (qqMusic) return qqMusic;
+
   if (TITLE_ARTIST_SEPARATOR.test(nameWithoutExt)) {
     const parts = nameWithoutExt.split(TITLE_ARTIST_SEPARATOR);
     return {
@@ -164,6 +168,19 @@ function inferTitleArtist(fileName: string, firstLine: string, extension: string
     artist: 'Unknown Artist',
     fromFirstLine: false,
   };
+}
+
+function inferQqMusicFileName(nameWithoutExt: string) {
+  const parts = nameWithoutExt.split(TITLE_ARTIST_SEPARATOR).map((part) => part.trim()).filter(Boolean);
+  const durationIndex = parts.findIndex((part) => /^\d{2,4}$/.test(part));
+  if (durationIndex >= 2) {
+    return {
+      title: parts[durationIndex - 1] || '',
+      artist: parts.slice(0, durationIndex - 1).join(' - ') || 'Unknown Artist',
+      fromFirstLine: false,
+    };
+  }
+  return null;
 }
 
 function stripLeadingMetadata(lines: string[]) {

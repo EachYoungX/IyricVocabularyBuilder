@@ -1,8 +1,22 @@
 <template>
   <q-page class="window-height column no-wrap overflow-hidden q-pa-sm-md">
+    <div class="page-masthead col-auto q-mb-md">
+      <div>
+        <div class="masthead-kicker">{{ t('englishLearningWorkspace') }}</div>
+        <div class="masthead-title serif-display">{{ t('vocabularyList') }}</div>
+      </div>
+      <div class="masthead-accent" aria-hidden="true"></div>
+    </div>
+
     <!-- 主体内容区域 -->
     <div class="col overflow-hidden">
-      <q-splitter v-model="splitterModel" class="fit desktop-splitter" unit="%" :limits="[20, 80]">
+      <q-splitter
+        v-model="splitterModel"
+        class="fit desktop-splitter vocabulary-splitter"
+        unit="%"
+        :horizontal="$q.screen.lt.md"
+        :limits="[20, 80]"
+      >
         <!-- 左侧单词列表 -->
         <template v-slot:before>
           <div class="column fit no-wrap">
@@ -158,12 +172,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { useVocabularyExplorer } from 'src/composables/useVocabularyExplorer';
 import { VocabularyStatus } from 'src/services/api';
 import { useUserVocabularyStore } from 'src/stores/userVocabularyStore';
 
 const { t } = useI18n();
+const $q = useQuasar();
 const {
   currentPage,
   dictionaryStore,
@@ -237,10 +253,51 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 </script>
 
 <style lang="scss" scoped>
+.page-masthead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.masthead-kicker {
+  color: var(--lv-ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.masthead-title {
+  color: var(--lv-ink);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 700;
+  line-height: 0.95;
+}
+
+.masthead-accent {
+  width: min(28vw, 180px);
+  height: 2px;
+  margin-bottom: 9px;
+  background: linear-gradient(90deg, transparent, var(--lv-sand), var(--lv-blue));
+  border-radius: 999px;
+}
+
 /* 响应式内边距 */
 @media (max-width: 600px) {
   .q-pa-sm-md {
     padding: 8px;
+  }
+
+  .page-masthead {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .masthead-accent {
+    width: 100%;
+    margin-bottom: 0;
   }
 }
 
@@ -253,8 +310,9 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 /* 桌面端：整体边框 + 圆角 + 内部面板分隔 */
 @media (min-width: 768px) {
   .desktop-splitter {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    border: 1px solid var(--lv-line);
+    border-radius: var(--lv-radius-md);
+    background: var(--lv-surface-solid);
     overflow: hidden;
   }
 
@@ -269,20 +327,27 @@ function masteryScoreForStatus(status: VocabularyStatus) {
     z-index: 10;
     background-color: transparent;
     &:hover {
-      background-color: rgba(0, 0, 0, 0.05);
+      background-color: rgba(27, 60, 83, 0.06);
     }
   }
 
   /* 左侧面板右边框 */
   :deep(.q-splitter__panel:first-child) {
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid var(--lv-line);
   }
 }
 
 /* 移动端：水平分割 */
 @media (max-width: 767px) {
+  .desktop-splitter {
+    border: 1px solid var(--lv-line);
+    border-radius: var(--lv-radius-md);
+    background: var(--lv-surface-solid);
+    overflow: hidden;
+  }
+
   :deep(.q-splitter__separator) {
-    background-color: #e0e0e0;
+    background-color: var(--lv-line);
     height: 8px;
     &::before {
       content: '';
@@ -292,7 +357,7 @@ function masteryScoreForStatus(status: VocabularyStatus) {
       transform: translate(-50%, -50%);
       height: 4px;
       width: 40px;
-      background-color: #bdbdbd;
+      background-color: var(--lv-line-strong);
       border-radius: 2px;
       opacity: 0.7;
     }
@@ -303,9 +368,29 @@ function masteryScoreForStatus(status: VocabularyStatus) {
   }
 }
 
+@media (max-width: 1023px) and (orientation: portrait) {
+  .vocabulary-splitter {
+    min-height: 0;
+  }
+
+  :deep(.vocabulary-splitter > .q-splitter__panel:first-child) {
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 1023px) and (orientation: landscape) {
+  .page-masthead {
+    margin-bottom: 8px;
+  }
+
+  .masthead-title {
+    font-size: 28px;
+  }
+}
+
 /* 保持你原来的 q-list 圆角 */
 .q-list {
-  border-radius: 8px;
+  border-radius: var(--lv-radius-sm);
   overflow: hidden;
 }
 
@@ -318,9 +403,9 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 
 .pagination-container {
   flex-shrink: 0; /* 防止分页被压缩 */
-  border-top: 1px solid rgba(0, 0, 0, 0.12); /* 添加分隔线 */
+  border-top: 1px solid var(--lv-line); /* 添加分隔线 */
   padding-top: 16px;
-  background-color: white; /* 确保背景色一致 */
+  background-color: var(--lv-surface-solid); /* 确保背景色一致 */
 }
 
 /* 确保分割器面板正确填充 */
