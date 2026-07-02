@@ -1,6 +1,11 @@
 import type { ExtendedSongImportRequest, LyricImportSummary } from 'src/types/songImport';
 
 type Translate = (key: string, params?: Record<string, unknown>) => string;
+type LyricsProcessingSettings = {
+  roleLabelHandling?: 'AUTO_HIDE' | 'AUTO_DELETE' | 'KEEP_VISIBLE' | 'CONFIRM_EACH_IMPORT';
+  repeatedChorusHandling?: 'KEEP_ALL' | 'WEAKEN_OR_FOLD' | 'DEDUP_LEARNING_STATS';
+  fillerWordHandling?: 'NOT_RECOMMENDED' | 'NORMAL' | 'EXCLUDE_STATS';
+};
 
 const SECTION_LABEL = /^\s*\[(?:verse|chorus|bridge|intro|outro|pre-chorus|hook|refrain|post-chorus|interlude|solo|spoken)(?:\s+\d+)?\]\s*$/i;
 const SPEAKER_LABEL = /^[A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3}:\s*$/;
@@ -15,12 +20,13 @@ export function parseImportFileContent(
   fileName: string,
   content: string,
   t: Translate,
+  settings: LyricsProcessingSettings = {},
 ): ExtendedSongImportRequest[] {
   const lowerName = fileName.toLowerCase();
-  if (lowerName.endsWith('.json')) return parseJson(content, t);
-  if (lowerName.endsWith('.lrc')) return [parseTimedText(fileName, content, 'LRC', t)];
-  if (lowerName.endsWith('.srt')) return [parseTimedText(fileName, content, 'SRT', t)];
-  if (lowerName.endsWith('.txt')) return [parsePlainText(fileName, content, t)];
+  if (lowerName.endsWith('.json')) return parseJson(content, t).map((song) => applyLyricsProcessing(song, settings));
+  if (lowerName.endsWith('.lrc')) return [applyLyricsProcessing(parseTimedText(fileName, content, 'LRC', t), settings)];
+  if (lowerName.endsWith('.srt')) return [applyLyricsProcessing(parseTimedText(fileName, content, 'SRT', t), settings)];
+  if (lowerName.endsWith('.txt')) return [applyLyricsProcessing(parsePlainText(fileName, content, t), settings)];
   if (lowerName.endsWith('.qrc')) throw new Error(t('encryptedQrcUnsupported'));
   throw new Error(t('unsupportedFileFormat'));
 }
@@ -238,6 +244,58 @@ function isMetadataLine(line: string): boolean {
 
 function normalizeLine(line: string) {
   return line.replace(LRC_TIMESTAMP, '').replace(/\s+/g, ' ').trim();
+}
+
+function applyLyricsProcessing(song: ExtendedSongImportRequest, settings: LyricsProcessingSettings) {
+  const processedLines = processLyricLines(song.lyrics, settings);
+  const lyrics = processedLines.join('\n');
+  return {
+    ...song,
+    lyrics,
+    importSummary: buildImportSummary(lyrics),
+  };
+}
+
+function processLyricLines(lyrics: string, settings: LyricsProcessingSettings) {
+  let lines = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+  if (settings.roleLabelHandling === 'AUTO_DELETE') {
+    lines = lines.filter((line) => {
+      const normalized = normalizeLine(line);
+      return !normalized
+        || (!SECTION_LABEL.test(normalized)
+          && !SPEAKER_LABEL.test(normalized)
+          && !PERFORMANCE_NOTE.test(normalized)
+          && !META_INFO.test(normalized));
+    });
+  }
+
+  if (settings.fillerWordHandling === 'EXCLUDE_STATS') {
+    lines = lines.filter((line) => !isFillerOnlyLine(normalizeLine(line)));
+  }
+
+  if (settings.repeatedChorusHandling === 'DEDUP_LEARNING_STATS') {
+    lines = dedupeRepeatedLyricLines(lines);
+  }
+
+  return trimTrailingEmptyLines(lines);
+}
+
+function dedupeRepeatedLyricLines(lines: string[]) {
+  const seen = new Set<string>();
+  return lines.filter((line) => {
+    const normalized = normalizeLine(line).toLowerCase();
+    if (!normalized || SECTION_LABEL.test(normalized)) return true;
+    if (seen.has(normalized)) return false;
+    seen.add(normalized);
+    return true;
+  });
+}
+
+function isFillerOnlyLine(line: string) {
+  if (!line) return false;
+  const fillerPattern = /^(?:oh+|ah+|uh+|um+|mm+|hmm+|na|la|da|yeah|yep|hey|woo+|ooh+|whoa|ha|haha|啦|啊|呀|喔|哦|嗯|呐|哒|哈)[\s,.'’!?-]*$/i;
+  return fillerPattern.test(line);
 }
 
 function trimTrailingEmptyLines(lines: string[]) {

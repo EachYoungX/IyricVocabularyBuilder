@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { VocabularyService, type WordOccurrence } from 'src/services/api';
 import { useDictionaryStore } from './dictionaryStore';
+import { loadAppSettings } from 'src/utils/appSettings';
 
 export const useVocabularyStore = defineStore('vocabulary', () => {
   // State
@@ -34,7 +35,16 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
     isLoading.value = true;
     try {
       const { page, size, prefix } = params;
-      const wordPage = await VocabularyService.getWordList(prefix, page, size);
+      const settings = loadAppSettings();
+      const recommendedOnly = settings.lowValueWordHandling !== 'NORMAL';
+      const wordPage = await VocabularyService.getWordList(
+        prefix,
+        page,
+        size,
+        recommendedOnly,
+        settings.lemmaSearch,
+        settings.phraseDetection,
+      );
       if (page === 0) {
         words.value = wordPage.content ?? [];
       } else {

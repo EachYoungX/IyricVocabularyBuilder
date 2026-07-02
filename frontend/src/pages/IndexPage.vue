@@ -89,14 +89,23 @@
                     <div v-if="vocabularyStore.getIsLoading" class="text-center">
                       <q-spinner color="primary" size="3em" />
                     </div>
-                    <q-list v-else bordered separator class="occurrence-list">
+                    <q-list v-if="showLyricContext && !vocabularyStore.getIsLoading" bordered separator class="occurrence-list">
                       <q-item v-for="(occurrence, index) in vocabularyStore.getWordOccurrences" :key="index">
                         <q-item-section top>
-                          <q-item-label caption>{{ occurrence.songTitle }}</q-item-label>
+                          <q-item-label caption>
+                            {{ occurrence.songTitle }}
+                            <q-chip v-if="showLowValueMarker(occurrence.learningScore)" dense size="sm" color="amber-2"
+                              text-color="brown-8" class="q-ml-xs">
+                              {{ t('lowValueWordMarker') }}
+                            </q-chip>
+                          </q-item-label>
                           <q-item-label>{{ occurrence.lyricLine }}</q-item-label>
                         </q-item-section>
                       </q-item>
                     </q-list>
+                    <div v-else-if="!vocabularyStore.getIsLoading" class="text-center text-grey">
+                      {{ t('lyricContextHiddenBySettings') }}
+                    </div>
                   </div>
                 </div>
               </template>
@@ -112,18 +121,18 @@
                     </div>
                     <div v-else-if="dictionaryStore.getDictionaryEntry" class="dictionary-entry">
                       <div class="text-h5 dictionary-word">{{ dictionaryStore.getDictionaryEntry.word }}</div>
-                      <div v-if="dictionaryStore.getDictionaryEntry.phonetic" class="text-subtitle1 text-grey">
+                      <div v-if="showPhoneticAndPos && dictionaryStore.getDictionaryEntry.phonetic" class="text-subtitle1 text-grey">
                         {{ dictionaryStore.getDictionaryEntry.phonetic }}
                       </div>
-                      <div class="q-mt-sm">
+                      <div v-if="showPhoneticAndPos" class="q-mt-sm">
                         <q-chip v-if="dictionaryStore.getDictionaryEntry.pos" dense>
                           {{ dictionaryStore.getDictionaryEntry.pos }}
                         </q-chip>
                       </div>
-                      <div class="q-mt-sm">
+                      <div v-if="showEnglishDefinition" class="q-mt-sm">
                         <div class="text-body1">{{ dictionaryStore.getDictionaryEntry.definition }}</div>
                       </div>
-                      <div v-if="dictionaryStore.getDictionaryEntry.translation" class="q-mt-sm text-body2 text-grey">
+                      <div v-if="showChineseDefinition && dictionaryStore.getDictionaryEntry.translation" class="q-mt-sm text-body2 text-grey">
                         {{ dictionaryStore.getDictionaryEntry.translation }}
                       </div>
                       <q-separator class="q-my-md" />
@@ -175,8 +184,9 @@ import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { useVocabularyExplorer } from 'src/composables/useVocabularyExplorer';
-import { VocabularyStatus } from 'src/services/api';
+import { VocabularyStatus, type WordOccurrence } from 'src/services/api';
 import { useUserVocabularyStore } from 'src/stores/userVocabularyStore';
+import { loadAppSettings, type AppSettings } from 'src/utils/appSettings';
 
 const { t } = useI18n();
 const $q = useQuasar();
@@ -194,6 +204,7 @@ const userVocabularyStore = useUserVocabularyStore();
 const splitterModel = ref<number>(30);
 const horizontalSplitter = ref<number>(50);
 const personalActionLoading = ref(false);
+const appSettings = ref<AppSettings>(loadAppSettings());
 const paginationMaxPages = computed(() => {
   if ($q.screen.lt.sm) return 3;
   if ($q.screen.lt.md || splitterModel.value < 28) return 4;
@@ -204,17 +215,34 @@ const learningStatuses = [
   VocabularyStatus.LEARNING,
   VocabularyStatus.FAMILIAR,
   VocabularyStatus.MASTERED,
+  VocabularyStatus.BOOKMARK_ONLY,
   VocabularyStatus.IGNORED,
 ];
 
 const selectedUserWord = computed(() => userVocabularyStore.findByLemma(vocabularyStore.getSelectedWord));
+const showLyricContext = computed(() => appSettings.value.dictionaryDisplay.includes('LYRIC_CONTEXT'));
+const showPhoneticAndPos = computed(() => appSettings.value.dictionaryDisplay.includes('PHONETIC_POS'));
+const showEnglishDefinition = computed(() =>
+  appSettings.value.dictionaryDisplay.some((item) => item === 'BRIEF' || item === 'FULL')
+  && (appSettings.value.definitionLanguage === 'EN' || appSettings.value.definitionLanguage === 'BILINGUAL'),
+);
+const showChineseDefinition = computed(() =>
+  appSettings.value.definitionLanguage === 'ZH' || appSettings.value.definitionLanguage === 'BILINGUAL',
+);
 
 onMounted(() => {
+  appSettings.value = loadAppSettings();
   void userVocabularyStore.fetchDashboard();
 });
 
 function formatVocabularyStatus(status: VocabularyStatus | undefined) {
   return status ? t(`vocabularyStatuses.${status}`) : t('unknown');
+}
+
+function showLowValueMarker(score: WordOccurrence['learningScore']) {
+  return appSettings.value.lowValueWordHandling === 'QUERY_ONLY'
+    && typeof score === 'number'
+    && score < 0.5;
 }
 
 async function addSelectedWord() {
@@ -251,6 +279,8 @@ function masteryScoreForStatus(status: VocabularyStatus) {
       return 0.7;
     case VocabularyStatus.MASTERED:
       return 1;
+    case VocabularyStatus.BOOKMARK_ONLY:
+      return 0;
     case VocabularyStatus.IGNORED:
       return 0;
   }

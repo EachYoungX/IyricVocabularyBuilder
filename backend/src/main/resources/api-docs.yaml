@@ -63,6 +63,24 @@ paths:
             maximum: 200
             default: 50
           description: 每页条数 / Page size
+        - name: recommendedOnly
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: 是否只返回推荐学习词 / Whether to return recommended words only
+        - name: lemmaSearch
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: 是否使用词形归一搜索 / Whether to use lemmatized search
+        - name: includePhrases
+          in: query
+          schema:
+            type: boolean
+            default: true
+          description: 是否包含短语词条 / Whether to include phrase entries
       responses:
         '200':
           description: 分页单词列表
@@ -192,6 +210,13 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/UserVocabulary'
+    delete:
+      tags: [UserVocabulary]
+      summary: 清空个人词库 / Clear personal vocabulary
+      operationId: clearUserVocabularyWords
+      responses:
+        '204':
+          description: 清空成功 / Personal vocabulary cleared
 
   /api/user-vocabulary/{id}:
     patch:
@@ -774,7 +799,7 @@ components:
 
     VocabularyStatus:
       type: string
-      enum: [NEW, LEARNING, FAMILIAR, MASTERED, IGNORED]
+      enum: [NEW, LEARNING, FAMILIAR, MASTERED, BOOKMARK_ONLY, IGNORED]
 
     UserVocabularyRequest:
       type: object

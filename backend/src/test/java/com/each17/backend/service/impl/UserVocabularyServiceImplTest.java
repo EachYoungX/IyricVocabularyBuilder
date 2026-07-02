@@ -17,6 +17,8 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,11 +38,17 @@ class UserVocabularyServiceImplTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         when(tokenizationService.normalize(anyString())).thenAnswer(invocation -> invocation.getArgument(0, String.class).toLowerCase());
+        EnglishLemmaService lemmaService = new EnglishLemmaService();
+        when(tokenizationService.normalizeToLemmaPhrase(anyString())).thenAnswer(invocation ->
+                Arrays.stream(invocation.getArgument(0, String.class).toLowerCase().split("\\s+"))
+                        .map(lemmaService::lemma)
+                        .collect(Collectors.joining(" "))
+        );
         userVocabularyService = new UserVocabularyServiceImpl(
                 userVocabularyRepository,
                 vocabularyRepository,
                 tokenizationService,
-                new EnglishLemmaService(),
+                lemmaService,
                 new ObjectMapper()
         );
     }
@@ -63,6 +71,22 @@ class UserVocabularyServiceImplTest {
         assertEquals(VocabularyStatus.NEW, result.getStatus());
         assertEquals(0.0, result.getMasteryScore());
         assertEquals("appears in chorus", result.getNote());
+    }
+
+    @Test
+    void addWordCreatesPhraseVocabulary() {
+        when(userVocabularyRepository.findByUserIdAndLemma("local", "silver lining")).thenReturn(Optional.empty());
+        when(userVocabularyRepository.save(any(UserVocabulary.class))).thenAnswer(invocation -> {
+            UserVocabulary saved = invocation.getArgument(0);
+            saved.setId(2L);
+            return saved;
+        });
+
+        var result = userVocabularyService.addWord(UserVocabularyRequestDto.builder()
+                .lemma("Silver Linings")
+                .build());
+
+        assertEquals("silver lining", result.getLemma());
     }
 
     @Test
@@ -93,17 +117,25 @@ class UserVocabularyServiceImplTest {
     }
 
     @Test
-    void reviewQueueSkipsMasteredAndIgnoredWords() {
+    void reviewQueueSkipsMasteredBookmarkOnlyAndIgnoredWords() {
         when(userVocabularyRepository.findByUserIdOrderByLastSeenAtDesc("local")).thenReturn(List.of(
                 item(1L, "run", VocabularyStatus.NEW, "2026-01-01T00:00:00"),
                 item(2L, "sing", VocabularyStatus.MASTERED, "2026-01-01T00:00:00"),
-                item(3L, "hide", VocabularyStatus.IGNORED, "2026-01-01T00:00:00")
+                item(3L, "keep", VocabularyStatus.BOOKMARK_ONLY, "2026-01-01T00:00:00"),
+                item(4L, "hide", VocabularyStatus.IGNORED, "2026-01-01T00:00:00")
         ));
 
         var result = userVocabularyService.getReviewQueue(10);
 
         assertEquals(1, result.size());
         assertEquals("run", result.getFirst().getLemma());
+    }
+
+    @Test
+    void clearAllWordsDeletesLocalVocabulary() {
+        userVocabularyService.clearAllWords();
+
+        verify(userVocabularyRepository).deleteByUserId("local");
     }
 
     private UserVocabulary item(Long id, String lemma, VocabularyStatus status, String reviewDueAt) {

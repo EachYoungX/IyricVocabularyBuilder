@@ -10,7 +10,13 @@ import org.springframework.stereotype.Repository;
 public interface VocabularyRepository extends JpaRepository<Vocabulary, String> {
     // 查询以某个前缀开头的单词，并支持分页，按单词字母顺序排序
     Page<Vocabulary> findByRecommendedTrueAndWordStartingWithOrderByWordAsc(String prefix, Pageable pageable);
+    Page<Vocabulary> findByRecommendedTrueAndWordStartingWithAndWordNotContainingOrderByWordAsc(String prefix, String excluded, Pageable pageable);
+    Page<Vocabulary> findByWordStartingWithOrderByWordAsc(String prefix, Pageable pageable);
+    Page<Vocabulary> findByWordStartingWithAndWordNotContainingOrderByWordAsc(String prefix, String excluded, Pageable pageable);
     
     // 查询所有单词，按单词字母顺序排序
     Page<Vocabulary> findByRecommendedTrueOrderByWordAsc(Pageable pageable);
+    Page<Vocabulary> findByRecommendedTrueAndWordNotContainingOrderByWordAsc(String excluded, Pageable pageable);
+    Page<Vocabulary> findAllByOrderByWordAsc(Pageable pageable);
+    Page<Vocabulary> findByWordNotContainingOrderByWordAsc(String excluded, Pageable pageable);
 }

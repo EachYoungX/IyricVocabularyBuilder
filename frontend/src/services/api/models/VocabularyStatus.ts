@@ -7,5 +7,6 @@ export enum VocabularyStatus {
     LEARNING = 'LEARNING',
     FAMILIAR = 'FAMILIAR',
     MASTERED = 'MASTERED',
+    BOOKMARK_ONLY = 'BOOKMARK_ONLY',
     IGNORED = 'IGNORED',
 }

@@ -176,19 +176,38 @@
             <div class="row q-col-gutter-md q-mt-md">
               <div class="col-12 col-md-4">
                 <div class="settings-subhead">{{ t('settingsPage.exportData') }}</div>
-                <q-btn v-for="action in exportActions" :key="action" outline no-caps class="settings-action"
-                  :label="t(`settingsPage.${action}`)" @click="notifyPlanned" />
+                <q-btn outline no-caps class="settings-action" :loading="exporting"
+                  :label="t('settingsPage.exportVocabulary')" @click="exportVocabularyCsv" />
+                <q-btn outline no-caps class="settings-action" :loading="exporting"
+                  :label="t('settingsPage.exportAnki')" @click="exportVocabularyAnkiTsv" />
+                <q-btn outline no-caps class="settings-action" :loading="exporting"
+                  :label="t('settingsPage.exportLearningRecords')" @click="exportLearningRecordsJson" />
+                <q-btn outline no-caps class="settings-action" :loading="exporting"
+                  :label="t('settingsPage.exportCompleteBackup')" @click="exportCompleteBackupJson" />
               </div>
               <div class="col-12 col-md-4">
                 <div class="settings-subhead">{{ t('settingsPage.importData') }}</div>
-                <q-btn v-for="action in importActions" :key="action" outline no-caps class="settings-action"
-                  :label="t(`settingsPage.${action}`)" @click="notifyPlanned" />
+                <q-file v-model="backupFile" outlined dense accept=".json,application/json"
+                  :label="t('settingsPage.chooseBackupFile')" class="q-mb-sm" />
+                <q-file v-model="vocabularyImportFile" outlined dense accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain"
+                  :label="t('settingsPage.chooseVocabularyFile')" class="q-mb-sm" />
+                <q-banner v-if="backupPreview" rounded class="settings-note q-mb-sm">
+                  {{ backupPreview }}
+                </q-banner>
+                <q-btn outline no-caps class="settings-action" :disable="!backupFile || importing"
+                  :label="t('settingsPage.previewImport')" @click="previewBackupImport" />
+                <q-btn outline no-caps class="settings-action" :disable="!backupFile" :loading="importing"
+                  :label="t('settingsPage.mergeImport')" @click="importBackup('merge')" />
+                <q-btn outline no-caps class="settings-action" :disable="!backupFile" :loading="importing"
+                  :label="t('settingsPage.overwriteImport')" @click="confirmOverwriteSettings" />
+                <q-btn outline no-caps class="settings-action" :disable="!vocabularyImportFile" :loading="importing"
+                  :label="t('settingsPage.importVocabularyFile')" @click="importVocabularyFile" />
               </div>
               <div class="col-12 col-md-4">
                 <div class="settings-subhead">{{ t('settingsPage.clearData') }}</div>
                 <q-btn v-for="action in clearActions" :key="action.key" outline no-caps color="negative"
                   class="settings-action" :label="t(`settingsPage.${action.key}`)"
-                  @click="confirmDanger(action.messageKey)" />
+                  @click="confirmDanger(action.messageKey, action.action)" />
               </div>
             </div>
           </q-card-section>
@@ -247,18 +266,40 @@ import { useQuasar } from 'quasar';
 import SettingsSectionHeading from 'components/SettingsSectionHeading.vue';
 import {
   DictionaryService,
+  ImportTaskResult,
   SongsService,
   UserVocabularyService,
   type DictionarySource,
+  type SongImportRequest,
+  type UserVocabulary,
   type UserVocabularyStats,
+  type VocabularyStatus,
 } from 'src/services/api';
-import { loadAppSettings, saveAppSettings, type AppSettings } from 'src/utils/appSettings';
+import {
+  APP_SETTINGS_STORAGE_KEY,
+  loadAppSettings,
+  normalizeAppSettings,
+  saveAppSettings,
+  type AppSettings,
+} from 'src/utils/appSettings';
 import {
   applyMotionPreference,
   getStoredMotionPreference,
+  MOTION_STORAGE_KEY,
   setMotionPreference,
   type MotionPreference,
 } from 'src/utils/motionPreference';
+import {
+  backupSongs,
+  backupVocabulary,
+  downloadTextFile,
+  parseVocabularyText,
+  timestampForFilename,
+  vocabularyToAnkiTsv,
+  vocabularyToCsv,
+  type BackupPayload,
+  type BackupVocabularyItem,
+} from 'src/utils/settingsDataTransfer';
 
 type Option<T extends string | boolean = string> = {
   label: string;
@@ -274,6 +315,11 @@ const dictionaryLoading = ref(false);
 const dictionarySource = ref<DictionarySource | null>(null);
 const songCount = ref<number | null>(null);
 const vocabularyStats = ref<UserVocabularyStats | null>(null);
+const backupFile = ref<File | null>(null);
+const vocabularyImportFile = ref<File | null>(null);
+const backupPreview = ref('');
+const exporting = ref(false);
+const importing = ref(false);
 
 const option = <T extends string | boolean>(key: string, value: T): Option<T> => ({
   label: t(`settingsPage.${key}`),
@@ -336,14 +382,12 @@ const dictionaryDisplayOptions = computed(() => [
 
 const importExportFormats = ['CSV', 'JSON', 'Anki', t('settingsPage.backupPackage')];
 const exportScopes = ['exportPersonalVocabulary', 'exportVocabularyWithStatus', 'exportFullBackup'];
-const exportActions = ['exportVocabulary', 'exportLearningRecords', 'exportCompleteBackup'];
-const importActions = ['mergeImport', 'overwriteImport', 'previewImport'];
 const clearActions = [
-  { key: 'clearSearchHistory', messageKey: 'clearSearchHistoryImpact' },
-  { key: 'clearLocalCache', messageKey: 'clearLocalCacheImpact' },
-  { key: 'deleteAllSongs', messageKey: 'deleteAllSongsImpact' },
-  { key: 'deleteLearningRecords', messageKey: 'deleteLearningRecordsImpact' },
-  { key: 'deleteAccountData', messageKey: 'deleteAccountDataImpact' },
+  { key: 'clearSearchHistory', messageKey: 'clearSearchHistoryImpact', action: clearSearchHistory },
+  { key: 'clearLocalCache', messageKey: 'clearLocalCacheImpact', action: clearLocalCache },
+  { key: 'deleteAllSongs', messageKey: 'deleteAllSongsImpact', action: deleteAllSongs },
+  { key: 'deleteLearningRecords', messageKey: 'deleteLearningRecordsImpact', action: deleteLearningRecords },
+  { key: 'deleteAccountData', messageKey: 'deleteAccountDataImpact', action: deleteAccountAndAllData },
 ];
 const privacyItems = [
   'lyricsUserImported',
@@ -377,17 +421,326 @@ function persistMotion(value: MotionPreference) {
   $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.settingsSaved') });
 }
 
-function notifyPlanned() {
-  $q.notify({ type: 'info', position: 'top-right', message: t('settingsPage.plannedFeature') });
+function buildBackupPayload(
+  songs: Awaited<ReturnType<typeof SongsService.getAllSongs>>,
+  vocabulary: Awaited<ReturnType<typeof UserVocabularyService.listUserVocabularyWords>>,
+  stats: UserVocabularyStats | null,
+) {
+  return {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    app: {
+      name: 'Lyric Vocabulary Builder',
+      version: '0.0.1',
+    },
+    settings: settings.value,
+    motionPreference: motionPreference.value,
+    dictionarySource: dictionarySource.value,
+    stats,
+    songs,
+    vocabulary,
+  };
 }
 
-function confirmDanger(messageKey: string) {
+async function exportVocabularyCsv() {
+  exporting.value = true;
+  try {
+    const words = await UserVocabularyService.listUserVocabularyWords();
+    downloadTextFile(
+      `lyric-vocabulary-${timestampForFilename()}.csv`,
+      vocabularyToCsv(words),
+      'text/csv;charset=utf-8',
+    );
+    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.exportSuccess') });
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.exportFailed') });
+  } finally {
+    exporting.value = false;
+  }
+}
+
+async function exportVocabularyAnkiTsv() {
+  exporting.value = true;
+  try {
+    const words = await UserVocabularyService.listUserVocabularyWords();
+    downloadTextFile(
+      `lyric-vocabulary-anki-${timestampForFilename()}.tsv`,
+      await vocabularyToAnkiTsv(words),
+      'text/tab-separated-values;charset=utf-8',
+    );
+    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.exportSuccess') });
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.exportFailed') });
+  } finally {
+    exporting.value = false;
+  }
+}
+
+async function exportLearningRecordsJson() {
+  exporting.value = true;
+  try {
+    const [vocabulary, stats] = await Promise.all([
+      UserVocabularyService.listUserVocabularyWords(),
+      UserVocabularyService.getUserVocabularyStats().catch(() => null),
+    ]);
+    downloadTextFile(
+      `lyric-learning-records-${timestampForFilename()}.json`,
+      JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), stats, vocabulary }, null, 2),
+      'application/json;charset=utf-8',
+    );
+    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.exportSuccess') });
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.exportFailed') });
+  } finally {
+    exporting.value = false;
+  }
+}
+
+async function exportCompleteBackupJson() {
+  exporting.value = true;
+  try {
+    const [songs, vocabulary, stats] = await Promise.all([
+      SongsService.getAllSongs(),
+      UserVocabularyService.listUserVocabularyWords(),
+      UserVocabularyService.getUserVocabularyStats().catch(() => null),
+    ]);
+    downloadTextFile(
+      `lyric-vocabulary-backup-${timestampForFilename()}.json`,
+      JSON.stringify(buildBackupPayload(songs, vocabulary, stats), null, 2),
+      'application/json;charset=utf-8',
+    );
+    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.exportSuccess') });
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.exportFailed') });
+  } finally {
+    exporting.value = false;
+  }
+}
+
+async function readBackupFile() {
+  if (!backupFile.value) return null;
+  try {
+    const parsed: unknown = JSON.parse(await backupFile.value.text());
+    if (typeof parsed !== 'object' || parsed === null) throw new Error('Invalid backup');
+    return parsed as BackupPayload;
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.importPreviewFailed') });
+    return null;
+  }
+}
+
+async function previewBackupImport() {
+  const backup = await readBackupFile();
+  if (!backup) return;
+  backupPreview.value = t('settingsPage.importPreviewSummary', {
+    exportedAt: backup.exportedAt ?? t('unknown'),
+    songs: backup.songs?.length ?? 0,
+    vocabulary: backup.vocabulary?.length ?? 0,
+    hasSettings: backup.settings ? t('yes') : t('no'),
+  });
+}
+
+function applyImportedPreferences(backup: BackupPayload, replace = false) {
+  const importedSettings = normalizeAppSettings(backup.settings);
+  if (!importedSettings && !backup.motionPreference) {
+    return false;
+  }
+
+  if (importedSettings) {
+    settings.value = replace ? importedSettings : { ...settings.value, ...importedSettings };
+    saveAppSettings(settings.value);
+  }
+
+  if (backup.motionPreference === 'on' || backup.motionPreference === 'off') {
+    motionPreference.value = setMotionPreference(backup.motionPreference);
+  }
+
+  return true;
+}
+
+async function importBackup(mode: 'merge' | 'overwrite') {
+  const backup = await readBackupFile();
+  if (!backup) return;
+  importing.value = true;
+  try {
+    if (mode === 'overwrite') {
+      await deleteAllSongsData();
+      await UserVocabularyService.clearUserVocabularyWords();
+    }
+
+    const preferencesApplied = applyImportedPreferences(backup, mode === 'overwrite');
+    const songResult = await importSongsFromBackup(backupSongs(backup));
+    const vocabularyCount = await importVocabularyFromBackup(backupVocabulary(backup));
+    resetStatsAfterDataChange();
+
+    $q.notify({
+      type: songResult.failedCount > 0 ? 'warning' : 'positive',
+      position: 'top-right',
+      message: t('settingsPage.importBackupSuccess', {
+        songs: songResult.successCount,
+        failedSongs: songResult.failedCount,
+        vocabulary: vocabularyCount,
+        settings: preferencesApplied ? t('yes') : t('no'),
+      }),
+    });
+  } catch (error) {
+    console.error('Failed to import backup:', error);
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.importBackupFailed') });
+  } finally {
+    importing.value = false;
+  }
+}
+
+async function confirmOverwriteSettings() {
+  const backup = await readBackupFile();
+  if (!backup) return;
+  $q.dialog({
+    title: t('settingsPage.highRiskConfirmTitle'),
+    message: t('settingsPage.overwriteSettingsImpact'),
+    cancel: true,
+    persistent: true,
+  }).onOk(() => {
+    void importBackup('overwrite');
+  });
+}
+
+async function importSongsFromBackup(songs: SongImportRequest[]) {
+  if (songs.length === 0) return { successCount: 0, failedCount: 0 };
+  const task = await SongsService.importSongsAsync(songs);
+  for (let index = 0; index < 30; index += 1) {
+    const result = await SongsService.getImportTaskResult(task.taskId);
+    if (result.status === ImportTaskResult.status.COMPLETED || result.status === ImportTaskResult.status.FAILED) {
+      return {
+        successCount: result.successCount,
+        failedCount: result.failedCount,
+      };
+    }
+    await delay(500);
+  }
+  return { successCount: 0, failedCount: songs.length };
+}
+
+async function importVocabularyFromBackup(vocabulary: BackupVocabularyItem[]) {
+  let imported = 0;
+  for (const word of vocabulary) {
+    const request: { lemma: string; note?: string | null } = { lemma: word.lemma };
+    if (word.note !== undefined) request.note = word.note;
+    const saved = await UserVocabularyService.addUserVocabularyWord(request);
+    await restoreVocabularyState(saved, word);
+    imported += 1;
+  }
+  return imported;
+}
+
+async function importVocabularyFile() {
+  if (!vocabularyImportFile.value) return;
+  importing.value = true;
+  try {
+    const vocabulary = parseVocabularyText(
+      await vocabularyImportFile.value.text(),
+      vocabularyImportFile.value.name,
+    );
+    const imported = await importVocabularyFromBackup(vocabulary);
+    resetStatsAfterDataChange();
+    $q.notify({
+      type: 'positive',
+      position: 'top-right',
+      message: t('settingsPage.importVocabularySuccess', { count: imported }),
+    });
+    vocabularyImportFile.value = null;
+  } catch (error) {
+    console.error('Failed to import vocabulary file:', error);
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.importVocabularyFailed') });
+  } finally {
+    importing.value = false;
+  }
+}
+
+async function restoreVocabularyState(saved: UserVocabulary, item: BackupVocabularyItem) {
+  if (!item.status && item.masteryScore === undefined && item.note === undefined) return;
+  const request: { status?: VocabularyStatus; masteryScore?: number; note?: string | null } = {};
+  if (item.status) request.status = item.status;
+  if (item.masteryScore !== undefined) request.masteryScore = item.masteryScore;
+  if (item.note !== undefined) request.note = item.note;
+  await UserVocabularyService.updateUserVocabularyWord(saved.id, request);
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function resetStatsAfterDataChange() {
+  void loadSettingsData();
+}
+
+function clearSearchHistory() {
+  window.localStorage.removeItem('lv-search-history');
+  window.sessionStorage.removeItem('lv-search-history');
+  $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
+}
+
+function clearLocalCache() {
+  window.sessionStorage.clear();
+  $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
+}
+
+async function deleteAllSongs() {
+  try {
+    await deleteAllSongsData();
+    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
+    resetStatsAfterDataChange();
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.clearFailed') });
+  }
+}
+
+async function deleteAllSongsData() {
+  const songs = await SongsService.getAllSongs();
+  if (songs.length > 0) {
+    await SongsService.deleteSongsBatch(songs.map((song) => song.id));
+  }
+}
+
+async function deleteLearningRecords() {
+  try {
+    await deleteLearningRecordsData();
+    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
+    resetStatsAfterDataChange();
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.clearFailed') });
+  }
+}
+
+async function deleteLearningRecordsData() {
+  await UserVocabularyService.clearUserVocabularyWords();
+}
+
+async function deleteAccountAndAllData() {
+  try {
+    await deleteAllSongsData();
+    await deleteLearningRecordsData();
+    window.localStorage.removeItem(APP_SETTINGS_STORAGE_KEY);
+    window.localStorage.removeItem(MOTION_STORAGE_KEY);
+    window.localStorage.removeItem('app-locale');
+    window.sessionStorage.clear();
+    settings.value = loadAppSettings();
+    motionPreference.value = applyMotionPreference();
+    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
+    resetStatsAfterDataChange();
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.clearFailed') });
+  }
+}
+
+function confirmDanger(messageKey: string, action: () => void | Promise<void>) {
   $q.dialog({
     title: t('settingsPage.highRiskConfirmTitle'),
     message: `${t(`settingsPage.${messageKey}`)}\n\n${t('settingsPage.highRiskConfirmFootnote')}`,
     cancel: true,
     persistent: true,
-  }).onOk(() => notifyPlanned());
+  }).onOk(() => {
+    void action();
+  });
 }
 
 function estimateLocalStorageSize() {

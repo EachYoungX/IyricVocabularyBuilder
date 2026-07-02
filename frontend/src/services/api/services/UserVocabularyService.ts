@@ -49,6 +49,17 @@ export class UserVocabularyService {
         });
     }
     /**
+     * 清空个人词库 / Clear personal vocabulary
+     * @returns void
+     * @throws ApiError
+     */
+    public static clearUserVocabularyWords(): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/user-vocabulary',
+        });
+    }
+    /**
      * 更新个人词条 / Update a personal vocabulary item
      * @param id
      * @param requestBody

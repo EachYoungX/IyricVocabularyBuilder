@@ -22,10 +22,13 @@ This file records only completed and verified refactoring stages. Internal plans
 - 简化 README Mermaid 图语法，避免 GitHub 无法渲染 rich display。
 - 新增统一页面与元素浮现动效，并预留 `setMotionPreference` / `toggleMotionPreference` 一键禁用入口；默认遵循系统 reduced motion 设置。
 - 新增设置页面入口，迁移词典来源展示，并以低耦合方式预留外观阅读、学习偏好、歌词处理、词典词库、数据管理和隐私说明框架。
+- 设置页新增个人词库 CSV 导出、学习记录 JSON 导出、完整备份 JSON 导出，以及备份文件预览和设置偏好导入能力。
+- 设置页清理操作接入真实行为：清理本地缓存、删除全部歌曲、删除全部学习记录，并新增清空个人词库后端接口。
+- 设置偏好继续接入业务流程：新增“仅收藏”个人词汇状态；新词默认状态、歌词导入清洗策略、直接保存导入、词典展示内容、释义语言、词形归一搜索、短语优先识别、低学习价值词列表策略和低学习价值提示开始影响实际页面行为；个人词库新增 CSV/TSV 导入和 Anki TSV 导出。
 
 ### Verification
 
-- Backend: 64 tests passed with 0 failures and 0 errors.
+- Backend: 70 tests passed with 0 failures and 0 errors.
 - Frontend: ESLint and Quasar production build passed.
 - README screenshot links and public documentation paths verified.
 - Browser flow passed for manual paste import, multi-song import, index rebuild, word lookup, dictionary display, adding a word to personal vocabulary, and updating vocabulary status.

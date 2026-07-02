@@ -64,4 +64,24 @@ class VocabularyIndexBuilderTest {
         assertTrue(result.stream().anyMatch(vocabulary -> vocabulary.getWord().equals("dream")));
         verify(lyricTokenRepository, never()).saveAll(anyCollection());
     }
+
+    @Test
+    void indexesAdjacentRecommendedPhrases() {
+        Song song = Song.builder().id(3L).title("Phrase Song").artist("Artist").lyrics("blue sky").build();
+        LyricLine line = LyricLine.builder()
+                .id(30L)
+                .song(song)
+                .lineIndex(0)
+                .normalizedText("blue sky")
+                .lineType(LyricLineType.LYRIC)
+                .hidden(false)
+                .build();
+        when(lyricLineRepository.findBySongIdsOrderBySongAndLineIndex(anyCollection())).thenReturn(List.of(line));
+
+        var result = builder.rebuildFromSongs(List.of(song));
+
+        assertTrue(result.stream().anyMatch(vocabulary -> vocabulary.getWord().equals("blue sky")
+                && vocabulary.getOccurrenceCount() == 1
+                && vocabulary.getRecommended()));
+    }
 }

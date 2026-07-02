@@ -17,6 +17,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -82,6 +83,14 @@ class UserVocabularyControllerTest {
         mockMvc.perform(get("/api/user-vocabulary/review").param("limit", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].lemma").value("run"));
+    }
+
+    @Test
+    void clearAllWordsReturnsNoContent() throws Exception {
+        mockMvc.perform(delete("/api/user-vocabulary"))
+                .andExpect(status().isNoContent());
+
+        verify(userVocabularyService).clearAllWords();
     }
 
     private UserVocabularyDto word(String lemma, VocabularyStatus status) {

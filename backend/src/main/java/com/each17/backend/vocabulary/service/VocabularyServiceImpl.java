@@ -44,7 +44,14 @@ public class VocabularyServiceImpl implements VocabularyService {
     private final ConcurrentMap<UUID, VocabularyRebuildTaskDto> rebuildTasks = new ConcurrentHashMap<>();
     // ---------- 对外接口 ----------
     @Override
-    public WordPageDto getWordList(String prefix, int page, int size) {
+    public WordPageDto getWordList(
+            String prefix,
+            int page,
+            int size,
+            boolean recommendedOnly,
+            boolean lemmaSearch,
+            boolean includePhrases
+    ) {
         if (page < 0 || size < 1 || size > 200) {
             throw new ValidationException("Page must be >= 0 and size must be between 1 and 200");
         }
@@ -52,11 +59,31 @@ public class VocabularyServiceImpl implements VocabularyService {
         Pageable pageable = PageRequest.of(page, size);
         Page<Vocabulary> vocabularyPage;
 
-        if (prefix != null && !prefix.isBlank()) {
-            String lemmaPrefix = lemmaService.lemma(tokenizationService.normalize(prefix));
-            vocabularyPage = vocabularyRepository.findByRecommendedTrueAndWordStartingWithOrderByWordAsc(lemmaPrefix, pageable);
+        String normalizedPrefix = normalizeSearchPrefix(prefix, lemmaSearch);
+        if (normalizedPrefix != null) {
+            if (recommendedOnly && includePhrases) {
+                vocabularyPage = vocabularyRepository.findByRecommendedTrueAndWordStartingWithOrderByWordAsc(normalizedPrefix, pageable);
+            } else if (recommendedOnly) {
+                vocabularyPage = vocabularyRepository.findByRecommendedTrueAndWordStartingWithAndWordNotContainingOrderByWordAsc(
+                        normalizedPrefix, " ", pageable
+                );
+            } else if (includePhrases) {
+                vocabularyPage = vocabularyRepository.findByWordStartingWithOrderByWordAsc(normalizedPrefix, pageable);
+            } else {
+                vocabularyPage = vocabularyRepository.findByWordStartingWithAndWordNotContainingOrderByWordAsc(
+                        normalizedPrefix, " ", pageable
+                );
+            }
         } else {
-            vocabularyPage = vocabularyRepository.findByRecommendedTrueOrderByWordAsc(pageable);
+            if (recommendedOnly && includePhrases) {
+                vocabularyPage = vocabularyRepository.findByRecommendedTrueOrderByWordAsc(pageable);
+            } else if (recommendedOnly) {
+                vocabularyPage = vocabularyRepository.findByRecommendedTrueAndWordNotContainingOrderByWordAsc(" ", pageable);
+            } else if (includePhrases) {
+                vocabularyPage = vocabularyRepository.findAllByOrderByWordAsc(pageable);
+            } else {
+                vocabularyPage = vocabularyRepository.findByWordNotContainingOrderByWordAsc(" ", pageable);
+            }
         }
 
         // 直接从数据库获取已排序的单词列表
@@ -75,7 +102,7 @@ public class VocabularyServiceImpl implements VocabularyService {
 
     @Override
     public List<WordOccurrenceDto> getWordOccurrences(String word) {
-        String lemma = lemmaService.lemma(tokenizationService.normalize(word));
+        String lemma = normalizeLookupWord(word);
         Optional<Vocabulary> vocabOpt = vocabularyRepository.findById(lemma);
         if (vocabOpt.isEmpty()) {
             throw new NotFoundException("Word not found: " + word);
@@ -144,5 +171,17 @@ public class VocabularyServiceImpl implements VocabularyService {
             // 可选：任务结束 30 分钟后自动清理内存
             // refreshTasks.remove(taskId);
         }
+    }
+
+    private String normalizeSearchPrefix(String prefix, boolean lemmaSearch) {
+        if (prefix == null || prefix.isBlank()) return null;
+        String normalized = tokenizationService.normalize(prefix);
+        return lemmaSearch ? lemmaService.lemma(normalized) : normalized;
+    }
+
+    private String normalizeLookupWord(String word) {
+        if (word == null) return "";
+        String normalized = tokenizationService.normalizeToLemmaPhrase(word);
+        return normalized.isBlank() ? lemmaService.lemma(tokenizationService.normalize(word)) : normalized;
     }
 }

@@ -21,8 +21,13 @@ public class VocabularyController {
     public ResponseEntity<ApiResponse<WordPageDto>> getWordList(
             @RequestParam(required = false) String prefix,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
-        return ResponseEntity.ok(ApiResponse.success(vocabularyService.getWordList(prefix, page, size)));
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(defaultValue = "true") boolean recommendedOnly,
+            @RequestParam(defaultValue = "true") boolean lemmaSearch,
+            @RequestParam(defaultValue = "true") boolean includePhrases) {
+        return ResponseEntity.ok(ApiResponse.success(vocabularyService.getWordList(
+                prefix, page, size, recommendedOnly, lemmaSearch, includePhrases
+        )));
     }
 
     @GetMapping("/words/{word}/occurrences")

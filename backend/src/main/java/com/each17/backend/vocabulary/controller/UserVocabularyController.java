@@ -44,4 +44,10 @@ public class UserVocabularyController {
             @RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(ApiResponse.success(userVocabularyService.getReviewQueue(limit)));
     }
+
+    @DeleteMapping
+    public ResponseEntity<Void> clearAllWords() {
+        userVocabularyService.clearAllWords();
+        return ResponseEntity.noContent().build();
+    }
 }

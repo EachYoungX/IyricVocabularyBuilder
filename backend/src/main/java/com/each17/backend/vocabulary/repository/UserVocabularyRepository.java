@@ -15,4 +15,5 @@ public interface UserVocabularyRepository extends JpaRepository<UserVocabulary, 
     List<UserVocabulary> findByUserIdAndStatusOrderByLastSeenAtDesc(String userId, VocabularyStatus status);
     long countByUserId(String userId);
     long countByUserIdAndStatus(String userId, VocabularyStatus status);
+    void deleteByUserId(String userId);
 }

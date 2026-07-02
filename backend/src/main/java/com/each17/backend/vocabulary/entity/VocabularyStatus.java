@@ -5,5 +5,6 @@ public enum VocabularyStatus {
     LEARNING,
     FAMILIAR,
     MASTERED,
+    BOOKMARK_ONLY,
     IGNORED
 }

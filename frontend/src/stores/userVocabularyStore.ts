@@ -2,11 +2,12 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import {
   UserVocabularyService,
+  VocabularyStatus,
   type UserVocabulary,
   type UserVocabularyReviewItem,
   type UserVocabularyStats,
-  type VocabularyStatus,
 } from 'src/services/api';
+import { loadAppSettings } from 'src/utils/appSettings';
 
 export const useUserVocabularyStore = defineStore('userVocabulary', () => {
   const words = ref<UserVocabulary[]>([]);
@@ -41,9 +42,28 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
 
   async function addWord(lemma: string) {
     const saved = await UserVocabularyService.addUserVocabularyWord({ lemma });
-    upsert(saved);
+    const targetStatus = defaultStatusForNewWord();
+    const word = targetStatus
+      ? await UserVocabularyService.updateUserVocabularyWord(saved.id, {
+        status: targetStatus,
+        masteryScore: masteryScoreForRequiredStatus(targetStatus),
+      })
+      : saved;
+    upsert(word);
     await refreshStats();
-    return saved;
+    return word;
+  }
+
+  function defaultStatusForNewWord() {
+    switch (loadAppSettings().defaultNewWordStatus) {
+      case 'LEARNING':
+        return VocabularyStatus.LEARNING;
+      case 'BOOKMARK_ONLY':
+        return VocabularyStatus.BOOKMARK_ONLY;
+      case 'NEW':
+      default:
+        return null;
+    }
   }
 
   async function updateWord(id: number, status: VocabularyStatus, masteryScore?: number) {
@@ -70,6 +90,28 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
     } else {
       words.value.unshift(word);
     }
+  }
+
+  function masteryScoreForStatus(status: VocabularyStatus) {
+    switch (status) {
+      case VocabularyStatus.NEW:
+        return 0;
+      case VocabularyStatus.LEARNING:
+        return 0.25;
+      case VocabularyStatus.FAMILIAR:
+        return 0.6;
+      case VocabularyStatus.MASTERED:
+        return 1;
+      case VocabularyStatus.BOOKMARK_ONLY:
+      case VocabularyStatus.IGNORED:
+        return 0;
+      default:
+        return undefined;
+    }
+  }
+
+  function masteryScoreForRequiredStatus(status: VocabularyStatus) {
+    return masteryScoreForStatus(status) ?? 0;
   }
 
   return {

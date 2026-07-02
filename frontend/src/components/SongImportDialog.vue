@@ -225,6 +225,7 @@ import { detectLyricsLanguage } from 'src/utils/languageDetector'
 import type { ExtendedSongImportRequest } from 'src/types/songImport'
 import type { LyricImportSummary } from 'src/types/songImport'
 import { buildImportSummary, parseImportFileContent } from 'src/utils/lyricsImportParser'
+import { loadAppSettings } from 'src/utils/appSettings'
 
 const { t } = useI18n()
 
@@ -335,9 +336,12 @@ async function handleFileSelect(files: File[] | null) {
       position: 'top-right',
     })
 
-    // 更新待导入列表
     if (newlyParsedSongs.length > 0) {
       songsToImport.value = [...songsToImport.value, ...newlyParsedSongs]
+      if (loadAppSettings().postImportBehavior === 'SAVE_DIRECTLY') {
+        await waitForUiUpdate()
+        await importSongs()
+      }
     }
 
   } catch (error) {
@@ -358,7 +362,7 @@ async function handleFileSelect(files: File[] | null) {
 
 async function parseFile(file: File): Promise<ExtendedSongImportRequest[]> {
   const content = await file.text();
-  return parseImportFileContent(file.name, content, t).map(attachLanguageDetection);
+  return parseImportFileContent(file.name, content, t, loadAppSettings()).map(attachLanguageDetection);
 }
 
 function attachLanguageDetection(song: ExtendedSongImportRequest): ExtendedSongImportRequest {
@@ -394,6 +398,11 @@ function addSongToList() {
     ...newSong.value,
     sourceFormat: 'MANUAL',
     importSummary: buildImportSummary(newSong.value.lyrics),
+  }
+  const processedSong = parseImportFileContent(`${song.title || 'manual'}.txt`, `${song.title} - ${song.artist}\n${song.lyrics}`, t, loadAppSettings())[0]
+  if (processedSong) {
+    song.lyrics = processedSong.lyrics
+    if (processedSong.importSummary) song.importSummary = processedSong.importSummary
   }
 
   // 检测歌词语言
@@ -597,6 +606,10 @@ function handleImportDone() {
     emit('update:modelValue', false)
     importTask.value = null
   }
+}
+
+function waitForUiUpdate() {
+  return new Promise((resolve) => window.setTimeout(resolve, 0))
 }
 </script>
 

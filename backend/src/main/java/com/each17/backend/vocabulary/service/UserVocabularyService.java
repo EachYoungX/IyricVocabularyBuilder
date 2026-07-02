@@ -11,4 +11,5 @@ public interface UserVocabularyService {
     UserVocabularyDto updateWord(Long id, UserVocabularyUpdateRequestDto request);
     UserVocabularyStatsDto getStats();
     List<UserVocabularyReviewItemDto> getReviewQueue(int limit);
+    void clearAllWords();
 }

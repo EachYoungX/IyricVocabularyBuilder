@@ -121,7 +121,7 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
         }
         String timestamp = now();
         return userVocabularyRepository.findByUserIdOrderByLastSeenAtDesc(LOCAL_USER_ID).stream()
-                .filter(item -> item.getStatus() != VocabularyStatus.MASTERED && item.getStatus() != VocabularyStatus.IGNORED)
+                .filter(this::isReviewable)
                 .filter(item -> item.getReviewDueAt() == null || item.getReviewDueAt().compareTo(timestamp) <= 0)
                 .sorted(Comparator.comparing(item -> item.getReviewDueAt() == null ? "" : item.getReviewDueAt()))
                 .limit(limit)
@@ -129,12 +129,17 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
                 .toList();
     }
 
+    @Override
+    @Transactional
+    public void clearAllWords() {
+        userVocabularyRepository.deleteByUserId(LOCAL_USER_ID);
+    }
+
     private String normalizeLemma(String rawWord) {
         if (rawWord == null || rawWord.isBlank()) {
             throw new ValidationException("lemma is required");
         }
-        String normalized = tokenizationService.normalize(rawWord);
-        String lemma = lemmaService.lemma(normalized);
+        String lemma = tokenizationService.normalizeToLemmaPhrase(rawWord);
         if (lemma == null || lemma.isBlank()) {
             throw new ValidationException("lemma must contain an English word");
         }
@@ -144,7 +149,7 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
     private long countDueReviews() {
         String timestamp = now();
         return userVocabularyRepository.findByUserIdOrderByLastSeenAtDesc(LOCAL_USER_ID).stream()
-                .filter(item -> item.getStatus() != VocabularyStatus.MASTERED && item.getStatus() != VocabularyStatus.IGNORED)
+                .filter(this::isReviewable)
                 .filter(item -> item.getReviewDueAt() == null || item.getReviewDueAt().compareTo(timestamp) <= 0)
                 .count();
     }
@@ -197,8 +202,15 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
             case LEARNING -> base.plusDays(1).toString();
             case FAMILIAR -> base.plusDays(3).toString();
             case MASTERED -> base.plusDays(14).toString();
+            case BOOKMARK_ONLY -> null;
             case IGNORED -> null;
         };
+    }
+
+    private boolean isReviewable(UserVocabulary item) {
+        return item.getStatus() != VocabularyStatus.MASTERED
+                && item.getStatus() != VocabularyStatus.BOOKMARK_ONLY
+                && item.getStatus() != VocabularyStatus.IGNORED;
     }
 
     private String now() {

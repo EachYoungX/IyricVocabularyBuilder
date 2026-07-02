@@ -37,10 +37,12 @@ public class VocabularyIndexBuilder {
 
         for (Song song : songs) {
             List<LyricLine> lines = linesBySongId.getOrDefault(song.getId(), fallbackLines(song));
-            List<LyricToken> songTokens = lines.stream()
-                    .filter(this::shouldIndexLine)
-                    .flatMap(line -> tokenizationService.tokenize(line).stream())
-                    .toList();
+            List<LyricToken> songTokens = new ArrayList<>();
+            for (LyricLine line : lines.stream().filter(this::shouldIndexLine).toList()) {
+                List<LyricToken> lineTokens = tokenizationService.tokenize(line);
+                songTokens.addAll(lineTokens);
+                indexPhrases(index, lineTokens, line, song);
+            }
 
             songTokens.stream()
                     .filter(token -> token.getLyricLine().getId() != null)
@@ -99,6 +101,20 @@ public class VocabularyIndexBuilder {
         }
     }
 
+    private void indexPhrases(Map<String, LemmaIndex> index, List<LyricToken> tokens, LyricLine line, Song song) {
+        for (int i = 0; i < tokens.size() - 1; i++) {
+            LyricToken first = tokens.get(i);
+            LyricToken second = tokens.get(i + 1);
+            if (!learningValuePolicy.recommended(first.getLearningScore())
+                    || !learningValuePolicy.recommended(second.getLearningScore())) {
+                continue;
+            }
+            String phrase = first.getLemma() + " " + second.getLemma();
+            index.computeIfAbsent(phrase, ignored -> new LemmaIndex())
+                    .addPhrase(first, second, line, song);
+        }
+    }
+
     private List<LyricLine> fallbackLines(Song song) {
         String lyrics = song.getNormalizedLyrics() != null ? song.getNormalizedLyrics()
                 : (song.getRawLyrics() != null ? song.getRawLyrics() : song.getLyrics());
@@ -142,6 +158,25 @@ public class VocabularyIndexBuilder {
                     .startOffset(token.getStartOffset())
                     .endOffset(token.getEndOffset())
                     .learningScore(token.getLearningScore())
+                    .build());
+        }
+
+        void addPhrase(LyricToken first, LyricToken second, LyricLine line, Song song) {
+            String lemma = first.getLemma() + " " + second.getLemma();
+            displayForms.add((first.getSurfaceForm() + " " + second.getSurfaceForm()).toLowerCase());
+            songIds.add(song.getId());
+            learningScore = Math.max(learningScore, Math.min(first.getLearningScore(), second.getLearningScore()));
+            occurrences.add(WordOccurrenceDto.builder()
+                    .songId(song.getId())
+                    .songTitle(song.getTitle())
+                    .lyricLineId(line.getId())
+                    .lineIndex(line.getLineIndex())
+                    .lyricLine(line.getNormalizedText())
+                    .surfaceForm(first.getSurfaceForm() + " " + second.getSurfaceForm())
+                    .lemma(lemma)
+                    .startOffset(first.getStartOffset())
+                    .endOffset(second.getEndOffset())
+                    .learningScore(Math.min(first.getLearningScore(), second.getLearningScore()))
                     .build());
         }
 

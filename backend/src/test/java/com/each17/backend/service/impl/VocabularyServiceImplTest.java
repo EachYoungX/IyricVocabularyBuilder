@@ -55,6 +55,13 @@ class VocabularyServiceImplTest {
         lemmaService = new EnglishLemmaService();
         tokenizationService = mock(LyricTokenizationService.class);
         when(tokenizationService.normalize(anyString())).thenAnswer(invocation -> invocation.getArgument(0, String.class).toLowerCase());
+        when(tokenizationService.normalizeToLemmaPhrase(anyString())).thenAnswer(invocation -> {
+            String raw = invocation.getArgument(0, String.class);
+            return Arrays.stream(raw.toLowerCase().split("\\s+"))
+                    .map(lemmaService::lemma)
+                    .reduce((left, right) -> left + " " + right)
+                    .orElse("");
+        });
         vocabularyService = new VocabularyServiceImpl(
                 vocabularyRepository, songRepository, tokenizationService, lemmaService,
                 vocabularyIndexBuilder, objectMapper
@@ -78,7 +85,7 @@ class VocabularyServiceImplTest {
         when(vocabularyRepository.findByRecommendedTrueOrderByWordAsc(pageable)).thenReturn(vocabPage);
 
         // When
-        WordPageDto result = vocabularyService.getWordList(null, page, size);
+        WordPageDto result = vocabularyService.getWordList(null, page, size, true, true, true);
 
         // Then
         assertEquals(expectedWords, result.getContent());
@@ -108,7 +115,7 @@ class VocabularyServiceImplTest {
         when(vocabularyRepository.findByRecommendedTrueAndWordStartingWithOrderByWordAsc(prefix.toLowerCase(), pageable)).thenReturn(vocabPage);
 
         // When
-        WordPageDto result = vocabularyService.getWordList(prefix, page, size);
+        WordPageDto result = vocabularyService.getWordList(prefix, page, size, true, true, true);
 
         // Then
         assertEquals(expectedWords, result.getContent());
@@ -118,6 +125,40 @@ class VocabularyServiceImplTest {
         assertEquals(size, result.getSize());  // 修改断言
         
         verify(vocabularyRepository, times(1)).findByRecommendedTrueAndWordStartingWithOrderByWordAsc(prefix.toLowerCase(), pageable);
+    }
+
+    @Test
+    void testGetWordListCanIncludeLowValueWords() {
+        int page = 0;
+        int size = 2;
+        Pageable pageable = PageRequest.of(page, size);
+        Vocabulary vocab1 = Vocabulary.builder().word("ah").recommended(false).build();
+        Vocabulary vocab2 = Vocabulary.builder().word("love").recommended(true).build();
+        Page<Vocabulary> vocabPage = new PageImpl<>(List.of(vocab1, vocab2));
+
+        when(vocabularyRepository.findAllByOrderByWordAsc(pageable)).thenReturn(vocabPage);
+
+        WordPageDto result = vocabularyService.getWordList(null, page, size, false, true, true);
+
+        assertEquals(List.of("ah", "love"), result.getContent());
+        verify(vocabularyRepository).findAllByOrderByWordAsc(pageable);
+    }
+
+    @Test
+    void testGetWordListCanUseExactPrefixSearch() {
+        String prefix = "running";
+        int page = 0;
+        int size = 2;
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Vocabulary> vocabPage = new PageImpl<>(List.of(Vocabulary.builder().word("running").build()));
+
+        when(vocabularyRepository.findByWordStartingWithOrderByWordAsc(prefix, pageable)).thenReturn(vocabPage);
+
+        WordPageDto result = vocabularyService.getWordList(prefix, page, size, false, false, true);
+
+        assertEquals(List.of("running"), result.getContent());
+        verify(vocabularyRepository).findByWordStartingWithOrderByWordAsc(prefix, pageable);
+        verify(vocabularyRepository, never()).findByRecommendedTrueAndWordStartingWithOrderByWordAsc(anyString(), any());
     }
 
     @Test

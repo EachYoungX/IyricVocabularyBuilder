@@ -7,9 +7,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,5 +56,15 @@ public class LyricTokenizationService {
         return surface.toLowerCase()
                 .replace("’", "'")
                 .replaceAll("^'+|'+$", "");
+    }
+
+    public String normalizeToLemmaPhrase(String value) {
+        if (value == null) return "";
+        return Arrays.stream(value.split("\\s+"))
+                .map(this::normalize)
+                .filter(part -> !part.isBlank())
+                .map(lemmaService::lemma)
+                .filter(part -> !part.isBlank())
+                .collect(Collectors.joining(" "));
     }
 }
