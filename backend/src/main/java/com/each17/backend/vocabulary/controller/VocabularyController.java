@@ -35,6 +35,12 @@ public class VocabularyController {
         return ResponseEntity.ok(ApiResponse.success(vocabularyService.getWordOccurrences(word)));
     }
 
+    @GetMapping("/quality-candidates")
+    public ResponseEntity<ApiResponse<List<VocabularyQualityCandidateDto>>> getQualityCandidates(
+            @RequestParam(defaultValue = "80") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(vocabularyService.getQualityCandidates(limit)));
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<SongImportResponseDto>> refreshVocabularyIndex() {
         UUID taskId = vocabularyService.refreshVocabularyIndexAsync();

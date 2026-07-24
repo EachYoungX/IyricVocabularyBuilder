@@ -24,16 +24,14 @@ The project focuses on one practical learning loop: import lyrics you are allowe
 
 ## What The App Does
 
-```mermaid
-flowchart TD
-  A["Import lyrics"] --> B["Normalize lines"]
-  B --> C["Review structured lyrics"]
-  C --> D["Tokenize and lemmatize"]
-  D --> E["Build vocabulary index"]
-  E --> F["Lookup words in context"]
-  F --> G["Add personal vocabulary"]
-  G --> H["Track status and reviews"]
-```
+The learning flow is intentionally linear:
+
+1. Import lyrics from TXT, JSON, LRC, SRT, or manual paste.
+2. Normalize the text and preserve both the raw import and the learning version.
+3. Review or edit the learning text without destroying the original import.
+4. Tokenize lyric lines, normalize word forms, and build a lemma-based vocabulary index.
+5. Look up words in their real lyric context with bilingual dictionary support.
+6. Add useful words to the personal vocabulary list and update learning status over time.
 
 ## Tech Stack
 
@@ -47,15 +45,12 @@ flowchart TD
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  User["Learner"] --> UI["Vue and Quasar frontend"]
-  UI --> API["Spring Boot API"]
-  API --> SongDB["SQLite user database"]
-  API --> DictDB["ECDICT SQLite dictionary"]
-  API --> Indexer["Vocabulary index builder"]
-  Indexer --> SongDB
-```
+At a high level, the app is split into four parts:
+
+- The learner uses a Vue and Quasar frontend for importing songs, browsing vocabulary, managing lyrics, and tracking personal word status.
+- The frontend talks to a Spring Boot API through an OpenAPI-generated TypeScript client.
+- The backend stores songs, structured lyric lines, tokenized vocabulary, and personal learning records in a local SQLite user database.
+- Dictionary lookup reads from a bundled ECDICT SQLite dictionary, while the vocabulary index builder derives searchable lemma entries from the user's imported lyrics.
 
 ## Local Development
 

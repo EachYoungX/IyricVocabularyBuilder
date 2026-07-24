@@ -24,16 +24,14 @@ Lyric Vocabulary Builder 是一个面向中文母语者的英文歌词词汇学�
 
 ## 应用流程
 
-```mermaid
-flowchart TD
-  A["导入歌词"] --> B["标准化歌词行"]
-  B --> C["检查结构化歌词"]
-  C --> D["分词与词形归一"]
-  D --> E["生成词汇索引"]
-  E --> F["在语境中查词"]
-  F --> G["加入个人词库"]
-  G --> H["跟踪状态与复习"]
-```
+当前学习流程保持线性：
+
+1. 从 TXT、JSON、LRC、SRT 或手动粘贴导入歌词。
+2. 标准化歌词文本，同时保留原始导入版本和学习文本版本。
+3. 查看或编辑学习文本，不破坏首次导入的原文。
+4. 对歌词行分词、归一词形，并生成基于 lemma 的词汇索引。
+5. 在真实歌词语境中查询单词，并查看英英释义和中文解释。
+6. 把值得学习的词加入个人词库，后续持续更新学习状态。
 
 ## 技术栈
 
@@ -47,15 +45,12 @@ flowchart TD
 
 ## 系统架构
 
-```mermaid
-flowchart LR
-  User["学习者"] --> UI["Quasar Vue Frontend"]
-  UI --> API["Spring Boot API"]
-  API --> SongDB["SQLite user database"]
-  API --> DictDB["ECDICT SQLite dictionary"]
-  API --> Indexer["Vocabulary index builder"]
-  Indexer --> SongDB
-```
+系统可以简单理解为四层：
+
+- 学习者通过 Vue 和 Quasar 前端导入歌曲、浏览词汇、管理歌词并维护个人词库状态。
+- 前端通过 OpenAPI 生成的 TypeScript 客户端调用 Spring Boot API。
+- 后端把歌曲、结构化歌词行、词汇 token 和个人学习记录保存在本地 SQLite 用户数据库中。
+- 词典查询读取内置 ECDICT SQLite 词典，词汇索引构建器则从用户导入的歌词中生成可搜索的 lemma 词条。
 
 ## 本地运行
 

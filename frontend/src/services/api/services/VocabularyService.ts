@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { TaskCreationResponse } from '../models/TaskCreationResponse';
+import type { VocabularyQualityCandidate } from '../models/VocabularyQualityCandidate';
 import type { VocabularyRebuildTask } from '../models/VocabularyRebuildTask';
 import type { WordOccurrence } from '../models/WordOccurrence';
 import type { WordPage } from '../models/WordPage';
@@ -66,6 +67,26 @@ export class VocabularyService {
                 400: `请求参数错误 / Invalid request parameters`,
                 404: `词汇表中未找到该单词`,
                 500: `服务器内部错误 / Internal server error`,
+            },
+        });
+    }
+    /**
+     * 获取词库清洗候选 / Get vocabulary cleanup candidates
+     * @param limit
+     * @returns VocabularyQualityCandidate 词库清洗候选
+     * @throws ApiError
+     */
+    public static getVocabularyQualityCandidates(
+        limit: number = 80,
+    ): CancelablePromise<Array<VocabularyQualityCandidate>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/vocabulary/quality-candidates',
+            query: {
+                'limit': limit,
+            },
+            errors: {
+                400: `请求参数错误 / Invalid request parameters`,
             },
         });
     }

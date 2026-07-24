@@ -6,6 +6,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface VocabularyRepository extends JpaRepository<Vocabulary, String> {
     // 查询以某个前缀开头的单词，并支持分页，按单词字母顺序排序
@@ -19,4 +21,6 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, String> 
     Page<Vocabulary> findByRecommendedTrueAndWordNotContainingOrderByWordAsc(String excluded, Pageable pageable);
     Page<Vocabulary> findAllByOrderByWordAsc(Pageable pageable);
     Page<Vocabulary> findByWordNotContainingOrderByWordAsc(String excluded, Pageable pageable);
+    List<Vocabulary> findByRecommendedFalseOrderByLearningScoreAscWordAsc(Pageable pageable);
+    List<Vocabulary> findByWordContainingOrderByWordAsc(String included, Pageable pageable);
 }

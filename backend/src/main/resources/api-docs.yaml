@@ -125,6 +125,32 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/vocabulary/quality-candidates:
+    get:
+      tags: [Vocabulary]
+      summary: 获取词库清洗候选 / Get vocabulary cleanup candidates
+      description: 返回疑似低学习价值或异常词条，只用于预览，不会删除索引或歌曲。
+      operationId: getVocabularyQualityCandidates
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 80
+      responses:
+        '200':
+          description: 词库清洗候选
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VocabularyQualityCandidate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /api/vocabulary/refresh:
     post:
       tags: [Vocabulary]
@@ -812,6 +838,37 @@ components:
           type: number
           format: double
       required: [songTitle, lyricLine]
+
+    VocabularyQualityCandidate:
+      type: object
+      properties:
+        word:
+          type: string
+        learningScore:
+          type: number
+          format: double
+        occurrenceCount:
+          type: integer
+        songCount:
+          type: integer
+        recommended:
+          type: boolean
+        reasons:
+          type: array
+          items:
+            type: string
+            enum:
+              - LOW_LEARNING_VALUE
+              - PHRASE_CANDIDATE
+              - CONTRACTION_PHRASE
+              - POSSIBLE_TRUNCATED_LEMMA
+              - VERY_SHORT_TOKEN
+              - NON_STANDARD_TOKEN
+        examples:
+          type: array
+          items:
+            $ref: '#/components/schemas/WordOccurrence'
+      required: [word, learningScore, occurrenceCount, songCount, recommended, reasons, examples]
 
     VocabularyStatus:
       type: string

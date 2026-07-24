@@ -2,6 +2,7 @@ package com.each17.backend.vocabulary.service;
 
 import com.each17.backend.common.exception.NotFoundException;
 import com.each17.backend.common.exception.ValidationException;
+import com.each17.backend.dto.VocabularyQualityCandidateDto;
 import com.each17.backend.dto.VocabularyRebuildTaskDto;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
@@ -119,6 +120,30 @@ public class VocabularyServiceImpl implements VocabularyService {
     }
 
     @Override
+    public List<VocabularyQualityCandidateDto> getQualityCandidates(int limit) {
+        if (limit < 1 || limit > 200) {
+            throw new ValidationException("limit must be between 1 and 200");
+        }
+
+        Map<String, Vocabulary> candidates = new LinkedHashMap<>();
+        Pageable pageable = PageRequest.of(0, limit);
+        vocabularyRepository.findByRecommendedFalseOrderByLearningScoreAscWordAsc(pageable)
+                .forEach(item -> candidates.put(item.getWord(), item));
+        vocabularyRepository.findByWordContainingOrderByWordAsc(" ", PageRequest.of(0, limit * 2)).stream()
+                .filter(item -> !qualityReasons(item).isEmpty())
+                .forEach(item -> candidates.putIfAbsent(item.getWord(), item));
+
+        return candidates.values().stream()
+                .map(this::toQualityCandidate)
+                .filter(item -> !item.getReasons().isEmpty())
+                .sorted(Comparator
+                        .comparing(VocabularyQualityCandidateDto::getLearningScore)
+                        .thenComparing(VocabularyQualityCandidateDto::getWord))
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
     public UUID refreshVocabularyIndexAsync() {
         UUID taskId = UUID.randomUUID();
         VocabularyRebuildTaskDto task = VocabularyRebuildTaskDto.builder()
@@ -183,5 +208,51 @@ public class VocabularyServiceImpl implements VocabularyService {
         if (word == null) return "";
         String normalized = tokenizationService.normalizeToLemmaPhrase(word);
         return normalized.isBlank() ? lemmaService.lemma(tokenizationService.normalize(word)) : normalized;
+    }
+
+    private VocabularyQualityCandidateDto toQualityCandidate(Vocabulary vocabulary) {
+        return VocabularyQualityCandidateDto.builder()
+                .word(vocabulary.getWord())
+                .learningScore(vocabulary.getLearningScore())
+                .occurrenceCount(vocabulary.getOccurrenceCount())
+                .songCount(vocabulary.getSongCount())
+                .recommended(vocabulary.getRecommended())
+                .reasons(qualityReasons(vocabulary))
+                .examples(readOccurrenceExamples(vocabulary, 2))
+                .build();
+    }
+
+    private List<String> qualityReasons(Vocabulary vocabulary) {
+        String word = vocabulary.getWord();
+        List<String> reasons = new ArrayList<>();
+        if (Boolean.FALSE.equals(vocabulary.getRecommended()) || vocabulary.getLearningScore() < 0.5) {
+            reasons.add("LOW_LEARNING_VALUE");
+        }
+        if (word.contains(" ")) {
+            reasons.add("PHRASE_CANDIDATE");
+        }
+        if (word.matches(".*\\b[a-z]+n't\\b.*") && word.contains(" ")) {
+            reasons.add("CONTRACTION_PHRASE");
+        }
+        if (word.matches(".*\\b[a-z]{2,}v\\b.*") || word.matches(".*\\b[a-z]{2,}av\\b.*")) {
+            reasons.add("POSSIBLE_TRUNCATED_LEMMA");
+        }
+        if (word.length() <= 2) {
+            reasons.add("VERY_SHORT_TOKEN");
+        }
+        if (!word.matches("[a-z]+(?:'[a-z]+)?(?: [a-z]+(?:'[a-z]+)?)*")) {
+            reasons.add("NON_STANDARD_TOKEN");
+        }
+        return reasons;
+    }
+
+    private List<WordOccurrenceDto> readOccurrenceExamples(Vocabulary vocabulary, int limit) {
+        try {
+            List<WordOccurrenceDto> occurrences = objectMapper.readValue(vocabulary.getOccurrences(), new TypeReference<>() {});
+            return occurrences.stream().limit(limit).toList();
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to deserialize candidate occurrences for lemma: {}", vocabulary.getWord(), e);
+            return List.of();
+        }
     }
 }

@@ -17,6 +17,61 @@
       </div>
     </div>
 
+    <q-expansion-item
+      class="quality-panel q-mt-md"
+      icon="rule"
+      :label="t('vocabularyCleanupCandidates')"
+      :caption="t('vocabularyCleanupCandidatesHint')"
+      default-opened
+    >
+      <div class="q-pa-md">
+        <div class="row items-center justify-between q-gutter-sm q-mb-sm">
+          <div class="text-body2 text-grey-7">
+            {{ t('qualityCandidateCount', { count: qualityCandidates.length }) }}
+          </div>
+          <q-btn flat dense icon="refresh" :loading="qualityLoading" :label="t('refresh')" @click="loadQualityCandidates" />
+        </div>
+        <q-table
+          flat
+          bordered
+          dense
+          row-key="word"
+          :rows="qualityCandidates"
+          :columns="qualityColumns"
+          :loading="qualityLoading"
+          :rows-per-page-options="[8, 15, 30]"
+          :pagination="{ rowsPerPage: 8 }"
+        >
+          <template #body-cell-word="props">
+            <q-td :props="props">
+              <button type="button" class="word-button" @click="lookupCandidate(props.row.word)">
+                {{ props.row.word }}
+              </button>
+            </q-td>
+          </template>
+          <template #body-cell-reasons="props">
+            <q-td :props="props">
+              <q-chip
+                v-for="reason in props.row.reasons"
+                :key="reason"
+                dense
+                size="sm"
+                color="amber-2"
+                text-color="brown-8"
+              >
+                {{ qualityReasonLabel(reason) }}
+              </q-chip>
+            </q-td>
+          </template>
+          <template #body-cell-example="props">
+            <q-td :props="props">
+              <span class="candidate-example">{{ props.row.examples?.[0]?.lyricLine ?? '-' }}</span>
+            </q-td>
+          </template>
+        </q-table>
+      </div>
+    </q-expansion-item>
+
     <div class="toolbar row items-center q-col-gutter-sm q-mt-md">
       <div class="col-12 col-md-4">
         <q-input v-model="searchText" dense outlined clearable debounce="150" :placeholder="t('searchPersonalVocabulary')">
@@ -166,6 +221,7 @@ import {
   VocabularyService,
   VocabularyStatus,
   type UserVocabulary,
+  type VocabularyQualityCandidate,
   type WordOccurrence,
 } from 'src/services/api';
 
@@ -179,7 +235,9 @@ const batchStatus = ref<VocabularyStatus | null>(null);
 const selected = ref<UserVocabulary[]>([]);
 const activeWord = ref<UserVocabulary | null>(null);
 const occurrences = ref<WordOccurrence[]>([]);
+const qualityCandidates = ref<VocabularyQualityCandidate[]>([]);
 const occurrencesLoading = ref(false);
+const qualityLoading = ref(false);
 const occurrenceError = ref('');
 const isMutating = ref(false);
 
@@ -217,6 +275,21 @@ const columns = computed<QTableColumn<UserVocabulary>[]>(() => [
   { name: 'actions', label: t('actions'), field: 'id', align: 'right' },
 ]);
 
+const qualityColumns = computed<QTableColumn<VocabularyQualityCandidate>[]>(() => [
+  { name: 'word', label: t('word'), field: 'word', align: 'left', sortable: true },
+  {
+    name: 'learningScore',
+    label: t('learningScore'),
+    field: (row) => Math.round(row.learningScore * 100),
+    align: 'right',
+    sortable: true,
+    format: (value) => `${value}%`,
+  },
+  { name: 'occurrenceCount', label: t('frequency'), field: 'occurrenceCount', align: 'right', sortable: true },
+  { name: 'reasons', label: t('candidateReasons'), field: 'reasons', align: 'left' },
+  { name: 'example', label: t('lyricsPreview'), field: 'examples', align: 'left' },
+]);
+
 const filteredRows = computed<UserVocabulary[]>(() => {
   const query = searchText.value.trim().toLowerCase();
   return store.words.filter((word: UserVocabulary) => {
@@ -239,7 +312,7 @@ onMounted(() => {
 });
 
 async function loadData() {
-  await store.fetchDashboard();
+  await Promise.all([store.fetchDashboard(), loadQualityCandidates()]);
 }
 
 function statusLabel(status: VocabularyStatus) {
@@ -277,6 +350,39 @@ async function loadOccurrences(lemma: string) {
   } finally {
     occurrencesLoading.value = false;
   }
+}
+
+async function loadQualityCandidates() {
+  qualityLoading.value = true;
+  try {
+    qualityCandidates.value = await VocabularyService.getVocabularyQualityCandidates(80);
+  } catch {
+    Notify.create({ type: 'negative', message: t('loadQualityCandidatesFailed') });
+  } finally {
+    qualityLoading.value = false;
+  }
+}
+
+function lookupCandidate(word: string) {
+  const existing = store.words.find((item: UserVocabulary) => item.lemma === word);
+  if (existing) {
+    void selectWord(existing);
+    return;
+  }
+  activeWord.value = {
+    id: -1,
+    userId: 'local',
+    lemma: word,
+    status: VocabularyStatus.IGNORED,
+    masteryScore: 0,
+    firstSeenAt: '',
+    lastSeenAt: '',
+  };
+  void loadOccurrences(word);
+}
+
+function qualityReasonLabel(reason: string) {
+  return t(`qualityReasons.${reason}`);
 }
 
 async function updateStatus(id: number, status: VocabularyStatus) {
@@ -445,5 +551,20 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 
 .lyric-line {
   white-space: pre-wrap;
+}
+
+.quality-panel {
+  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid var(--lv-line);
+  border-radius: 8px;
+}
+
+.candidate-example {
+  display: inline-block;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
 }
 </style>
