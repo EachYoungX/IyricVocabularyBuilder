@@ -131,6 +131,15 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
 
     @Override
     @Transactional
+    public void deleteWord(Long id) {
+        UserVocabulary vocabulary = userVocabularyRepository.findById(id)
+                .filter(item -> LOCAL_USER_ID.equals(item.getUserId()))
+                .orElseThrow(() -> new NotFoundException("User vocabulary not found: " + id));
+        userVocabularyRepository.delete(vocabulary);
+    }
+
+    @Override
+    @Transactional
     public void clearAllWords() {
         userVocabularyRepository.deleteByUserId(LOCAL_USER_ID);
     }

@@ -45,6 +45,12 @@ public class UserVocabularyController {
         return ResponseEntity.ok(ApiResponse.success(userVocabularyService.getReviewQueue(limit)));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteWord(@PathVariable Long id) {
+        userVocabularyService.deleteWord(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping
     public ResponseEntity<Void> clearAllWords() {
         userVocabularyService.clearAllWords();

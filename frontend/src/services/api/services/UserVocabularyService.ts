@@ -85,6 +85,26 @@ export class UserVocabularyService {
         });
     }
     /**
+     * 移出个人词库 / Remove a word from personal vocabulary
+     * @param id
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteUserVocabularyWord(
+        id: number,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/user-vocabulary/{id}',
+            path: {
+                'id': id,
+            },
+            errors: {
+                404: `资源未找到 / Resource not found`,
+            },
+        });
+    }
+    /**
      * 获取个人词汇统计 / Get personal vocabulary stats
      * @returns UserVocabularyStats 个人词汇统计 / Personal vocabulary stats
      * @throws ApiError

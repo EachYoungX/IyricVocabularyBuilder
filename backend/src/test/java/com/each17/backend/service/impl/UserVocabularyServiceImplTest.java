@@ -138,6 +138,16 @@ class UserVocabularyServiceImplTest {
         verify(userVocabularyRepository).deleteByUserId("local");
     }
 
+    @Test
+    void deleteWordDeletesOnlyLocalVocabulary() {
+        UserVocabulary existing = item(1L, "run", VocabularyStatus.NEW, "2026-01-01T00:00:00");
+        when(userVocabularyRepository.findById(1L)).thenReturn(Optional.of(existing));
+
+        userVocabularyService.deleteWord(1L);
+
+        verify(userVocabularyRepository).delete(existing);
+    }
+
     private UserVocabulary item(Long id, String lemma, VocabularyStatus status, String reviewDueAt) {
         return UserVocabulary.builder()
                 .id(id)

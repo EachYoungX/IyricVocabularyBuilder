@@ -74,6 +74,32 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
     return saved;
   }
 
+  async function deleteWord(id: number) {
+    await UserVocabularyService.deleteUserVocabularyWord(id);
+    words.value = words.value.filter((item) => item.id !== id);
+    await refreshStats();
+  }
+
+  async function updateWords(ids: number[], status: VocabularyStatus) {
+    const savedWords = await Promise.all(
+      ids.map((id) =>
+        UserVocabularyService.updateUserVocabularyWord(id, {
+          status,
+          masteryScore: masteryScoreForRequiredStatus(status),
+        })),
+    );
+    savedWords.forEach(upsert);
+    await refreshStats();
+    return savedWords;
+  }
+
+  async function deleteWords(ids: number[]) {
+    await Promise.all(ids.map((id) => UserVocabularyService.deleteUserVocabularyWord(id)));
+    const idSet = new Set(ids);
+    words.value = words.value.filter((item) => !idSet.has(item.id));
+    await refreshStats();
+  }
+
   async function refreshStats() {
     const [userStats, reviews] = await Promise.all([
       UserVocabularyService.getUserVocabularyStats(),
@@ -127,5 +153,8 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
     fetchDashboard,
     addWord,
     updateWord,
+    updateWords,
+    deleteWord,
+    deleteWords,
   };
 });

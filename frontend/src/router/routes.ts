@@ -13,6 +13,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/SongsManagerPage.vue'),
       },
       {
+        path: '/my-vocabulary',
+        name: 'MyVocabulary',
+        component: () => import('pages/MyVocabularyPage.vue'),
+      },
+      {
         path: '/settings',
         name: 'Settings',
         component: () => import('pages/SettingsPage.vue'),

@@ -49,6 +49,16 @@
           </q-item-section>
         </q-item>
 
+        <q-item to="/my-vocabulary" clickable v-ripple class="drawer-nav-item q-mx-md rounded-borders"
+          active-class="drawer-active">
+          <q-item-section avatar>
+            <q-icon name="o_menu_book" size="22px" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="text-weight-medium">{{ t('myVocabulary') }}</q-item-label>
+          </q-item-section>
+        </q-item>
+
         <q-item to="/settings" clickable v-ripple class="drawer-nav-item q-mx-md rounded-borders"
           active-class="drawer-active">
           <q-item-section avatar>

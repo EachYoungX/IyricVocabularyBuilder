@@ -247,6 +247,22 @@ paths:
           $ref: '#/components/responses/NotFound'
         '400':
           $ref: '#/components/responses/BadRequest'
+    delete:
+      tags: [UserVocabulary]
+      summary: 移出个人词库 / Remove a word from personal vocabulary
+      operationId: deleteUserVocabularyWord
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: 移出成功 / Personal vocabulary item removed
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /api/user-vocabulary/stats:
     get:
