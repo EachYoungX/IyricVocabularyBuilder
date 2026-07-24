@@ -3,8 +3,8 @@
     <q-card class="lyric-dialog column no-wrap">
       <q-card-section class="row items-center q-pb-sm lyric-dialog-header">
         <div>
-          <div class="text-h6 serif-display">{{ t('structuredLyrics') }}</div>
-          <div class="text-caption text-grey-7">{{ songTitle }}</div>
+          <div class="text-h6 serif-display">{{ t('editLyrics') }}</div>
+          <div class="text-caption text-grey-7">{{ songTitle || t('untitledSong') }}</div>
         </div>
         <q-space />
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('close')" />
@@ -12,78 +12,83 @@
 
       <q-separator />
 
-      <q-card-section v-if="document" class="q-py-sm">
-        <div class="row q-gutter-sm items-center">
-          <q-chip dense color="primary" text-color="white">
-            {{ t('lyricLineCount', { count: document.lines.length }) }}
-          </q-chip>
-          <q-chip dense>{{ t('importVersion', { version: document.importVersion }) }}</q-chip>
-          <q-chip dense color="accent" text-color="primary">
-            {{ t('hiddenLineCount', { count: hiddenCount }) }}
-          </q-chip>
-          <q-chip dense color="secondary" text-color="white">
-            {{ t('overrideCount', { count: overrideCount }) }}
-          </q-chip>
-        </div>
-
-        <q-expansion-item dense icon="difference" :label="t('compareRawAndNormalized')" class="q-mt-sm">
-          <div class="row q-col-gutter-md q-pa-sm">
-            <div class="col-12 col-md-6">
-              <div class="text-caption text-weight-medium q-mb-xs">{{ t('rawLyrics') }}</div>
-              <pre class="lyrics-preview">{{ document.rawLyrics }}</pre>
-            </div>
-            <div class="col-12 col-md-6">
-              <div class="text-caption text-weight-medium q-mb-xs">{{ t('normalizedLyrics') }}</div>
-              <pre class="lyrics-preview">{{ document.normalizedLyrics }}</pre>
-            </div>
-          </div>
-        </q-expansion-item>
-      </q-card-section>
-
-      <q-separator />
-
-      <q-card-section class="col scroll q-pa-sm">
+      <q-card-section class="col scroll">
         <div v-if="loading" class="fit flex flex-center">
           <q-spinner color="primary" size="3em" />
         </div>
+
         <q-banner v-else-if="error" rounded class="bg-red-1 text-negative">
           {{ error }}
         </q-banner>
-        <q-list v-else separator bordered class="rounded-borders">
-          <q-item v-for="line in editableLines" :key="line.id" class="column q-pa-sm">
-            <div class="row items-center q-gutter-sm full-width">
-              <div class="text-caption text-grey-6 line-index">#{{ line.lineIndex + 1 }}</div>
-              <q-select
-                v-model="line.lineType"
-                :options="lineTypeOptions"
-                emit-value
-                map-options
-                dense
+
+        <div v-else class="row q-col-gutter-lg lyric-editor-grid">
+          <div class="col-12 col-md-6">
+            <section class="lyric-editor-pane raw-pane">
+              <div class="pane-heading">
+                <div>
+                  <div class="text-subtitle1 text-weight-medium">{{ t('originalImport') }}</div>
+                  <div class="text-caption text-grey-7">{{ t('originalImportHint') }}</div>
+                </div>
+                <q-chip v-if="document" dense color="primary" text-color="white">
+                  {{ t('lyricLineCount', { count: document.lines.length }) }}
+                </q-chip>
+              </div>
+
+              <div class="raw-meta-grid">
+                <div>
+                  <div class="text-caption text-grey-7">{{ t('title') }}</div>
+                  <div class="text-body1">{{ readonlyTitle }}</div>
+                </div>
+                <div>
+                  <div class="text-caption text-grey-7">{{ t('artist') }}</div>
+                  <div class="text-body1">{{ readonlyArtist }}</div>
+                </div>
+              </div>
+
+              <pre class="lyrics-preview">{{ rawLyricsForDisplay }}</pre>
+            </section>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <q-form class="lyric-editor-pane editable-pane" @submit.prevent="saveSong">
+              <div class="pane-heading">
+                <div>
+                  <div class="text-subtitle1 text-weight-medium">{{ t('learningLyrics') }}</div>
+                  <div class="text-caption text-grey-7">{{ t('learningLyricsHint') }}</div>
+                </div>
+              </div>
+
+              <q-input v-model="editableSong.title" :label="t('title') + ' *'" outlined />
+              <q-input v-model="editableSong.artist" :label="t('artist') + ' *'" outlined />
+              <q-input
+                v-model="editableSong.lyrics"
+                :label="t('lyrics') + ' *'"
                 outlined
-                class="line-type"
+                type="textarea"
+                autogrow
+                class="lyrics-input"
               />
-              <q-toggle v-model="line.hidden" :label="t('hidden')" dense />
-              <q-chip v-if="line.userOverride" dense color="secondary" text-color="white">
-                {{ t('userOverride') }}
-              </q-chip>
-              <q-space />
-              <span class="text-caption text-grey-6">
-                {{ t('confidence', { value: Math.round(line.confidence * 100) }) }}
-              </span>
-              <q-btn
-                color="primary"
-                dense
-                flat
-                icon="save"
-                :label="t('saveLine')"
-                :loading="savingLineId === line.id"
-                @click="saveLine(line)"
-              />
-            </div>
-            <div class="text-caption text-grey-7 q-mt-xs original-line">{{ line.originalText || t('emptyLine') }}</div>
-            <q-input v-model="line.normalizedText" dense outlined autogrow class="q-mt-xs" />
-          </q-item>
-        </q-list>
+
+              <div class="row q-gutter-sm justify-end">
+                <q-btn
+                  flat
+                  color="secondary"
+                  :label="t('restoreOriginalLyrics')"
+                  :disable="!document?.rawLyrics"
+                  @click="restoreOriginalLyrics"
+                />
+                <q-btn flat :label="t('cancel')" v-close-popup />
+                <q-btn
+                  color="primary"
+                  type="submit"
+                  :label="t('save')"
+                  :loading="saving"
+                  :disable="!isFormValid || !isDirty"
+                />
+              </div>
+            </q-form>
+          </div>
+        </div>
       </q-card-section>
     </q-card>
   </q-dialog>
@@ -95,9 +100,9 @@ import { Notify } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import {
   LyricsService,
-  LyricLineType,
+  SongsService,
   type LyricDocument,
-  type LyricLine,
+  type Song,
 } from 'src/services/api';
 
 const props = defineProps<{
@@ -105,26 +110,38 @@ const props = defineProps<{
   songId?: number;
   songTitle?: string;
 }>();
-const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>();
+const emit = defineEmits<{
+  'update:modelValue': [value: boolean];
+  saved: [song: Song];
+}>();
 const { t } = useI18n();
 
 const document = ref<LyricDocument | null>(null);
-const editableLines = ref<LyricLine[]>([]);
+const songSnapshot = ref<Song | null>(null);
 const loading = ref(false);
+const saving = ref(false);
 const error = ref('');
-const savingLineId = ref<number | null>(null);
+const originalSongJson = ref('');
+const editableSong = ref({
+  title: '',
+  artist: '',
+  lyrics: '',
+});
 
-const hiddenCount = computed(() => editableLines.value.filter((line) => line.hidden).length);
-const overrideCount = computed(() => editableLines.value.filter((line) => line.userOverride).length);
-const lineTypeOptions = computed(() => Object.values(LyricLineType).map((value) => ({
-  value,
-  label: t(`lyricLineTypes.${value}`),
-})));
+const rawLyricsForDisplay = computed(() => document.value?.rawLyrics || t('emptyLyrics'));
+const readonlyTitle = computed(() => songSnapshot.value?.title || props.songTitle || t('untitledSong'));
+const readonlyArtist = computed(() => songSnapshot.value?.artist || t('unknown'));
+const isDirty = computed(() => JSON.stringify(editableSong.value) !== originalSongJson.value);
+const isFormValid = computed(() =>
+  editableSong.value.title.trim().length > 0
+  && editableSong.value.artist.trim().length > 0
+  && editableSong.value.lyrics.trim().length > 0,
+);
 
 watch(
   () => [props.modelValue, props.songId] as const,
   ([visible, songId]) => {
-    if (visible && songId) void loadDocument(songId);
+    if (visible && songId) void loadEditorData(songId);
   },
   { immediate: true },
 );
@@ -133,12 +150,22 @@ function updateDialogVisibility(value: boolean) {
   emit('update:modelValue', value);
 }
 
-async function loadDocument(songId: number) {
+async function loadEditorData(songId: number) {
   loading.value = true;
   error.value = '';
   try {
-    document.value = await LyricsService.getStructuredLyrics(songId);
-    editableLines.value = document.value.lines.map((line) => ({ ...line }));
+    const [lyricDocument, song] = await Promise.all([
+      LyricsService.getStructuredLyrics(songId),
+      SongsService.getSongById(songId),
+    ]);
+    document.value = lyricDocument;
+    songSnapshot.value = song;
+    editableSong.value = {
+      title: song.title ?? '',
+      artist: song.artist ?? '',
+      lyrics: song.lyrics ?? lyricDocument.normalizedLyrics ?? lyricDocument.rawLyrics ?? '',
+    };
+    originalSongJson.value = JSON.stringify(editableSong.value);
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : t('loadStructuredLyricsFailed');
   } finally {
@@ -146,32 +173,44 @@ async function loadDocument(songId: number) {
   }
 }
 
-async function saveLine(line: LyricLine) {
-  if (!props.songId) return;
-  savingLineId.value = line.id;
+function restoreOriginalLyrics() {
+  if (!document.value?.rawLyrics) return;
+  editableSong.value = {
+    title: readonlyTitle.value,
+    artist: readonlyArtist.value,
+    lyrics: document.value.rawLyrics,
+  };
+}
+
+async function saveSong() {
+  if (!props.songId || !isFormValid.value) return;
+  saving.value = true;
   try {
-    const saved = await LyricsService.updateLyricLine(props.songId, line.id, {
-      normalizedText: line.normalizedText,
-      lineType: line.lineType,
-      hidden: line.hidden,
+    const saved = await SongsService.updateSong(props.songId, {
+      title: editableSong.value.title.trim(),
+      artist: editableSong.value.artist.trim(),
+      lyrics: editableSong.value.lyrics,
     });
-    Object.assign(line, saved);
-    Notify.create({ type: 'positive', message: t('lyricLineSaved') });
+    originalSongJson.value = JSON.stringify(editableSong.value);
+    Notify.create({ type: 'positive', position: 'top-right', message: t('songUpdatedSuccessfullyMessage', { title: saved.title }) });
+    emit('saved', saved);
+    emit('update:modelValue', false);
   } catch (reason) {
     Notify.create({
       type: 'negative',
+      position: 'top-right',
       message: reason instanceof Error ? reason.message : t('saveLyricLineFailed'),
     });
   } finally {
-    savingLineId.value = null;
+    saving.value = false;
   }
 }
 </script>
 
 <style scoped lang="scss">
 .lyric-dialog {
-  width: min(1200px, 96vw);
-  height: min(900px, 92vh);
+  width: min(1180px, 96vw);
+  height: min(820px, 92vh);
   background: var(--lv-surface-solid);
 }
 
@@ -181,10 +220,44 @@ async function saveLine(line: LyricLine) {
     var(--lv-surface-solid);
 }
 
-.lyrics-preview {
-  margin: 0;
+.lyric-editor-grid {
+  min-height: 100%;
+}
+
+.lyric-editor-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  padding: 18px;
+  border: 1px solid var(--lv-line);
+  border-radius: var(--lv-radius-md);
+  background: var(--lv-paper);
+}
+
+.pane-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.raw-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   padding: 12px;
-  max-height: 220px;
+  border: 1px solid var(--lv-line);
+  border-radius: var(--lv-radius-sm);
+  background: var(--lv-surface-solid);
+}
+
+.lyrics-preview {
+  flex: 1;
+  min-height: 360px;
+  margin: 0;
+  padding: 14px;
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -196,28 +269,9 @@ async function saveLine(line: LyricLine) {
   line-height: 1.7;
 }
 
-.line-index {
-  width: 36px;
-}
-
-.line-type {
-  min-width: 190px;
-}
-
-.original-line {
-  color: var(--lv-muted);
-  overflow-wrap: anywhere;
-}
-
-:deep(.q-item) {
-  margin: 6px;
-  border: 1px solid transparent;
-  border-radius: var(--lv-radius-sm);
-}
-
-:deep(.q-item:hover) {
-  border-color: var(--lv-line);
-  background: rgba(249, 243, 239, 0.62);
+.lyrics-input {
+  flex: 1;
+  min-height: 360px;
 }
 
 @media (max-width: 600px) {
@@ -230,18 +284,10 @@ async function saveLine(line: LyricLine) {
     padding-left: 12px;
     padding-right: 12px;
   }
-
-  :deep(.q-item > .row) {
-    align-items: flex-start;
-  }
-
-  .line-type {
-    min-width: 100%;
-    order: 4;
-  }
-
-  .line-index {
-    width: auto;
+  .lyric-editor-pane,
+  .lyrics-preview,
+  .lyrics-input {
+    min-height: 260px;
   }
 }
 </style>

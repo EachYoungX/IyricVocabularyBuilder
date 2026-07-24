@@ -38,7 +38,7 @@
           </div>
         </template>
 
-        <!-- 右侧/下方：详情编辑 -->
+        <!-- 右侧/下方：详情预览 -->
         <template v-slot:after>
           <div class="q-pa-md fit column no-wrap bg-white">
 
@@ -46,33 +46,36 @@
             <div v-if="!selectedSongs.length" class="col column flex-center text-center">
               <q-icon name="queue_music" size="50px" color="grey-4" class="q-mb-md" />
               <div class="text-h6 text-grey-7 q-mb-sm">{{ t('noSelection') }}</div>
-              <div class="text-caption text-grey-6">{{ t('selectSongToEdit') }}</div>
+              <div class="text-caption text-grey-6">{{ t('selectSongToView') }}</div>
             </div>
 
-            <!-- 编辑表单 -->
-            <q-form v-else-if="!isBatchMode || selectedSongs.length === 1" @submit.prevent="saveChanges"
-              class="col column q-gutter-y-sm">
-              <div class="text-subtitle1 col-auto">{{ t('editDetails') }}</div>
+            <!-- 歌曲详情 -->
+            <div v-else-if="!isBatchMode || selectedSongs.length === 1" class="col column q-gutter-y-md song-detail-panel">
+              <div class="text-subtitle1 col-auto">{{ t('songDetails') }}</div>
 
-              <div class="col-auto row q-col-gutter-xs">
-                <div class="col-12 col-md-6">
-                  <q-input v-model="editableSong.title" :label="t('title') + ' *'" outlined dense />
-                </div>
-                <div class="col-12 col-md-6">
-                  <q-input v-model="editableSong.artist" :label="t('artist') + ' *'" outlined dense />
-                </div>
-              </div>
-
-              <q-input v-model="editableSong.lyrics" :label="t('lyrics') + ' *'" outlined type="textarea"
-                class="col full-height-input" input-style="resize: none;" />
+              <q-card flat bordered class="song-detail-card">
+                <q-card-section>
+                  <div class="text-caption text-grey-7">{{ t('title') }}</div>
+                  <div class="text-h6 serif-display">{{ selectedSong?.title || t('untitledSong') }}</div>
+                </q-card-section>
+                <q-separator />
+                <q-card-section>
+                  <div class="text-caption text-grey-7">{{ t('artist') }}</div>
+                  <div class="text-body1">{{ selectedSong?.artist || t('unknown') }}</div>
+                </q-card-section>
+                <q-separator />
+                <q-card-section class="col">
+                  <div class="text-caption text-grey-7 q-mb-xs">{{ t('lyricsPreview') }}</div>
+                  <pre class="song-lyrics-preview">{{ selectedSong?.lyrics || t('emptyLyrics') }}</pre>
+                </q-card-section>
+              </q-card>
 
               <div class="row q-gutter-sm justify-end col-auto q-pt-sm">
                 <q-btn :label="t('delete')" color="negative" flat size="sm" @click="confirmDelete" />
-                <q-btn :label="t('structuredLyrics')" color="secondary" flat size="sm"
-                  icon="segment" @click="structureDialogVisible = true" />
-                <q-btn :label="t('save')" color="primary" type="submit" size="sm" :disable="!isFormDirty" />
+                <q-btn :label="t('editLyrics')" color="secondary" flat size="sm"
+                  icon="edit_note" @click="structureDialogVisible = true" />
               </div>
-            </q-form>
+            </div>
 
             <!-- 批量选择状态 -->
             <div v-else class="col column flex-center text-center">
@@ -95,8 +98,9 @@
     </div>
     <LyricStructureDialog
       v-model="structureDialogVisible"
-      :song-id="editableSong.id"
-      :song-title="editableSong.title"
+      :song-id="selectedSong?.id"
+      :song-title="selectedSong?.title"
+      @saved="handleLyricEditorSaved"
     />
   </q-page>
 </template>
@@ -107,7 +111,7 @@ import type { QTableColumn, QTable } from 'quasar';
 import { useQuasar } from 'quasar'
 import { useSongsStore } from 'src/stores/songsStore'
 import { Notify } from 'quasar'
-import type { Song, SongUpdateRequest } from 'src/services/api'
+import type { Song } from 'src/services/api'
 import { useI18n } from 'vue-i18n'
 import LyricStructureDialog from 'components/lyric/LyricStructureDialog.vue'
 
@@ -149,13 +153,7 @@ const selectedSongs = ref<Song[]>([])
 // 批量删除加载状态
 const deletingBatch = ref(false)
 
-// 编辑相关
-const editableSong = ref<Partial<SongUpdateRequest> & { id?: number }>({
-  title: '',
-  artist: '',
-  lyrics: '',
-})
-const originalSongJson = ref('')
+const selectedSong = computed(() => selectedSongs.value[0])
 
 // 启用批量模式
 const enableBatchMode = () => {
@@ -172,20 +170,9 @@ const disableBatchMode = () => {
   selectedSongs.value = []
 }
 
-// 当选中变化时，自动填充右侧表单（只取第一首）
+// 当选中变化时，普通模式只保留第一首。
 watch(() => selectedSongs.value, (newSelection: Song[]) => {
-  if (!isBatchMode.value && newSelection.length === 1) {
-    const song = newSelection[0]
-    if (song) {
-      Object.assign(editableSong.value, {
-        id: song.id,
-        title: song.title ?? '',
-        artist: song.artist ?? '',
-        lyrics: song.lyrics ?? '',
-      })
-      originalSongJson.value = JSON.stringify(editableSong.value)
-    }
-  } else if (newSelection.length > 1 && !isBatchMode.value) {
+  if (newSelection.length > 1 && !isBatchMode.value) {
     // 在多选时（非批量模式）只保留第一个选中的
     const firstSong = newSelection[0]
     if (firstSong) {
@@ -218,22 +205,8 @@ function onRowClick(_evt: Event, row: Song) {
   }
 }
 
-const isFormDirty = computed(() => {
-  return JSON.stringify(editableSong.value) !== originalSongJson.value
-})
-
-// 单曲保存
-const saveChanges = async () => {
-  if (!isFormDirty.value || !editableSong.value.id) return
-  const success = await songsStore.updateSong(editableSong.value.id, {
-    title: editableSong.value.title || '',
-    artist: editableSong.value.artist || '',
-    lyrics: editableSong.value.lyrics || '',
-  })
-  if (success) {
-    originalSongJson.value = JSON.stringify(editableSong.value)
-    Notify.create({ type: 'positive', message: t('songUpdatedSuccessfully') })
-  }
+function handleLyricEditorSaved(song: Song) {
+  selectedSongs.value = [song]
 }
 
 // 单曲删除
@@ -335,22 +308,34 @@ onMounted(() => {
   overflow: auto;
 }
 
-/* 强制输入框填满高度 */
-.full-height-input {
-  :deep(.q-field__control) {
-    height: 100%;
-  }
-
-  :deep(.q-field__native) {
-    height: 100%;
-    resize: none;
-  }
-}
-
 /* 歌曲列表容器 - 添加与工具栏一致的8px padding */
 .song-list-container {
   padding: 8px;
   box-sizing: border-box;
+}
+
+.song-detail-panel {
+  min-height: 0;
+}
+
+.song-detail-card {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  background: var(--lv-paper);
+}
+
+.song-lyrics-preview {
+  min-height: 0;
+  max-height: 100%;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--lv-ink);
+  font-family: var(--lv-font-serif);
+  line-height: 1.75;
 }
 
 /* 响应式内边距 */

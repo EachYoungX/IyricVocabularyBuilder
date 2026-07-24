@@ -152,7 +152,7 @@ class SongServiceImplTest {
         verify(songRepository, times(1)).save(existingSong);
         verify(songMapper, times(1)).updateEntityFromDto(requestDto, existingSong);
         verify(songMapper, times(1)).toDto(updatedSong);
-        verify(lyricStructureService).structureSong(updatedSong, requestDto.getLyrics(), true);
+        verify(lyricStructureService).structureSong(updatedSong, requestDto.getLyrics(), true, true);
         verify(vocabularyService, times(1)).refreshVocabularyIndexAsync();
     }
 

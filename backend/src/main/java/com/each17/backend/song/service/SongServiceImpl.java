@@ -186,7 +186,7 @@ public class SongServiceImpl implements SongService {
         // 更新歌曲信息
         songMapper.updateEntityFromDto(songDto, existingSong);
         Song updatedSong = songRepository.save(existingSong);
-        lyricStructureService.structureSong(updatedSong, songDto.getLyrics(), true);
+        lyricStructureService.structureSong(updatedSong, songDto.getLyrics(), true, true);
         
         // 更新歌曲后自动刷新词汇索引
         log.info("Song updated, triggering vocabulary index refresh...");

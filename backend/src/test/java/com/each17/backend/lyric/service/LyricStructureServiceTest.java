@@ -78,6 +78,17 @@ class LyricStructureServiceTest {
         assertEquals(2, song.getImportVersion());
     }
 
+    @Test
+    void preservesOriginalLyricsWhenRebuildingLearningText() {
+        Song song = song("Original lyrics", hashService.hash("old"));
+        when(lyricLineRepository.findBySongIdOrderByLineIndexAsc(1L)).thenReturn(List.of());
+
+        service.structureSong(song, "Edited learning lyrics", true, true);
+
+        assertEquals("Original lyrics", song.getRawLyrics());
+        assertEquals("Edited learning lyrics", song.getLyrics());
+    }
+
     private Song song(String lyrics, String hash) {
         return Song.builder()
                 .id(1L).title("Title").artist("Artist").lyrics(lyrics).rawLyrics(lyrics)

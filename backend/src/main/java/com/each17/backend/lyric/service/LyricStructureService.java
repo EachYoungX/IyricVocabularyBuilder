@@ -52,6 +52,10 @@ public class LyricStructureService {
     }
 
     public LyricDocumentDto structureSong(Song song, String rawLyrics, boolean overwrite) {
+        return structureSong(song, rawLyrics, overwrite, false);
+    }
+
+    public LyricDocumentDto structureSong(Song song, String rawLyrics, boolean overwrite, boolean preserveOriginalLyrics) {
         if (rawLyrics == null || rawLyrics.isBlank()) {
             throw new ValidationException("Lyrics cannot be empty");
         }
@@ -80,7 +84,9 @@ public class LyricStructureService {
         lyricLineRepository.flush();
 
         song.setLyrics(rawLyrics);
-        song.setRawLyrics(rawLyrics);
+        if (!preserveOriginalLyrics || song.getRawLyrics() == null || song.getRawLyrics().isBlank()) {
+            song.setRawLyrics(rawLyrics);
+        }
         song.setNormalizedLyrics(normalized.text());
         song.setLyricsHash(newHash);
         if (oldHash != null && !sameContent) {
