@@ -126,23 +126,6 @@
               </div>
             </div>
 
-            <q-separator class="q-my-lg" />
-
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-6">
-                <div class="settings-subhead">{{ t('settingsPage.vocabularyImportExport') }}</div>
-                <q-chip v-for="format in importExportFormats" :key="format" outline color="primary">{{ format }}</q-chip>
-              </div>
-              <div class="col-12 col-md-6">
-                <div class="settings-subhead">{{ t('settingsPage.exportScope') }}</div>
-                <q-list dense bordered separator class="settings-list">
-                  <q-item v-for="scope in exportScopes" :key="scope">
-                    <q-item-section>{{ t(`settingsPage.${scope}`) }}</q-item-section>
-                  </q-item>
-                </q-list>
-              </div>
-            </div>
-
             <div class="dictionary-source-block">
               <div class="settings-subhead">{{ t('dictionarySourceTitle') }}</div>
               <div v-if="dictionaryLoading" class="text-center q-py-md">
@@ -196,20 +179,13 @@
               <div class="col-12 col-md-4">
                 <div class="settings-subhead">{{ t('settingsPage.exportData') }}</div>
                 <q-btn outline no-caps class="settings-action" :loading="exporting"
-                  :label="t('settingsPage.exportVocabulary')" @click="exportVocabularyCsv" />
-                <q-btn outline no-caps class="settings-action" :loading="exporting"
-                  :label="t('settingsPage.exportAnki')" @click="exportVocabularyAnkiTsv" />
-                <q-btn outline no-caps class="settings-action" :loading="exporting"
-                  :label="t('settingsPage.exportLearningRecords')" @click="exportLearningRecordsJson" />
-                <q-btn outline no-caps class="settings-action" :loading="exporting"
                   :label="t('settingsPage.exportCompleteBackup')" @click="exportCompleteBackupJson" />
+                <div class="settings-help q-mt-sm">{{ t('settingsPage.vocabularyToolsMoved') }}</div>
               </div>
               <div class="col-12 col-md-4">
                 <div class="settings-subhead">{{ t('settingsPage.importData') }}</div>
                 <q-file v-model="backupFile" outlined dense accept=".json,application/json"
                   :label="t('settingsPage.chooseBackupFile')" class="q-mb-sm" />
-                <q-file v-model="vocabularyImportFile" outlined dense accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain"
-                  :label="t('settingsPage.chooseVocabularyFile')" class="q-mb-sm" />
                 <q-banner v-if="backupPreview" rounded class="settings-note q-mb-sm">
                   {{ backupPreview }}
                 </q-banner>
@@ -219,8 +195,6 @@
                   :label="t('settingsPage.mergeImport')" @click="importBackup('merge')" />
                 <q-btn outline no-caps class="settings-action" :disable="!backupFile" :loading="importing"
                   :label="t('settingsPage.overwriteImport')" @click="confirmOverwriteSettings" />
-                <q-btn outline no-caps class="settings-action" :disable="!vocabularyImportFile" :loading="importing"
-                  :label="t('settingsPage.importVocabularyFile')" @click="importVocabularyFile" />
               </div>
               <div class="col-12 col-md-4">
                 <div class="settings-subhead">{{ t('settingsPage.clearData') }}</div>
@@ -312,10 +286,7 @@ import {
   backupSongs,
   backupVocabulary,
   downloadTextFile,
-  parseVocabularyText,
   timestampForFilename,
-  vocabularyToAnkiTsv,
-  vocabularyToCsv,
   type BackupPayload,
   type BackupVocabularyItem,
 } from 'src/utils/settingsDataTransfer';
@@ -335,7 +306,6 @@ const dictionarySource = ref<DictionarySource | null>(null);
 const songCount = ref<number | null>(null);
 const vocabularyStats = ref<UserVocabularyStats | null>(null);
 const backupFile = ref<File | null>(null);
-const vocabularyImportFile = ref<File | null>(null);
 const backupPreview = ref('');
 const exporting = ref(false);
 const importing = ref(false);
@@ -397,8 +367,6 @@ const dictionaryDisplayOptions = computed(() => [
   option('dictLyricContext', 'LYRIC_CONTEXT'),
 ]);
 
-const importExportFormats = ['CSV', 'JSON', 'Anki', t('settingsPage.backupPackage')];
-const exportScopes = ['exportPersonalVocabulary', 'exportVocabularyWithStatus', 'exportFullBackup'];
 const lowValueExplanationItems = [
   'lowValueFactorFillers',
   'lowValueFactorShort',
@@ -409,7 +377,6 @@ const clearActions = [
   { key: 'clearSearchHistory', messageKey: 'clearSearchHistoryImpact', action: clearSearchHistory },
   { key: 'clearLocalCache', messageKey: 'clearLocalCacheImpact', action: clearLocalCache },
   { key: 'deleteAllSongs', messageKey: 'deleteAllSongsImpact', action: deleteAllSongs },
-  { key: 'deleteLearningRecords', messageKey: 'deleteLearningRecordsImpact', action: deleteLearningRecords },
   { key: 'deleteAccountData', messageKey: 'deleteAccountDataImpact', action: deleteAccountAndAllData },
 ];
 const privacyItems = [
@@ -463,60 +430,6 @@ function buildBackupPayload(
     songs,
     vocabulary,
   };
-}
-
-async function exportVocabularyCsv() {
-  exporting.value = true;
-  try {
-    const words = await UserVocabularyService.listUserVocabularyWords();
-    downloadTextFile(
-      `lyric-vocabulary-${timestampForFilename()}.csv`,
-      vocabularyToCsv(words),
-      'text/csv;charset=utf-8',
-    );
-    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.exportSuccess') });
-  } catch {
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.exportFailed') });
-  } finally {
-    exporting.value = false;
-  }
-}
-
-async function exportVocabularyAnkiTsv() {
-  exporting.value = true;
-  try {
-    const words = await UserVocabularyService.listUserVocabularyWords();
-    downloadTextFile(
-      `lyric-vocabulary-anki-${timestampForFilename()}.tsv`,
-      await vocabularyToAnkiTsv(words),
-      'text/tab-separated-values;charset=utf-8',
-    );
-    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.exportSuccess') });
-  } catch {
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.exportFailed') });
-  } finally {
-    exporting.value = false;
-  }
-}
-
-async function exportLearningRecordsJson() {
-  exporting.value = true;
-  try {
-    const [vocabulary, stats] = await Promise.all([
-      UserVocabularyService.listUserVocabularyWords(),
-      UserVocabularyService.getUserVocabularyStats().catch(() => null),
-    ]);
-    downloadTextFile(
-      `lyric-learning-records-${timestampForFilename()}.json`,
-      JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), stats, vocabulary }, null, 2),
-      'application/json;charset=utf-8',
-    );
-    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.exportSuccess') });
-  } catch {
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.exportFailed') });
-  } finally {
-    exporting.value = false;
-  }
 }
 
 async function exportCompleteBackupJson() {
@@ -655,30 +568,6 @@ async function importVocabularyFromBackup(vocabulary: BackupVocabularyItem[]) {
   return imported;
 }
 
-async function importVocabularyFile() {
-  if (!vocabularyImportFile.value) return;
-  importing.value = true;
-  try {
-    const vocabulary = parseVocabularyText(
-      await vocabularyImportFile.value.text(),
-      vocabularyImportFile.value.name,
-    );
-    const imported = await importVocabularyFromBackup(vocabulary);
-    resetStatsAfterDataChange();
-    $q.notify({
-      type: 'positive',
-      position: 'top-right',
-      message: t('settingsPage.importVocabularySuccess', { count: imported }),
-    });
-    vocabularyImportFile.value = null;
-  } catch (error) {
-    console.error('Failed to import vocabulary file:', error);
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.importVocabularyFailed') });
-  } finally {
-    importing.value = false;
-  }
-}
-
 async function restoreVocabularyState(saved: UserVocabulary, item: BackupVocabularyItem) {
   if (!item.status && item.masteryScore === undefined && item.note === undefined) return;
   const request: { status?: VocabularyStatus; masteryScore?: number; note?: string | null } = {};
@@ -721,16 +610,6 @@ async function deleteAllSongsData() {
   const songs = await SongsService.getAllSongs();
   if (songs.length > 0) {
     await SongsService.deleteSongsBatch(songs.map((song) => song.id));
-  }
-}
-
-async function deleteLearningRecords() {
-  try {
-    await deleteLearningRecordsData();
-    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
-    resetStatsAfterDataChange();
-  } catch {
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.clearFailed') });
   }
 }
 

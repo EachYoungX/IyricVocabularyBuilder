@@ -367,6 +367,7 @@ export default {
     localDataSize: '本地数据占用',
     exportData: '导出数据',
     importData: '导入数据',
+    vocabularyToolsMoved: '个人词库 CSV、Anki、学习记录导出和词库文件导入已迁移到“我的词库”页面。',
     clearData: '清理数据',
     exportVocabulary: '导出词库',
     exportLearningRecords: '导出学习记录',

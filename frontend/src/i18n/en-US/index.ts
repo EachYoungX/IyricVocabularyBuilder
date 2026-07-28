@@ -345,6 +345,7 @@ export default {
     localDataSize: 'Local data size',
     exportData: 'Export data',
     importData: 'Import data',
+    vocabularyToolsMoved: 'Personal vocabulary CSV, Anki, learning-record export, and vocabulary-file import have moved to My Vocabulary.',
     clearData: 'Clear data',
     exportVocabulary: 'Export vocabulary',
     exportLearningRecords: 'Export learning records',
