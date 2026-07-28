@@ -92,6 +92,12 @@
             <q-btn flat dense icon="refresh" :loading="qualityLoading" :label="t('refresh')" @click="loadQualityCandidates" />
           </div>
         </div>
+        <div class="cleanup-summary q-mb-sm">
+          <div v-for="item in cleanupSummaryCards" :key="item.key" class="cleanup-summary-item">
+            <div class="cleanup-summary-value">{{ item.value }}</div>
+            <div class="cleanup-summary-label">{{ item.label }}</div>
+          </div>
+        </div>
         <q-table
           v-model:selected="selectedQualityCandidates"
           flat
@@ -389,6 +395,17 @@ const statsCards = computed(() => [
   { key: 'ignored', label: statusLabel(VocabularyStatus.IGNORED), value: store.stats?.ignoredCount ?? 0 },
 ]);
 
+const cleanupImpact = computed(() => summarizeCandidates(qualityCandidates.value));
+const selectedCleanupImpact = computed(() => summarizeCandidates(selectedQualityCandidates.value));
+const cleanupSummaryCards = computed(() => [
+  { key: 'totalCandidates', label: t('cleanupTotalCandidates'), value: cleanupImpact.value.count },
+  { key: 'totalOccurrences', label: t('cleanupTotalOccurrences'), value: cleanupImpact.value.occurrences },
+  { key: 'totalSongs', label: t('cleanupTotalSongs'), value: cleanupImpact.value.songs },
+  { key: 'selectedCandidates', label: t('cleanupSelectedCandidates'), value: selectedCleanupImpact.value.count },
+  { key: 'selectedOccurrences', label: t('cleanupSelectedOccurrences'), value: selectedCleanupImpact.value.occurrences },
+  { key: 'selectedSongs', label: t('cleanupSelectedSongs'), value: selectedCleanupImpact.value.songs },
+]);
+
 onMounted(() => {
   void loadData();
 });
@@ -583,7 +600,7 @@ function confirmDeleteCandidates(candidates: VocabularyQualityCandidate[]) {
   }
   Dialog.create({
     title: t('deleteCleanupCandidates'),
-    message: t('deleteCleanupCandidatesImpact', { count: words.length }),
+    message: cleanupImpactMessage('deleteCleanupCandidatesImpact', candidates),
     cancel: true,
     persistent: true,
     ok: { color: 'negative', label: t('deleteForever') },
@@ -595,7 +612,10 @@ async function deleteCandidates(words: string[]) {
   try {
     const deletedCount = await VocabularyService.deleteVocabularyWords({ words });
     removeQualityCandidates(words);
-    Notify.create({ type: 'positive', message: t('cleanupCandidatesDeleted', { count: deletedCount }) });
+    Notify.create({
+      type: 'positive',
+      message: t('cleanupCandidatesDeleted', { count: deletedCount, remaining: qualityCandidates.value.length }),
+    });
   } catch {
     Notify.create({ type: 'negative', message: t('cleanupCandidatesDeleteFailed') });
   } finally {
@@ -610,7 +630,7 @@ function confirmIgnoreCandidates(candidates: VocabularyQualityCandidate[]) {
   }
   Dialog.create({
     title: t('ignoreCleanupCandidates'),
-    message: t('ignoreCleanupCandidatesImpact', { count: words.length }),
+    message: cleanupImpactMessage('ignoreCleanupCandidatesImpact', candidates),
     cancel: true,
     persistent: true,
     ok: { color: 'primary', label: t('ignore') },
@@ -630,7 +650,10 @@ async function ignoreCandidates(words: string[]) {
     }
     removeQualityCandidates(words);
     await store.fetchDashboard();
-    Notify.create({ type: 'positive', message: t('cleanupCandidatesIgnored', { count: words.length }) });
+    Notify.create({
+      type: 'positive',
+      message: t('cleanupCandidatesIgnored', { count: words.length, remaining: qualityCandidates.value.length }),
+    });
   } catch {
     Notify.create({ type: 'negative', message: t('cleanupCandidatesIgnoreFailed') });
   } finally {
@@ -646,6 +669,26 @@ function removeQualityCandidates(words: string[]) {
   const wordSet = new Set(words);
   qualityCandidates.value = qualityCandidates.value.filter((candidate) => !wordSet.has(candidate.word));
   selectedQualityCandidates.value = selectedQualityCandidates.value.filter((candidate) => !wordSet.has(candidate.word));
+}
+
+function summarizeCandidates(candidates: VocabularyQualityCandidate[]) {
+  return candidates.reduce(
+    (summary, candidate) => ({
+      count: summary.count + 1,
+      occurrences: summary.occurrences + candidate.occurrenceCount,
+      songs: summary.songs + candidate.songCount,
+    }),
+    { count: 0, occurrences: 0, songs: 0 },
+  );
+}
+
+function cleanupImpactMessage(key: string, candidates: VocabularyQualityCandidate[]) {
+  const impact = summarizeCandidates(candidates);
+  return t(key, {
+    count: impact.count,
+    occurrences: impact.occurrences,
+    songs: impact.songs,
+  });
 }
 
 async function updateStatus(id: number, status: VocabularyStatus) {
@@ -894,6 +937,30 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 
 .data-actions {
   background: rgba(255, 255, 255, 0.36);
+}
+
+.cleanup-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.cleanup-summary-item {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid var(--lv-line);
+  border-radius: 8px;
+}
+
+.cleanup-summary-value {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.cleanup-summary-label {
+  color: var(--lv-ink-soft);
+  font-size: 12px;
 }
 
 .section-label {
