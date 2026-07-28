@@ -12,19 +12,19 @@
               :caption="t('settingsPage.appearanceCaption')" />
             <div class="row q-col-gutter-md q-mt-sm">
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.fontScale" outlined emit-value map-options :options="fontScaleOptions"
+                <SettingsSelect v-model="settings.fontScale" outlined emit-value map-options :options="fontScaleOptions"
                   :label="t('settingsPage.fontScale')" @update:model-value="persistSettings" />
               </div>
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.interfaceScale" outlined emit-value map-options :options="interfaceScaleOptions"
+                <SettingsSelect v-model="settings.interfaceScale" outlined emit-value map-options :options="interfaceScaleOptions"
                   :label="t('settingsPage.interfaceScale')" @update:model-value="persistSettings" />
               </div>
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.themeMode" outlined emit-value map-options :options="themeOptions"
+                <SettingsSelect v-model="settings.themeMode" outlined emit-value map-options :options="themeOptions"
                   :label="t('settingsPage.themeMode')" @update:model-value="persistSettings" />
               </div>
               <div class="col-12 col-md-6">
-                <q-select v-model="motionPreference" outlined emit-value map-options :options="motionOptions"
+                <SettingsSelect v-model="motionPreference" outlined emit-value map-options :options="motionOptions"
                   :label="t('settingsPage.motionEffects')" @update:model-value="persistMotion" />
               </div>
             </div>
@@ -37,12 +37,12 @@
               :caption="t('settingsPage.learningCaption')" />
             <div class="row q-col-gutter-md q-mt-sm">
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.defaultNewWordStatus" outlined emit-value map-options
+                <SettingsSelect v-model="settings.defaultNewWordStatus" outlined emit-value map-options
                   :options="newWordStatusOptions" :label="t('settingsPage.defaultNewWordStatus')"
                   @update:model-value="persistSettings" />
               </div>
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.lowValueWordHandling" outlined emit-value map-options
+                <SettingsSelect v-model="settings.lowValueWordHandling" outlined emit-value map-options
                   :options="lowValueOptions" :label="t('settingsPage.lowValueWordHandling')"
                   @update:model-value="persistSettings" />
               </div>
@@ -78,22 +78,22 @@
               :caption="t('settingsPage.lyricsCaption')" />
             <div class="row q-col-gutter-md q-mt-sm">
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.postImportBehavior" outlined emit-value map-options
+                <SettingsSelect v-model="settings.postImportBehavior" outlined emit-value map-options
                   :options="postImportOptions" :label="t('settingsPage.postImportBehavior')"
                   @update:model-value="persistSettings" />
               </div>
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.roleLabelHandling" outlined emit-value map-options
+                <SettingsSelect v-model="settings.roleLabelHandling" outlined emit-value map-options
                   :options="roleLabelOptions" :label="t('settingsPage.roleLabelHandling')"
                   @update:model-value="persistSettings" />
               </div>
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.repeatedChorusHandling" outlined emit-value map-options
+                <SettingsSelect v-model="settings.repeatedChorusHandling" outlined emit-value map-options
                   :options="repeatedChorusOptions" :label="t('settingsPage.repeatedChorusHandling')"
                   @update:model-value="persistSettings" />
               </div>
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.fillerWordHandling" outlined emit-value map-options
+                <SettingsSelect v-model="settings.fillerWordHandling" outlined emit-value map-options
                   :options="fillerWordOptions" :label="t('settingsPage.fillerWordHandling')"
                   @update:model-value="persistSettings" />
               </div>
@@ -107,7 +107,7 @@
               :caption="t('settingsPage.dictionaryCaption')" />
             <div class="row q-col-gutter-md q-mt-sm">
               <div class="col-12 col-md-6">
-                <q-select v-model="settings.definitionLanguage" outlined emit-value map-options
+                <SettingsSelect v-model="settings.definitionLanguage" outlined emit-value map-options
                   :options="definitionLanguageOptions" :label="t('settingsPage.definitionLanguage')"
                   @update:model-value="persistSettings" />
               </div>
@@ -257,6 +257,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import SettingsSectionHeading from 'components/SettingsSectionHeading.vue';
+import SettingsSelect from 'components/SettingsSelect.vue';
 import {
   DictionaryService,
   ImportTaskResult,
