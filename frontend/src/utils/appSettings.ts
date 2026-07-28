@@ -7,7 +7,7 @@ export type DefaultNewWordStatus = 'NEW' | 'LEARNING' | 'BOOKMARK_ONLY';
 export type LowValueWordHandling = 'QUERY_ONLY' | 'NORMAL' | 'HIDE_RECOMMENDATION_MARKER';
 export type PostImportBehavior = 'SAVE_DIRECTLY' | 'CONFIRM_CLEANING';
 export type RoleLabelHandling = 'AUTO_HIDE' | 'AUTO_DELETE' | 'KEEP_VISIBLE' | 'CONFIRM_EACH_IMPORT';
-export type RepeatedChorusHandling = 'KEEP_ALL' | 'WEAKEN_OR_FOLD' | 'DEDUP_LEARNING_STATS';
+export type RepeatedChorusHandling = 'KEEP_ALL' | 'DEDUP_LEARNING_STATS';
 export type FillerWordHandling = 'NOT_RECOMMENDED' | 'NORMAL' | 'EXCLUDE_STATS';
 export type DefinitionLanguage = 'ZH' | 'EN' | 'BILINGUAL';
 export type DictionaryDisplayItem = 'BRIEF' | 'FULL' | 'PHONETIC_POS' | 'INFLECTIONS' | 'LYRIC_CONTEXT';
@@ -36,7 +36,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   lowValueWordHandling: 'QUERY_ONLY',
   postImportBehavior: 'CONFIRM_CLEANING',
   roleLabelHandling: 'AUTO_HIDE',
-  repeatedChorusHandling: 'WEAKEN_OR_FOLD',
+  repeatedChorusHandling: 'KEEP_ALL',
   fillerWordHandling: 'NOT_RECOMMENDED',
   definitionLanguage: 'BILINGUAL',
   dictionaryDisplay: ['BRIEF', 'PHONETIC_POS', 'LYRIC_CONTEXT'],
@@ -91,11 +91,7 @@ export function normalizeAppSettings(value: unknown): AppSettings | null {
       ['AUTO_HIDE', 'AUTO_DELETE', 'KEEP_VISIBLE', 'CONFIRM_EACH_IMPORT'],
       DEFAULT_APP_SETTINGS.roleLabelHandling,
     ),
-    repeatedChorusHandling: pickValue(
-      value.repeatedChorusHandling,
-      ['KEEP_ALL', 'WEAKEN_OR_FOLD', 'DEDUP_LEARNING_STATS'],
-      DEFAULT_APP_SETTINGS.repeatedChorusHandling,
-    ),
+    repeatedChorusHandling: normalizeRepeatedChorusHandling(value.repeatedChorusHandling),
     fillerWordHandling: pickValue(
       value.fillerWordHandling,
       ['NOT_RECOMMENDED', 'NORMAL', 'EXCLUDE_STATS'],
@@ -114,6 +110,11 @@ export function normalizeAppSettings(value: unknown): AppSettings | null {
     lemmaSearch: pickBoolean(value.lemmaSearch, DEFAULT_APP_SETTINGS.lemmaSearch),
     phraseDetection: pickBoolean(value.phraseDetection, DEFAULT_APP_SETTINGS.phraseDetection),
   };
+}
+
+function normalizeRepeatedChorusHandling(value: unknown): RepeatedChorusHandling {
+  if (value === 'DEDUP_LEARNING_STATS') return 'DEDUP_LEARNING_STATS';
+  return 'KEEP_ALL';
 }
 
 export function loadAppSettings(): AppSettings {

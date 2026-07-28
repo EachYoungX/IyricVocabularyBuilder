@@ -47,6 +47,25 @@
                   @update:model-value="persistSettings" />
               </div>
             </div>
+            <q-expansion-item
+              dense
+              expand-separator
+              class="settings-info q-mt-md"
+              icon="o_help_outline"
+              :label="t('settingsPage.lowValueExplanationTitle')"
+            >
+              <div class="settings-help q-pa-md">
+                <p>{{ t('settingsPage.lowValueExplanationBody') }}</p>
+                <q-list dense>
+                  <q-item v-for="item in lowValueExplanationItems" :key="item">
+                    <q-item-section avatar>
+                      <q-icon name="fiber_manual_record" size="8px" color="primary" />
+                    </q-item-section>
+                    <q-item-section>{{ t(`settingsPage.${item}`) }}</q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+            </q-expansion-item>
             <q-banner rounded class="settings-note q-mt-md">
               {{ t('settingsPage.reviewTimingDeferred') }}
             </q-banner>
@@ -359,7 +378,6 @@ const roleLabelOptions = computed(() => [
 ]);
 const repeatedChorusOptions = computed(() => [
   option('chorusKeep', 'KEEP_ALL'),
-  option('chorusFold', 'WEAKEN_OR_FOLD'),
   option('chorusDedupe', 'DEDUP_LEARNING_STATS'),
 ]);
 const fillerWordOptions = computed(() => [
@@ -382,6 +400,12 @@ const dictionaryDisplayOptions = computed(() => [
 
 const importExportFormats = ['CSV', 'JSON', 'Anki', t('settingsPage.backupPackage')];
 const exportScopes = ['exportPersonalVocabulary', 'exportVocabularyWithStatus', 'exportFullBackup'];
+const lowValueExplanationItems = [
+  'lowValueFactorFillers',
+  'lowValueFactorShort',
+  'lowValueFactorRepeated',
+  'lowValueStillSearchable',
+];
 const clearActions = [
   { key: 'clearSearchHistory', messageKey: 'clearSearchHistoryImpact', action: clearSearchHistory },
   { key: 'clearLocalCache', messageKey: 'clearLocalCacheImpact', action: clearLocalCache },
@@ -806,6 +830,16 @@ onMounted(() => {
   color: var(--lv-ink-soft);
   background: var(--lv-accent-soft);
   border: 1px solid var(--lv-line);
+}
+
+.settings-info {
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid var(--lv-line);
+  border-radius: var(--lv-radius-sm);
+}
+
+.settings-info p {
+  margin: 0 0 8px;
 }
 
 .settings-subhead {

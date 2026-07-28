@@ -3,7 +3,7 @@ import type { ExtendedSongImportRequest, LyricImportSummary } from 'src/types/so
 type Translate = (key: string, params?: Record<string, unknown>) => string;
 type LyricsProcessingSettings = {
   roleLabelHandling?: 'AUTO_HIDE' | 'AUTO_DELETE' | 'KEEP_VISIBLE' | 'CONFIRM_EACH_IMPORT';
-  repeatedChorusHandling?: 'KEEP_ALL' | 'WEAKEN_OR_FOLD' | 'DEDUP_LEARNING_STATS';
+  repeatedChorusHandling?: 'KEEP_ALL' | 'DEDUP_LEARNING_STATS';
   fillerWordHandling?: 'NOT_RECOMMENDED' | 'NORMAL' | 'EXCLUDE_STATS';
 };
 
