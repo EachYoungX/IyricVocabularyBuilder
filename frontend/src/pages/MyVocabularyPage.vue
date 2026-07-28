@@ -19,6 +19,46 @@
 
     <q-expansion-item
       class="quality-panel q-mt-md"
+      icon="import_export"
+      :label="t('vocabularyDataManagement')"
+      :caption="t('vocabularyDataManagementHint')"
+    >
+      <div class="q-pa-md data-actions">
+        <div class="row q-col-gutter-md">
+          <div class="col-12 col-md-6">
+            <div class="section-label">{{ t('exportData') }}</div>
+            <div class="row q-gutter-sm">
+              <q-btn outline no-caps icon="download" :loading="isMutating" :label="t('exportVocabularyCsv')" @click="exportVocabularyCsv" />
+              <q-btn outline no-caps icon="download" :loading="isMutating" :label="t('exportAnki')" @click="exportVocabularyAnkiTsv" />
+              <q-btn outline no-caps icon="download" :loading="isMutating" :label="t('exportLearningRecords')" @click="exportLearningRecordsJson" />
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="section-label">{{ t('importData') }}</div>
+            <div class="row q-col-gutter-sm items-start">
+              <div class="col-12 col-sm">
+                <q-file
+                  v-model="vocabularyImportFile"
+                  outlined
+                  dense
+                  clearable
+                  accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain"
+                  :label="t('chooseVocabularyFile')"
+                />
+              </div>
+              <div class="col-12 col-sm-auto">
+                <q-btn outline no-caps icon="upload" :disable="!vocabularyImportFile" :loading="isMutating" :label="t('importVocabularyFile')" @click="importVocabularyFile" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <q-separator class="q-my-md" />
+        <q-btn flat color="negative" icon="delete_forever" :loading="isMutating" :label="t('deleteAllLearningRecords')" @click="confirmClearVocabulary" />
+      </div>
+    </q-expansion-item>
+
+    <q-expansion-item
+      class="quality-panel q-mt-md"
       icon="rule"
       :label="t('vocabularyCleanupCandidates')"
       :caption="t('vocabularyCleanupCandidatesHint')"
@@ -220,7 +260,10 @@ import { useUserVocabularyStore } from 'src/stores/userVocabularyStore';
 import {
   VocabularyService,
   VocabularyStatus,
+  UserVocabularyService,
   type UserVocabulary,
+  type UserVocabularyRequest,
+  type UserVocabularyUpdateRequest,
   type VocabularyQualityCandidate,
   type WordOccurrence,
 } from 'src/services/api';
@@ -236,6 +279,7 @@ const selected = ref<UserVocabulary[]>([]);
 const activeWord = ref<UserVocabulary | null>(null);
 const occurrences = ref<WordOccurrence[]>([]);
 const qualityCandidates = ref<VocabularyQualityCandidate[]>([]);
+const vocabularyImportFile = ref<File | null>(null);
 const occurrencesLoading = ref(false);
 const qualityLoading = ref(false);
 const occurrenceError = ref('');
@@ -363,6 +407,108 @@ async function loadQualityCandidates() {
   }
 }
 
+async function exportVocabularyCsv() {
+  isMutating.value = true;
+  try {
+    const rows = await UserVocabularyService.listUserVocabularyWords();
+    downloadTextFile(`lyric-vocabulary-${timestampForFilename()}.csv`, buildVocabularyCsv(rows), 'text/csv;charset=utf-8');
+    Notify.create({ type: 'positive', message: t('exportSuccess') });
+  } catch {
+    Notify.create({ type: 'negative', message: t('exportFailed') });
+  } finally {
+    isMutating.value = false;
+  }
+}
+
+async function exportVocabularyAnkiTsv() {
+  isMutating.value = true;
+  try {
+    const rows = await UserVocabularyService.listUserVocabularyWords();
+    const body = rows.map((word) => [word.lemma, statusLabel(word.status), word.note ?? ''].map(tsvCell).join('\t')).join('\n');
+    downloadTextFile(`lyric-vocabulary-anki-${timestampForFilename()}.tsv`, body, 'text/tab-separated-values;charset=utf-8');
+    Notify.create({ type: 'positive', message: t('exportSuccess') });
+  } catch {
+    Notify.create({ type: 'negative', message: t('exportFailed') });
+  } finally {
+    isMutating.value = false;
+  }
+}
+
+async function exportLearningRecordsJson() {
+  isMutating.value = true;
+  try {
+    const [vocabulary, stats] = await Promise.all([
+      UserVocabularyService.listUserVocabularyWords(),
+      UserVocabularyService.getUserVocabularyStats().catch(() => null),
+    ]);
+    downloadTextFile(
+      `lyric-learning-records-${timestampForFilename()}.json`,
+      JSON.stringify({ schemaVersion: 1, exportedAt: new Date().toISOString(), stats, vocabulary }, null, 2),
+      'application/json;charset=utf-8',
+    );
+    Notify.create({ type: 'positive', message: t('exportSuccess') });
+  } catch {
+    Notify.create({ type: 'negative', message: t('exportFailed') });
+  } finally {
+    isMutating.value = false;
+  }
+}
+
+async function importVocabularyFile() {
+  if (!vocabularyImportFile.value) {
+    return;
+  }
+  isMutating.value = true;
+  try {
+    const parsed = parseVocabularyText(await vocabularyImportFile.value.text(), vocabularyImportFile.value.name);
+    for (const item of parsed) {
+      const addRequest: UserVocabularyRequest = { lemma: item.lemma };
+      if (item.note !== undefined) addRequest.note = item.note;
+      const saved = await UserVocabularyService.addUserVocabularyWord(addRequest);
+      if (item.status || item.masteryScore !== undefined || item.note !== undefined) {
+        const updateRequest: UserVocabularyUpdateRequest = {};
+        if (item.status) updateRequest.status = item.status;
+        if (item.masteryScore !== undefined) updateRequest.masteryScore = item.masteryScore;
+        if (item.note !== undefined) updateRequest.note = item.note;
+        await UserVocabularyService.updateUserVocabularyWord(saved.id, updateRequest);
+      }
+    }
+    vocabularyImportFile.value = null;
+    await store.fetchDashboard();
+    Notify.create({ type: 'positive', message: t('importVocabularySuccess', { count: parsed.length }) });
+  } catch {
+    Notify.create({ type: 'negative', message: t('importVocabularyFailed') });
+  } finally {
+    isMutating.value = false;
+  }
+}
+
+function confirmClearVocabulary() {
+  Dialog.create({
+    title: t('deleteAllLearningRecords'),
+    message: t('deleteAllLearningRecordsImpact'),
+    cancel: true,
+    persistent: true,
+    ok: { color: 'negative', label: t('deleteForever') },
+  }).onOk(() => void clearVocabulary());
+}
+
+async function clearVocabulary() {
+  isMutating.value = true;
+  try {
+    await UserVocabularyService.clearUserVocabularyWords();
+    selected.value = [];
+    activeWord.value = null;
+    occurrences.value = [];
+    await store.fetchDashboard();
+    Notify.create({ type: 'positive', message: t('clearSuccess') });
+  } catch {
+    Notify.create({ type: 'negative', message: t('clearFailed') });
+  } finally {
+    isMutating.value = false;
+  }
+}
+
 function lookupCandidate(word: string) {
   const existing = store.words.find((item: UserVocabulary) => item.lemma === word);
   if (existing) {
@@ -473,6 +619,121 @@ function masteryScoreForStatus(status: VocabularyStatus) {
       return 0;
   }
 }
+
+function buildVocabularyCsv(rows: UserVocabulary[]) {
+  const header = ['lemma', 'status', 'masteryScore', 'note', 'firstSeenAt', 'lastSeenAt', 'reviewDueAt'];
+  const body = rows.map((word) => [
+    word.lemma,
+    word.status,
+    String(word.masteryScore),
+    word.note ?? '',
+    word.firstSeenAt,
+    word.lastSeenAt,
+    word.reviewDueAt ?? '',
+  ].map(csvCell).join(','));
+  return [header.join(','), ...body].join('\n');
+}
+
+function csvCell(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function tsvCell(value: string) {
+  return value.replace(/\t/g, ' ').replace(/\r?\n/g, ' ');
+}
+
+function downloadTextFile(filename: string, content: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.URL.revokeObjectURL(url);
+}
+
+function timestampForFilename() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+type VocabularyImportItem = {
+  lemma: string;
+  status?: VocabularyStatus;
+  masteryScore?: number;
+  note?: string | null;
+};
+
+function parseVocabularyText(text: string, filename: string): VocabularyImportItem[] {
+  const delimiter = filename.toLowerCase().endsWith('.tsv') ? '\t' : ',';
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length === 0) {
+    return [];
+  }
+
+  const firstLine = lines[0];
+  if (!firstLine) {
+    return [];
+  }
+  const firstCells = splitDelimitedLine(firstLine, delimiter).map((cell) => cell.trim().toLowerCase());
+  const hasHeader = firstCells.includes('lemma') || firstCells.includes('word');
+  const headers = hasHeader ? firstCells : ['lemma', 'status', 'masteryscore', 'note'];
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+
+  return dataLines.map((line) => {
+    const cells = splitDelimitedLine(line, delimiter);
+    const item: VocabularyImportItem = { lemma: valueForColumn(cells, headers, ['lemma', 'word']) };
+    const status = normalizeStatus(valueForColumn(cells, headers, ['status']));
+    const masteryScore = Number(valueForColumn(cells, headers, ['masteryscore', 'mastery_score']));
+    const note = valueForColumn(cells, headers, ['note']);
+    if (status) item.status = status;
+    if (Number.isFinite(masteryScore)) item.masteryScore = Math.min(1, Math.max(0, masteryScore));
+    if (note) item.note = note;
+    return item;
+  }).filter((item) => item.lemma);
+}
+
+function splitDelimitedLine(line: string, delimiter: string) {
+  if (delimiter === '\t') {
+    return line.split('\t').map((cell) => cell.trim());
+  }
+
+  const cells: string[] = [];
+  let current = '';
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+    if (char === '"' && quoted && next === '"') {
+      current += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === delimiter && !quoted) {
+      cells.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
+function valueForColumn(cells: string[], headers: string[], keys: string[]) {
+  const index = headers.findIndex((header) => keys.includes(header));
+  return index >= 0 ? cells[index]?.trim() ?? '' : '';
+}
+
+function normalizeStatus(value: string): VocabularyStatus | undefined {
+  const normalized = value.trim().toUpperCase();
+  const statuses: Record<string, VocabularyStatus> = {
+    NEW: VocabularyStatus.NEW,
+    LEARNING: VocabularyStatus.LEARNING,
+    MASTERED: VocabularyStatus.MASTERED,
+    IGNORED: VocabularyStatus.IGNORED,
+  };
+  return statuses[normalized];
+}
 </script>
 
 <style lang="scss" scoped>
@@ -512,6 +773,17 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 
 .batch-select {
   min-width: 160px;
+}
+
+.data-actions {
+  background: rgba(255, 255, 255, 0.36);
+}
+
+.section-label {
+  color: var(--lv-ink);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
 .content-splitter {
