@@ -46,6 +46,13 @@ public class VocabularyController {
         return ResponseEntity.ok(ApiResponse.success(vocabularyService.deleteWords(request.getWords())));
     }
 
+    @PatchMapping("/words/{word}/learning-value")
+    public ResponseEntity<ApiResponse<VocabularyQualityCandidateDto>> updateLearningValue(
+            @PathVariable String word,
+            @RequestBody VocabularyLearningValueRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(vocabularyService.updateLearningValue(word, Boolean.TRUE.equals(request.getRecommended()))));
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<SongImportResponseDto>> refreshVocabularyIndex() {
         UUID taskId = vocabularyService.refreshVocabularyIndexAsync();

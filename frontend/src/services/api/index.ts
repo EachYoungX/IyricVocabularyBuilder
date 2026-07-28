@@ -28,6 +28,7 @@ export type { UserVocabularyReviewItem } from './models/UserVocabularyReviewItem
 export type { UserVocabularyStats } from './models/UserVocabularyStats';
 export type { UserVocabularyUpdateRequest } from './models/UserVocabularyUpdateRequest';
 export type { VocabularyBulkWordsRequest } from './models/VocabularyBulkWordsRequest';
+export type { VocabularyLearningValueRequest } from './models/VocabularyLearningValueRequest';
 export type { VocabularyQualityCandidate } from './models/VocabularyQualityCandidate';
 export { VocabularyRebuildTask } from './models/VocabularyRebuildTask';
 export { VocabularyStatus } from './models/VocabularyStatus';

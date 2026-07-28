@@ -189,6 +189,7 @@ class VocabularyServiceImplTest {
         assertEquals(expectedOccurrences.size(), result.size());
         assertEquals(expectedOccurrences.get(0).getSongTitle(), result.get(0).getSongTitle());
         assertEquals(expectedOccurrences.get(0).getLyricLine(), result.get(0).getLyricLine());
+        assertEquals(1.0, result.get(0).getLearningScore());
         
         verify(vocabularyRepository, times(1)).findById(word.toLowerCase());
     }
@@ -271,5 +272,47 @@ class VocabularyServiceImplTest {
         assertEquals(2, result);
         verify(vocabularyRepository).findAllById(List.of("love", "run away"));
         verify(vocabularyRepository).deleteAllInBatch(List.of(love, runAway));
+    }
+
+    @Test
+    void testUpdateLearningValueCanMarkWordLowValue() {
+        Vocabulary vocabulary = Vocabulary.builder()
+                .word("yeah")
+                .occurrences("[]")
+                .occurrenceCount(4)
+                .songCount(2)
+                .learningScore(1.0)
+                .recommended(true)
+                .build();
+        when(vocabularyRepository.findById("yeah")).thenReturn(Optional.of(vocabulary));
+        when(vocabularyRepository.save(vocabulary)).thenReturn(vocabulary);
+
+        var result = vocabularyService.updateLearningValue("Yeah", false);
+
+        assertFalse(vocabulary.getRecommended());
+        assertEquals(0.25, vocabulary.getLearningScore());
+        assertEquals("yeah", result.getWord());
+        assertTrue(result.getReasons().contains("LOW_LEARNING_VALUE"));
+    }
+
+    @Test
+    void testUpdateLearningValueCanMarkWordRecommended() {
+        Vocabulary vocabulary = Vocabulary.builder()
+                .word("love")
+                .occurrences("[]")
+                .occurrenceCount(4)
+                .songCount(2)
+                .learningScore(0.25)
+                .recommended(false)
+                .build();
+        when(vocabularyRepository.findById("love")).thenReturn(Optional.of(vocabulary));
+        when(vocabularyRepository.save(vocabulary)).thenReturn(vocabulary);
+
+        var result = vocabularyService.updateLearningValue("love", true);
+
+        assertTrue(vocabulary.getRecommended());
+        assertEquals(1.0, vocabulary.getLearningScore());
+        assertEquals("love", result.getWord());
+        assertFalse(result.getReasons().contains("LOW_LEARNING_VALUE"));
     }
 }

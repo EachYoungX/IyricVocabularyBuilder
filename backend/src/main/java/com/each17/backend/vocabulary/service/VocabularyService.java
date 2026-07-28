@@ -1,6 +1,5 @@
 package com.each17.backend.vocabulary.service;
 
-import com.each17.backend.dto.ImportTaskResultDto;
 import com.each17.backend.dto.VocabularyQualityCandidateDto;
 import com.each17.backend.dto.VocabularyRebuildTaskDto;
 import com.each17.backend.dto.WordOccurrenceDto;
@@ -14,6 +13,7 @@ public interface VocabularyService {
     List<WordOccurrenceDto> getWordOccurrences(String word);
     List<VocabularyQualityCandidateDto> getQualityCandidates(int limit);
     int deleteWords(List<String> words);
+    VocabularyQualityCandidateDto updateLearningValue(String word, boolean recommended);
     UUID refreshVocabularyIndexAsync();
     VocabularyRebuildTaskDto getRefreshTaskStatus(UUID taskId);
 }

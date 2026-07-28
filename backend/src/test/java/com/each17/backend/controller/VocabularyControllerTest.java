@@ -2,6 +2,8 @@ package com.each17.backend.controller;
 
 import com.each17.backend.vocabulary.controller.VocabularyController;
 import com.each17.backend.dto.VocabularyBulkWordsRequestDto;
+import com.each17.backend.dto.VocabularyLearningValueRequestDto;
+import com.each17.backend.dto.VocabularyQualityCandidateDto;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
 import com.each17.backend.vocabulary.service.VocabularyService;
@@ -102,6 +104,31 @@ class VocabularyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data").value(2));
+    }
+
+    @Test
+    void testUpdateVocabularyLearningValue() throws Exception {
+        VocabularyLearningValueRequestDto request = new VocabularyLearningValueRequestDto();
+        request.setRecommended(false);
+        VocabularyQualityCandidateDto response = VocabularyQualityCandidateDto.builder()
+                .word("yeah")
+                .learningScore(0.25)
+                .occurrenceCount(3)
+                .songCount(1)
+                .recommended(false)
+                .reasons(List.of("LOW_LEARNING_VALUE"))
+                .examples(List.of())
+                .build();
+        when(vocabularyService.updateLearningValue("yeah", false)).thenReturn(response);
+
+        mockMvc.perform(patch("/api/vocabulary/words/{word}/learning-value", "yeah")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.data.word").value("yeah"))
+                .andExpect(jsonPath("$.data.recommended").value(false))
+                .andExpect(jsonPath("$.data.learningScore").value(0.25));
     }
 
     @Test

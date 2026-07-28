@@ -145,6 +145,36 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /api/vocabulary/words/{word}/learning-value:
+    patch:
+      tags: [Vocabulary]
+      summary: 手动更新词条学习价值 / Manually update word learning value
+      description: 将词条标记为推荐学习或低学习价值，不删除歌曲原文。
+      operationId: updateVocabularyLearningValue
+      parameters:
+        - name: word
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VocabularyLearningValueRequest'
+      responses:
+        '200':
+          description: 更新后的词条摘要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VocabularyQualityCandidate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/vocabulary/quality-candidates:
     get:
       tags: [Vocabulary]
@@ -900,6 +930,13 @@ components:
           items:
             type: string
       required: [words]
+
+    VocabularyLearningValueRequest:
+      type: object
+      properties:
+        recommended:
+          type: boolean
+      required: [recommended]
 
     VocabularyStatus:
       type: string

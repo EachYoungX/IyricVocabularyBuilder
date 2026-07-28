@@ -9,7 +9,7 @@ export type VocabularyQualityCandidate = {
     occurrenceCount: number;
     songCount: number;
     recommended: boolean;
-    reasons: Array<string>;
+    reasons: Array<'LOW_LEARNING_VALUE' | 'PHRASE_CANDIDATE' | 'CONTRACTION_PHRASE' | 'POSSIBLE_TRUNCATED_LEMMA' | 'VERY_SHORT_TOKEN' | 'NON_STANDARD_TOKEN'>;
     examples: Array<WordOccurrence>;
 };
 

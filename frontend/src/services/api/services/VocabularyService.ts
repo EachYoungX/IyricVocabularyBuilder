@@ -4,6 +4,7 @@
 /* eslint-disable */
 import type { TaskCreationResponse } from '../models/TaskCreationResponse';
 import type { VocabularyBulkWordsRequest } from '../models/VocabularyBulkWordsRequest';
+import type { VocabularyLearningValueRequest } from '../models/VocabularyLearningValueRequest';
 import type { VocabularyQualityCandidate } from '../models/VocabularyQualityCandidate';
 import type { VocabularyRebuildTask } from '../models/VocabularyRebuildTask';
 import type { WordOccurrence } from '../models/WordOccurrence';
@@ -92,7 +93,34 @@ export class VocabularyService {
         });
     }
     /**
+     * 手动更新词条学习价值 / Manually update word learning value
+     * 将词条标记为推荐学习或低学习价值，不删除歌曲原文。
+     * @param word
+     * @param requestBody
+     * @returns VocabularyQualityCandidate 更新后的词条摘要
+     * @throws ApiError
+     */
+    public static updateVocabularyLearningValue(
+        word: string,
+        requestBody: VocabularyLearningValueRequest,
+    ): CancelablePromise<VocabularyQualityCandidate> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/vocabulary/words/{word}/learning-value',
+            path: {
+                'word': word,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                400: `请求参数错误 / Invalid request parameters`,
+                404: `资源未找到 / Resource not found`,
+            },
+        });
+    }
+    /**
      * 获取词库清洗候选 / Get vocabulary cleanup candidates
+     * 返回疑似低学习价值或异常词条，用于人工确认后清洗。
      * @param limit
      * @returns VocabularyQualityCandidate 词库清洗候选
      * @throws ApiError

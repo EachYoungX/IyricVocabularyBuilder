@@ -158,6 +158,37 @@
                           </q-btn-dropdown>
                         </div>
                       </div>
+                      <div class="learning-value-row q-mt-sm">
+                        <q-chip
+                          dense
+                          :color="selectedWordIsLowValue ? 'amber-2' : 'green-2'"
+                          :text-color="selectedWordIsLowValue ? 'brown-8' : 'green-9'"
+                        >
+                          {{ selectedWordIsLowValue ? t('lowValueWordMarker') : t('recommendedLearningValue') }}
+                        </q-chip>
+                        <q-space />
+                        <q-btn
+                          flat
+                          dense
+                          size="sm"
+                          icon="trending_up"
+                          :loading="learningValueLoading"
+                          :disable="!vocabularyStore.getSelectedWord || !selectedWordIsLowValue"
+                          :label="t('markRecommendedWord')"
+                          @click="updateSelectedWordLearningValue(true)"
+                        />
+                        <q-btn
+                          flat
+                          dense
+                          size="sm"
+                          color="warning"
+                          icon="block"
+                          :loading="learningValueLoading"
+                          :disable="!vocabularyStore.getSelectedWord || selectedWordIsLowValue"
+                          :label="t('markLowValueWord')"
+                          @click="updateSelectedWordLearningValue(false)"
+                        />
+                      </div>
                     </div>
                     <div v-else-if="dictionaryStore.getError" class="text-center text-negative">
                       {{ dictionaryStore.getError }}
@@ -184,7 +215,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { useVocabularyExplorer } from 'src/composables/useVocabularyExplorer';
-import { VocabularyStatus, type WordOccurrence } from 'src/services/api';
+import { VocabularyService, VocabularyStatus, type WordOccurrence } from 'src/services/api';
 import { useUserVocabularyStore } from 'src/stores/userVocabularyStore';
 import { loadAppSettings, type AppSettings } from 'src/utils/appSettings';
 
@@ -204,6 +235,7 @@ const userVocabularyStore = useUserVocabularyStore();
 const splitterModel = ref<number>(30);
 const horizontalSplitter = ref<number>(50);
 const personalActionLoading = ref(false);
+const learningValueLoading = ref(false);
 const appSettings = ref<AppSettings>(loadAppSettings());
 const paginationMaxPages = computed(() => {
   if ($q.screen.lt.sm) return 3;
@@ -227,6 +259,13 @@ const showEnglishDefinition = computed(() =>
 const showChineseDefinition = computed(() =>
   appSettings.value.definitionLanguage === 'ZH' || appSettings.value.definitionLanguage === 'BILINGUAL',
 );
+const selectedWordLearningScore = computed(() => {
+  const scores = vocabularyStore.getWordOccurrences
+    .map((occurrence: WordOccurrence) => occurrence.learningScore)
+    .filter((score: WordOccurrence['learningScore']): score is number => typeof score === 'number');
+  return scores.length > 0 ? Math.max(...scores) : 1;
+});
+const selectedWordIsLowValue = computed(() => selectedWordLearningScore.value < 0.5);
 
 onMounted(() => {
   appSettings.value = loadAppSettings();
@@ -264,6 +303,24 @@ async function updateSelectedWordStatus(status: VocabularyStatus) {
     );
   } finally {
     personalActionLoading.value = false;
+  }
+}
+
+async function updateSelectedWordLearningValue(recommended: boolean) {
+  if (!vocabularyStore.getSelectedWord) return;
+  learningValueLoading.value = true;
+  try {
+    const selectedWord = vocabularyStore.getSelectedWord;
+    await VocabularyService.updateVocabularyLearningValue(selectedWord, { recommended });
+    await vocabularyStore.fetchWordOccurrences(selectedWord);
+    currentPage.value = 1;
+    await vocabularyStore.fetchWords({
+      page: 0,
+      size: vocabularyStore.wordPageSize,
+      prefix: vocabularyStore.wordSearchPrefix || undefined,
+    });
+  } finally {
+    learningValueLoading.value = false;
   }
 }
 
@@ -477,6 +534,18 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 .word-status-action :deep(.q-btn),
 .word-status-action :deep(.q-btn-dropdown) {
   font-size: 13px;
+}
+
+.learning-value-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.learning-value-row :deep(.q-btn) {
+  min-height: 30px;
+  font-size: 12px;
 }
 
 .status-chip {

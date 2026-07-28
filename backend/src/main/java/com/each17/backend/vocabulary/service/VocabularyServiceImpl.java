@@ -111,8 +111,10 @@ public class VocabularyServiceImpl implements VocabularyService {
 
         try {
             // [核心实现]
-            return objectMapper.readValue(vocabOpt.get().getOccurrences(), new TypeReference<>() {
-            });
+            Vocabulary vocabulary = vocabOpt.get();
+            List<WordOccurrenceDto> occurrences = objectMapper.readValue(vocabulary.getOccurrences(), new TypeReference<>() {});
+            occurrences.forEach(occurrence -> occurrence.setLearningScore(vocabulary.getLearningScore()));
+            return occurrences;
         } catch (JsonProcessingException e) {
             log.error("Failed to deserialize occurrences for lemma: {}", lemma, e);
             throw new RuntimeException("Failed to deserialize occurrences for word: " + word, e);
@@ -163,6 +165,19 @@ public class VocabularyServiceImpl implements VocabularyService {
         List<Vocabulary> existingWords = vocabularyRepository.findAllById(normalizedWords);
         vocabularyRepository.deleteAllInBatch(existingWords);
         return existingWords.size();
+    }
+
+    @Override
+    @Transactional
+    public VocabularyQualityCandidateDto updateLearningValue(String word, boolean recommended) {
+        String lemma = normalizeLookupWord(word);
+        Vocabulary vocabulary = vocabularyRepository.findById(lemma)
+                .orElseThrow(() -> new NotFoundException("Word not found: " + word));
+
+        vocabulary.setRecommended(recommended);
+        double currentScore = vocabulary.getLearningScore() == null ? 0.0 : vocabulary.getLearningScore();
+        vocabulary.setLearningScore(recommended ? Math.max(currentScore, 1.0) : 0.25);
+        return toQualityCandidate(vocabularyRepository.save(vocabulary));
     }
 
     @Override
@@ -271,7 +286,7 @@ public class VocabularyServiceImpl implements VocabularyService {
     private List<WordOccurrenceDto> readOccurrenceExamples(Vocabulary vocabulary, int limit) {
         try {
             List<WordOccurrenceDto> occurrences = objectMapper.readValue(vocabulary.getOccurrences(), new TypeReference<>() {});
-            return occurrences.stream().limit(limit).toList();
+            return occurrences == null ? List.of() : occurrences.stream().limit(limit).toList();
         } catch (JsonProcessingException e) {
             log.warn("Failed to deserialize candidate occurrences for lemma: {}", vocabulary.getWord(), e);
             return List.of();
