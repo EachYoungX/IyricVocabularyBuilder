@@ -167,7 +167,7 @@ async function loadEditorData(songId: number) {
     };
     originalSongJson.value = JSON.stringify(editableSong.value);
   } catch (reason) {
-    error.value = reason instanceof Error ? reason.message : t('loadStructuredLyricsFailed');
+    error.value = reason instanceof Error ? reason.message : t('loadLyricsForEditingFailed');
   } finally {
     loading.value = false;
   }
@@ -199,7 +199,7 @@ async function saveSong() {
     Notify.create({
       type: 'negative',
       position: 'top-right',
-      message: reason instanceof Error ? reason.message : t('saveLyricLineFailed'),
+      message: reason instanceof Error ? reason.message : t('saveLyricsFailed'),
     });
   } finally {
     saving.value = false;

@@ -161,8 +161,8 @@ export default {
   deleteForever: 'Delete Forever',
   successfullyDeletedSongs: 'Successfully deleted {count} songs',
 
-  // Import dialog
-  importDialogTitle: 'Import Songs',
+  // Song import page
+  songImportTitle: 'Import Songs',
   songImportWorkspace: 'Single-page import workspace',
   songImportBoundaryHint:
     'The system only parses file format and usable metadata. It does not delete or rewrite lyric content automatically. Edited lyrics are used for reading and vocabulary indexing, while raw import content stays available in the draft for comparison.',
@@ -257,7 +257,6 @@ export default {
   // Lyrics detection warning messages
   lyricsEmpty: 'Lyrics are empty',
   nonEnglishLyricsWarning: 'Non-English lyrics detected, use with caution for vocabulary learning',
-  structuredLyrics: 'Edit Lyrics',
   originalImport: 'Original Lyrics',
   originalImportHint: 'Preserved from the first import and not changed by normal text edits.',
   learningLyrics: 'Learning Text',
@@ -272,18 +271,11 @@ export default {
   unknownLineCount: '{count} unknown lines',
   importVersion: 'Import version {version}',
   hiddenLineCount: '{count} hidden by default',
-  overrideCount: '{count} user corrections',
-  compareRawAndNormalized: 'Compare raw and normalized lyrics',
   rawLyrics: 'Raw Lyrics',
-  normalizedLyrics: 'Normalized Lyrics',
   hidden: 'Hidden',
-  userOverride: 'User Override',
-  confidence: '{value}% confidence',
-  saveLine: 'Save Line',
   emptyLine: 'Empty line',
-  lyricLineSaved: 'Lyric line correction saved',
-  loadStructuredLyricsFailed: 'Failed to load structured lyrics',
-  saveLyricLineFailed: 'Failed to save lyric line',
+  loadLyricsForEditingFailed: 'Failed to load lyrics for editing',
+  saveLyricsFailed: 'Failed to save lyrics',
   dictionarySourceTitle: 'Dictionary Source and License',
   dictionarySourceSubtitle: 'This project helps Chinese-speaking learners study English vocabulary from lyrics, so dictionary source and license details are shown transparently.',
   dictionarySourceName: 'Source name',

@@ -73,7 +73,7 @@
               <div class="row q-gutter-sm justify-end col-auto q-pt-sm">
                 <q-btn :label="t('delete')" color="negative" flat size="sm" @click="confirmDelete" />
                 <q-btn :label="t('editLyrics')" color="secondary" flat size="sm"
-                  icon="edit_note" @click="structureDialogVisible = true" />
+                  icon="edit_note" @click="lyricEditorVisible = true" />
               </div>
             </div>
 
@@ -96,8 +96,8 @@
 
       </q-splitter>
     </div>
-    <LyricStructureDialog
-      v-model="structureDialogVisible"
+    <LyricEditDialog
+      v-model="lyricEditorVisible"
       :song-id="selectedSong?.id"
       :song-title="selectedSong?.title"
       @saved="handleLyricEditorSaved"
@@ -113,7 +113,7 @@ import { useSongsStore } from 'src/stores/songsStore'
 import { Notify } from 'quasar'
 import type { Song } from 'src/services/api'
 import { useI18n } from 'vue-i18n'
-import LyricStructureDialog from 'components/lyric/LyricStructureDialog.vue'
+import LyricEditDialog from 'components/lyric/LyricEditDialog.vue'
 
 const $q = useQuasar()
 const songsStore = useSongsStore()
@@ -121,7 +121,7 @@ const { t } = useI18n()
 const songsTable = ref<QTable | null>(null)
 const splitterModel = ref(50)
 const filter = ref('')
-const structureDialogVisible = ref(false)
+const lyricEditorVisible = ref(false)
 
 // 表格列
 const columns: QTableColumn[] = [

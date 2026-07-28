@@ -4,7 +4,7 @@
       <header class="import-header">
         <div>
           <div class="text-overline text-primary">{{ t('songImportWorkspace') }}</div>
-          <h1 class="serif-display">{{ t('importDialogTitle') }}</h1>
+          <h1 class="serif-display">{{ t('songImportTitle') }}</h1>
           <p>{{ t('songImportBoundaryHint') }}</p>
         </div>
         <q-btn flat no-caps icon="library_music" :label="t('songsManager')" to="/songs" />
