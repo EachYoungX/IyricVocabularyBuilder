@@ -362,7 +362,6 @@ const motionOptions = computed(() => [option('motionOn', 'on'), option('motionOf
 const newWordStatusOptions = computed(() => [
   option('newWordNew', 'NEW'),
   option('newWordLearning', 'LEARNING'),
-  option('newWordBookmarkOnly', 'BOOKMARK_ONLY'),
 ]);
 const lowValueOptions = computed(() => [
   option('lowValueQueryOnly', 'QUERY_ONLY'),

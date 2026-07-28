@@ -3,7 +3,7 @@ export const APP_SETTINGS_STORAGE_KEY = 'lv-app-settings';
 export type FontScale = 'compact' | 'standard' | 'large';
 export type InterfaceScale = 'compact' | 'standard' | 'large';
 export type ThemeMode = 'midnight-sail' | 'sage-library' | 'coral-study' | 'dusk-minimal' | 'midnight-sail-dark';
-export type DefaultNewWordStatus = 'NEW' | 'LEARNING' | 'BOOKMARK_ONLY';
+export type DefaultNewWordStatus = 'NEW' | 'LEARNING';
 export type LowValueWordHandling = 'QUERY_ONLY' | 'NORMAL' | 'HIDE_RECOMMENDATION_MARKER';
 export type PostImportBehavior = 'SAVE_DIRECTLY' | 'CONFIRM_CLEANING';
 export type RoleLabelHandling = 'AUTO_HIDE' | 'AUTO_DELETE' | 'KEEP_VISIBLE' | 'CONFIRM_EACH_IMPORT';
@@ -73,7 +73,7 @@ export function normalizeAppSettings(value: unknown): AppSettings | null {
     ),
     defaultNewWordStatus: pickValue(
       value.defaultNewWordStatus,
-      ['NEW', 'LEARNING', 'BOOKMARK_ONLY'],
+      ['NEW', 'LEARNING'],
       DEFAULT_APP_SETTINGS.defaultNewWordStatus,
     ),
     lowValueWordHandling: pickValue(

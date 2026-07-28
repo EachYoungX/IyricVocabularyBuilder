@@ -213,9 +213,7 @@ const paginationMaxPages = computed(() => {
 const learningStatuses = [
   VocabularyStatus.NEW,
   VocabularyStatus.LEARNING,
-  VocabularyStatus.FAMILIAR,
   VocabularyStatus.MASTERED,
-  VocabularyStatus.BOOKMARK_ONLY,
   VocabularyStatus.IGNORED,
 ];
 
@@ -275,12 +273,10 @@ function masteryScoreForStatus(status: VocabularyStatus) {
       return 0;
     case VocabularyStatus.LEARNING:
       return 0.35;
-    case VocabularyStatus.FAMILIAR:
-      return 0.7;
     case VocabularyStatus.MASTERED:
       return 1;
+    case VocabularyStatus.FAMILIAR:
     case VocabularyStatus.BOOKMARK_ONLY:
-      return 0;
     case VocabularyStatus.IGNORED:
       return 0;
   }

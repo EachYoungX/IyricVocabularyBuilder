@@ -58,8 +58,6 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
     switch (loadAppSettings().defaultNewWordStatus) {
       case 'LEARNING':
         return VocabularyStatus.LEARNING;
-      case 'BOOKMARK_ONLY':
-        return VocabularyStatus.BOOKMARK_ONLY;
       case 'NEW':
       default:
         return null;
