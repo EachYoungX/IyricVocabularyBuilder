@@ -68,8 +68,19 @@
         <div class="row items-center justify-between q-gutter-sm q-mb-sm">
           <div class="text-body2 text-grey-7">
             {{ t('qualityCandidateCount', { count: qualityCandidates.length }) }}
+            <span v-if="keptCleanupWords.size > 0" class="q-ml-sm">
+              {{ t('keptCleanupCandidateCount', { count: keptCleanupWords.size }) }}
+            </span>
           </div>
           <div class="row q-gutter-sm">
+            <q-btn
+              v-if="keptCleanupWords.size > 0"
+              flat
+              dense
+              icon="undo"
+              :label="t('clearKeptCleanupCandidates')"
+              @click="clearKeptCandidates"
+            />
             <q-btn
               flat
               dense
@@ -312,6 +323,7 @@ import {
 
 const { t } = useI18n();
 const store = useUserVocabularyStore();
+const KEPT_CLEANUP_WORDS_STORAGE_KEY = 'lv-kept-cleanup-candidate-words';
 
 const splitter = ref(58);
 const searchText = ref('');
@@ -319,6 +331,7 @@ const statusFilter = ref<VocabularyStatus | 'ALL'>('ALL');
 const batchStatus = ref<VocabularyStatus | null>(null);
 const selected = ref<UserVocabulary[]>([]);
 const selectedQualityCandidates = ref<VocabularyQualityCandidate[]>([]);
+const keptCleanupWords = ref(loadKeptCleanupWords());
 const activeWord = ref<UserVocabulary | null>(null);
 const occurrences = ref<WordOccurrence[]>([]);
 const qualityCandidates = ref<VocabularyQualityCandidate[]>([]);
@@ -454,7 +467,8 @@ async function loadOccurrences(lemma: string) {
 async function loadQualityCandidates() {
   qualityLoading.value = true;
   try {
-    qualityCandidates.value = await VocabularyService.getVocabularyQualityCandidates(80);
+    const candidates = await VocabularyService.getVocabularyQualityCandidates(80);
+    qualityCandidates.value = candidates.filter((candidate) => !keptCleanupWords.value.has(candidate.word));
     selectedQualityCandidates.value = [];
   } catch {
     Notify.create({ type: 'negative', message: t('loadQualityCandidatesFailed') });
@@ -588,9 +602,17 @@ function qualityReasonLabel(reason: string) {
 }
 
 function keepCandidate(word: string) {
+  keptCleanupWords.value = new Set([...keptCleanupWords.value, word]);
+  saveKeptCleanupWords(keptCleanupWords.value);
   qualityCandidates.value = qualityCandidates.value.filter((candidate) => candidate.word !== word);
   selectedQualityCandidates.value = selectedQualityCandidates.value.filter((candidate) => candidate.word !== word);
   Notify.create({ type: 'positive', message: t('candidateKept') });
+}
+
+function clearKeptCandidates() {
+  keptCleanupWords.value = new Set();
+  saveKeptCleanupWords(keptCleanupWords.value);
+  void loadQualityCandidates();
 }
 
 function confirmDeleteCandidates(candidates: VocabularyQualityCandidate[]) {
@@ -689,6 +711,20 @@ function cleanupImpactMessage(key: string, candidates: VocabularyQualityCandidat
     occurrences: impact.occurrences,
     songs: impact.songs,
   });
+}
+
+function loadKeptCleanupWords() {
+  try {
+    const stored = window.localStorage.getItem(KEPT_CLEANUP_WORDS_STORAGE_KEY);
+    const parsed: unknown = stored ? JSON.parse(stored) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function saveKeptCleanupWords(words: Set<string>) {
+  window.localStorage.setItem(KEPT_CLEANUP_WORDS_STORAGE_KEY, JSON.stringify([...words].sort()));
 }
 
 async function updateStatus(id: number, status: VocabularyStatus) {

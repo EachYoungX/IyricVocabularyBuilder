@@ -81,6 +81,8 @@ export default {
   candidateReasons: '候选原因',
   learningScore: '学习价值',
   loadQualityCandidatesFailed: '加载词库清洗候选失败',
+  keptCleanupCandidateCount: '已保留 {count} 个',
+  clearKeptCleanupCandidates: '清空保留记录',
   cleanupTotalCandidates: '候选词条',
   cleanupTotalOccurrences: '影响出现次数',
   cleanupTotalSongs: '涉及歌曲数',

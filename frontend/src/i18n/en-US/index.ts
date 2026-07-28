@@ -81,6 +81,8 @@ export default {
   candidateReasons: 'Reasons',
   learningScore: 'Learning value',
   loadQualityCandidatesFailed: 'Failed to load vocabulary cleanup candidates',
+  keptCleanupCandidateCount: '{count} kept',
+  clearKeptCleanupCandidates: 'Clear kept',
   cleanupTotalCandidates: 'Candidate words',
   cleanupTotalOccurrences: 'Affected occurrences',
   cleanupTotalSongs: 'Affected songs',
