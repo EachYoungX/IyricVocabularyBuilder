@@ -23,10 +23,16 @@ export function parseImportFileContent(
   settings: LyricsProcessingSettings = {},
 ): ExtendedSongImportRequest[] {
   const lowerName = fileName.toLowerCase();
-  if (lowerName.endsWith('.json')) return parseJson(content, t).map((song) => applyLyricsProcessing(song, settings));
-  if (lowerName.endsWith('.lrc')) return [applyLyricsProcessing(parseTimedText(fileName, content, 'LRC', t), settings)];
-  if (lowerName.endsWith('.srt')) return [applyLyricsProcessing(parseTimedText(fileName, content, 'SRT', t), settings)];
-  if (lowerName.endsWith('.txt')) return [applyLyricsProcessing(parsePlainText(fileName, content, t), settings)];
+  const attachSource = (song: ExtendedSongImportRequest): ExtendedSongImportRequest => ({
+    ...song,
+    rawSourceContent: content,
+    parsedLyricsContent: song.lyrics,
+    sourceName: fileName,
+  });
+  if (lowerName.endsWith('.json')) return parseJson(content, t).map((song) => attachSource(applyLyricsProcessing(song, settings)));
+  if (lowerName.endsWith('.lrc')) return [attachSource(applyLyricsProcessing(parseTimedText(fileName, content, 'LRC', t), settings))];
+  if (lowerName.endsWith('.srt')) return [attachSource(applyLyricsProcessing(parseTimedText(fileName, content, 'SRT', t), settings))];
+  if (lowerName.endsWith('.txt')) return [attachSource(applyLyricsProcessing(parsePlainText(fileName, content, t), settings))];
   if (lowerName.endsWith('.qrc')) throw new Error(t('encryptedQrcUnsupported'));
   throw new Error(t('unsupportedFileFormat'));
 }

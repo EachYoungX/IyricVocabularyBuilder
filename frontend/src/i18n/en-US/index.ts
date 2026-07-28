@@ -163,6 +163,14 @@ export default {
 
   // Import dialog
   importDialogTitle: 'Import Songs',
+  songImportWorkspace: 'Single-page import workspace',
+  songImportBoundaryHint:
+    'The system only parses file format and usable metadata. It does not delete or rewrite lyric content automatically. Edited lyrics are used for reading and vocabulary indexing, while raw import content stays available in the draft for comparison.',
+  rawImportContent: 'Raw import content',
+  editableLyricsContent: 'Editable lyrics content',
+  restoreParsedLyrics: 'Restore parsed lyrics',
+  manualInputSource: 'Manual input, no source file',
+  unknownArtist: 'Unknown Artist',
   chooseFiles: 'Choose Files (TXT / JSON / LRC / SRT / QRC)',
   addSongManually: 'or Add Song Manually',
   addToPreviewList: 'Add to Preview List',

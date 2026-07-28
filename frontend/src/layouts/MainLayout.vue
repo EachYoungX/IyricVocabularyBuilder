@@ -76,7 +76,8 @@
           {{ t('actions') }}
         </q-item-label>
 
-        <q-item clickable v-ripple class="drawer-nav-item q-mx-md rounded-borders" @click="showImportDialog">
+        <q-item to="/song/import" clickable v-ripple class="drawer-nav-item q-mx-md rounded-borders"
+          active-class="drawer-active">
           <q-item-section avatar>
             <q-icon name="add" color="accent" size="22px" />
           </q-item-section>
@@ -99,14 +100,11 @@
     <q-page-container>
       <router-view />
     </q-page-container>
-
-    <SongImportDialog v-model="importDialogVisible" />
   </q-layout>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import SongImportDialog from 'components/SongImportDialog.vue'
 import { useI18n } from 'vue-i18n'
 import { useVocabularyRebuild } from 'src/composables/useVocabularyRebuild'
 
@@ -115,14 +113,9 @@ const { requestVocabularyRebuild } = useVocabularyRebuild()
 
 // --- 组件状态 ---
 const leftDrawerOpen = ref(false)
-const importDialogVisible = ref(false)
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
-}
-
-function showImportDialog() {
-  importDialogVisible.value = true
 }
 
 function toggleLanguage() {

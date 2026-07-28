@@ -170,6 +170,13 @@ export default {
 
   // 导入对话框
   importDialogTitle: '导入歌曲',
+  songImportWorkspace: '单页导入工作区',
+  songImportBoundaryHint: '系统只解析文件格式和可用元数据，不会自动删除或改写歌词内容；修改后的歌词用于展示和词汇索引，原始导入内容会保留在草稿中供对照。',
+  rawImportContent: '原始导入内容',
+  editableLyricsContent: '可编辑歌词内容',
+  restoreParsedLyrics: '恢复为解析初始歌词',
+  manualInputSource: '手动输入，无原始文件',
+  unknownArtist: '未知艺术家',
   chooseFiles: '选择文件 (TXT / JSON / LRC / SRT / QRC)',
   addSongManually: '或手动添加歌曲',
   addToPreviewList: '添加到预览列表',
