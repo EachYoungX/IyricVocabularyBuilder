@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { TaskCreationResponse } from '../models/TaskCreationResponse';
+import type { VocabularyBulkWordsRequest } from '../models/VocabularyBulkWordsRequest';
 import type { VocabularyQualityCandidate } from '../models/VocabularyQualityCandidate';
 import type { VocabularyRebuildTask } from '../models/VocabularyRebuildTask';
 import type { WordOccurrence } from '../models/WordOccurrence';
@@ -45,6 +46,26 @@ export class VocabularyService {
             errors: {
                 400: `请求参数错误 / Invalid request parameters`,
                 500: `服务器内部错误 / Internal server error`,
+            },
+        });
+    }
+    /**
+     * 批量删除词汇索引项 / Delete vocabulary index words
+     * 删除词汇索引中的指定词条，不删除歌曲原文。
+     * @param requestBody
+     * @returns number 实际删除数量
+     * @throws ApiError
+     */
+    public static deleteVocabularyWords(
+        requestBody: VocabularyBulkWordsRequest,
+    ): CancelablePromise<number> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/vocabulary/words',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                400: `请求参数错误 / Invalid request parameters`,
             },
         });
     }

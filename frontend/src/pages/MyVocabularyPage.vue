@@ -69,13 +69,36 @@
           <div class="text-body2 text-grey-7">
             {{ t('qualityCandidateCount', { count: qualityCandidates.length }) }}
           </div>
-          <q-btn flat dense icon="refresh" :loading="qualityLoading" :label="t('refresh')" @click="loadQualityCandidates" />
+          <div class="row q-gutter-sm">
+            <q-btn
+              flat
+              dense
+              icon="visibility_off"
+              :disable="selectedQualityCandidates.length === 0"
+              :loading="isMutating"
+              :label="t('ignoreSelectedCandidates')"
+              @click="confirmIgnoreCandidates(selectedQualityCandidates)"
+            />
+            <q-btn
+              flat
+              dense
+              color="negative"
+              icon="delete"
+              :disable="selectedQualityCandidates.length === 0"
+              :loading="isMutating"
+              :label="t('deleteSelectedCandidates')"
+              @click="confirmDeleteCandidates(selectedQualityCandidates)"
+            />
+            <q-btn flat dense icon="refresh" :loading="qualityLoading" :label="t('refresh')" @click="loadQualityCandidates" />
+          </div>
         </div>
         <q-table
+          v-model:selected="selectedQualityCandidates"
           flat
           bordered
           dense
           row-key="word"
+          selection="multiple"
           :rows="qualityCandidates"
           :columns="qualityColumns"
           :loading="qualityLoading"
@@ -106,6 +129,19 @@
           <template #body-cell-example="props">
             <q-td :props="props">
               <span class="candidate-example">{{ props.row.examples?.[0]?.lyricLine ?? '-' }}</span>
+            </q-td>
+          </template>
+          <template #body-cell-actions="props">
+            <q-td :props="props">
+              <q-btn flat round dense icon="check" @click.stop="keepCandidate(props.row.word)">
+                <q-tooltip>{{ t('keepCandidate') }}</q-tooltip>
+              </q-btn>
+              <q-btn flat round dense icon="visibility_off" @click.stop="confirmIgnoreCandidates([props.row])">
+                <q-tooltip>{{ t('ignoreCandidate') }}</q-tooltip>
+              </q-btn>
+              <q-btn flat round dense color="negative" icon="delete" @click.stop="confirmDeleteCandidates([props.row])">
+                <q-tooltip>{{ t('deleteCandidate') }}</q-tooltip>
+              </q-btn>
             </q-td>
           </template>
         </q-table>
@@ -276,6 +312,7 @@ const searchText = ref('');
 const statusFilter = ref<VocabularyStatus | 'ALL'>('ALL');
 const batchStatus = ref<VocabularyStatus | null>(null);
 const selected = ref<UserVocabulary[]>([]);
+const selectedQualityCandidates = ref<VocabularyQualityCandidate[]>([]);
 const activeWord = ref<UserVocabulary | null>(null);
 const occurrences = ref<WordOccurrence[]>([]);
 const qualityCandidates = ref<VocabularyQualityCandidate[]>([]);
@@ -332,6 +369,7 @@ const qualityColumns = computed<QTableColumn<VocabularyQualityCandidate>[]>(() =
   { name: 'occurrenceCount', label: t('frequency'), field: 'occurrenceCount', align: 'right', sortable: true },
   { name: 'reasons', label: t('candidateReasons'), field: 'reasons', align: 'left' },
   { name: 'example', label: t('lyricsPreview'), field: 'examples', align: 'left' },
+  { name: 'actions', label: t('actions'), field: 'word', align: 'right' },
 ]);
 
 const filteredRows = computed<UserVocabulary[]>(() => {
@@ -400,6 +438,7 @@ async function loadQualityCandidates() {
   qualityLoading.value = true;
   try {
     qualityCandidates.value = await VocabularyService.getVocabularyQualityCandidates(80);
+    selectedQualityCandidates.value = [];
   } catch {
     Notify.create({ type: 'negative', message: t('loadQualityCandidatesFailed') });
   } finally {
@@ -529,6 +568,84 @@ function lookupCandidate(word: string) {
 
 function qualityReasonLabel(reason: string) {
   return t(`qualityReasons.${reason}`);
+}
+
+function keepCandidate(word: string) {
+  qualityCandidates.value = qualityCandidates.value.filter((candidate) => candidate.word !== word);
+  selectedQualityCandidates.value = selectedQualityCandidates.value.filter((candidate) => candidate.word !== word);
+  Notify.create({ type: 'positive', message: t('candidateKept') });
+}
+
+function confirmDeleteCandidates(candidates: VocabularyQualityCandidate[]) {
+  const words = uniqueCandidateWords(candidates);
+  if (words.length === 0) {
+    return;
+  }
+  Dialog.create({
+    title: t('deleteCleanupCandidates'),
+    message: t('deleteCleanupCandidatesImpact', { count: words.length }),
+    cancel: true,
+    persistent: true,
+    ok: { color: 'negative', label: t('deleteForever') },
+  }).onOk(() => void deleteCandidates(words));
+}
+
+async function deleteCandidates(words: string[]) {
+  isMutating.value = true;
+  try {
+    const deletedCount = await VocabularyService.deleteVocabularyWords({ words });
+    removeQualityCandidates(words);
+    Notify.create({ type: 'positive', message: t('cleanupCandidatesDeleted', { count: deletedCount }) });
+  } catch {
+    Notify.create({ type: 'negative', message: t('cleanupCandidatesDeleteFailed') });
+  } finally {
+    isMutating.value = false;
+  }
+}
+
+function confirmIgnoreCandidates(candidates: VocabularyQualityCandidate[]) {
+  const words = uniqueCandidateWords(candidates);
+  if (words.length === 0) {
+    return;
+  }
+  Dialog.create({
+    title: t('ignoreCleanupCandidates'),
+    message: t('ignoreCleanupCandidatesImpact', { count: words.length }),
+    cancel: true,
+    persistent: true,
+    ok: { color: 'primary', label: t('ignore') },
+  }).onOk(() => void ignoreCandidates(words));
+}
+
+async function ignoreCandidates(words: string[]) {
+  isMutating.value = true;
+  try {
+    for (const word of words) {
+      const existing = store.words.find((item: UserVocabulary) => item.lemma === word);
+      const saved = existing ?? await UserVocabularyService.addUserVocabularyWord({ lemma: word });
+      await UserVocabularyService.updateUserVocabularyWord(saved.id, {
+        status: VocabularyStatus.IGNORED,
+        masteryScore: 0,
+      });
+    }
+    removeQualityCandidates(words);
+    await store.fetchDashboard();
+    Notify.create({ type: 'positive', message: t('cleanupCandidatesIgnored', { count: words.length }) });
+  } catch {
+    Notify.create({ type: 'negative', message: t('cleanupCandidatesIgnoreFailed') });
+  } finally {
+    isMutating.value = false;
+  }
+}
+
+function uniqueCandidateWords(candidates: VocabularyQualityCandidate[]) {
+  return [...new Set(candidates.map((candidate) => candidate.word).filter(Boolean))];
+}
+
+function removeQualityCandidates(words: string[]) {
+  const wordSet = new Set(words);
+  qualityCandidates.value = qualityCandidates.value.filter((candidate) => !wordSet.has(candidate.word));
+  selectedQualityCandidates.value = selectedQualityCandidates.value.filter((candidate) => !wordSet.has(candidate.word));
 }
 
 async function updateStatus(id: number, status: VocabularyStatus) {

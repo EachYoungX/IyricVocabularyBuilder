@@ -41,6 +41,11 @@ public class VocabularyController {
         return ResponseEntity.ok(ApiResponse.success(vocabularyService.getQualityCandidates(limit)));
     }
 
+    @DeleteMapping("/words")
+    public ResponseEntity<ApiResponse<Integer>> deleteWords(@RequestBody VocabularyBulkWordsRequestDto request) {
+        return ResponseEntity.ok(ApiResponse.success(vocabularyService.deleteWords(request.getWords())));
+    }
+
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<SongImportResponseDto>> refreshVocabularyIndex() {
         UUID taskId = vocabularyService.refreshVocabularyIndexAsync();

@@ -257,4 +257,19 @@ class VocabularyServiceImplTest {
         assertTrue(result.get(1).getReasons().contains("CONTRACTION_PHRASE"));
         assertTrue(result.get(1).getReasons().contains("POSSIBLE_TRUNCATED_LEMMA"));
     }
+
+    @Test
+    void testDeleteWordsNormalizesAndDeletesExistingWords() {
+        Vocabulary love = Vocabulary.builder().word("love").build();
+        Vocabulary runAway = Vocabulary.builder().word("run away").build();
+
+        when(vocabularyRepository.findAllById(List.of("love", "run away")))
+                .thenReturn(List.of(love, runAway));
+
+        int result = vocabularyService.deleteWords(List.of("Love", "running away", "love"));
+
+        assertEquals(2, result);
+        verify(vocabularyRepository).findAllById(List.of("love", "run away"));
+        verify(vocabularyRepository).deleteAllInBatch(List.of(love, runAway));
+    }
 }

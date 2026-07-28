@@ -144,6 +144,28 @@ public class VocabularyServiceImpl implements VocabularyService {
     }
 
     @Override
+    @Transactional
+    public int deleteWords(List<String> words) {
+        if (words == null || words.isEmpty() || words.size() > 200) {
+            throw new ValidationException("words must contain between 1 and 200 items");
+        }
+
+        List<String> normalizedWords = words.stream()
+                .map(this::normalizeLookupWord)
+                .filter(word -> !word.isBlank())
+                .distinct()
+                .toList();
+
+        if (normalizedWords.isEmpty()) {
+            throw new ValidationException("words must contain at least one valid word");
+        }
+
+        List<Vocabulary> existingWords = vocabularyRepository.findAllById(normalizedWords);
+        vocabularyRepository.deleteAllInBatch(existingWords);
+        return existingWords.size();
+    }
+
+    @Override
     public UUID refreshVocabularyIndexAsync() {
         UUID taskId = UUID.randomUUID();
         VocabularyRebuildTaskDto task = VocabularyRebuildTaskDto.builder()

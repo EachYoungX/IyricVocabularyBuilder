@@ -13,6 +13,7 @@ public interface VocabularyService {
     WordPageDto getWordList(String prefix, int page, int size, boolean recommendedOnly, boolean lemmaSearch, boolean includePhrases);
     List<WordOccurrenceDto> getWordOccurrences(String word);
     List<VocabularyQualityCandidateDto> getQualityCandidates(int limit);
+    int deleteWords(List<String> words);
     UUID refreshVocabularyIndexAsync();
     VocabularyRebuildTaskDto getRefreshTaskStatus(UUID taskId);
 }

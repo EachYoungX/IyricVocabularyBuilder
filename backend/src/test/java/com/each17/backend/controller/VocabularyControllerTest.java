@@ -1,6 +1,7 @@
 package com.each17.backend.controller;
 
 import com.each17.backend.vocabulary.controller.VocabularyController;
+import com.each17.backend.dto.VocabularyBulkWordsRequestDto;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
 import com.each17.backend.vocabulary.service.VocabularyService;
@@ -87,6 +88,20 @@ class VocabularyControllerTest {
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.data[0].songTitle").value("Yesterday"))
                 .andExpect(jsonPath("$.data[1].songTitle").value("Love Me Do"));
+    }
+
+    @Test
+    void testDeleteVocabularyWords() throws Exception {
+        VocabularyBulkWordsRequestDto request = new VocabularyBulkWordsRequestDto();
+        request.setWords(List.of("ain't leav", "all eye"));
+        when(vocabularyService.deleteWords(List.of("ain't leav", "all eye"))).thenReturn(2);
+
+        mockMvc.perform(delete("/api/vocabulary/words")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.data").value(2));
     }
 
     @Test
