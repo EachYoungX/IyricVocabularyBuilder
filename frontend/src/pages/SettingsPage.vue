@@ -712,7 +712,7 @@ onMounted(() => {
 }
 
 .settings-info {
-  background: rgba(255, 255, 255, 0.48);
+  background: var(--lv-surface);
   border: 1px solid var(--lv-line);
   border-radius: var(--lv-radius-sm);
 }

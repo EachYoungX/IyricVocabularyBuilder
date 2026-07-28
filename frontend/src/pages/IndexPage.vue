@@ -491,10 +491,10 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 
 .detail-panel {
   padding-inline: 18px;
-  border: 1px solid rgba(210, 193, 182, 0.38);
+  border: 1px solid var(--lv-line);
   border-radius: var(--lv-radius-md);
   margin: 12px;
-  background: rgba(255, 253, 251, 0.68);
+  background: var(--lv-surface);
 }
 
 .occurrence-list,
@@ -503,8 +503,8 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 }
 
 .occurrence-list {
-  border-color: rgba(210, 193, 182, 0.42);
-  background: rgba(249, 243, 239, 0.22);
+  border-color: var(--lv-line);
+  background: var(--lv-surface-solid);
 }
 
 .occurrence-list :deep(.q-item) {

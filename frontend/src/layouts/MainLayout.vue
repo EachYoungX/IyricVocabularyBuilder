@@ -134,7 +134,7 @@ function toggleLanguage() {
 <style lang="scss" scoped>
 .app-header {
   color: var(--lv-ink);
-  background: rgba(255, 253, 251, 0.88);
+  background: var(--lv-surface);
   border-bottom: 1px solid var(--lv-line);
   backdrop-filter: blur(18px);
 }

@@ -182,6 +182,10 @@ body {
   animation: lv-pop-in var(--lv-motion-medium) var(--lv-motion-ease) both;
 }
 
+.bg-white {
+  background: var(--lv-surface-solid) !important;
+}
+
 @keyframes lv-rise-in {
   from {
     opacity: 0;
@@ -251,10 +255,28 @@ body {
   box-shadow: none;
 }
 
+.q-menu,
+.q-tooltip,
+.q-dialog__inner > .q-card {
+  color: var(--lv-ink);
+  background: var(--lv-surface-solid);
+}
+
+.q-field__control {
+  color: var(--lv-ink);
+  background: var(--lv-surface-solid);
+}
+
+.q-field--filled .q-field__control,
+.q-field--standout .q-field__control {
+  background: var(--lv-surface-solid);
+}
+
 .q-card--bordered,
 .q-list--bordered,
 .q-table__card {
   border-color: var(--lv-line);
+  background: var(--lv-surface-solid);
 }
 
 .q-table thead th {
@@ -263,17 +285,18 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: rgba(249, 243, 239, 0.72);
+  background: var(--lv-surface);
   border-bottom-color: var(--lv-line);
 }
 
 .q-table tbody td {
   color: var(--lv-ink);
-  border-bottom-color: rgba(210, 193, 182, 0.34);
+  background: var(--lv-surface-solid);
+  border-bottom-color: var(--lv-line);
 }
 
 .q-table tbody tr:hover td {
-  background: rgba(69, 104, 130, 0.055);
+  background: var(--lv-accent-soft);
 }
 
 .q-toolbar,

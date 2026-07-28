@@ -951,7 +951,7 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 
 .stat-tile {
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--lv-surface);
   border: 1px solid var(--lv-line);
   border-radius: 8px;
 }
@@ -972,7 +972,7 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 }
 
 .data-actions {
-  background: rgba(255, 255, 255, 0.36);
+  background: var(--lv-surface);
 }
 
 .cleanup-summary {
@@ -983,7 +983,7 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 
 .cleanup-summary-item {
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.42);
+  background: var(--lv-surface);
   border: 1px solid var(--lv-line);
   border-radius: 8px;
 }
@@ -1046,7 +1046,7 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 }
 
 .quality-panel {
-  background: rgba(255, 255, 255, 0.52);
+  background: var(--lv-surface-solid);
   border: 1px solid var(--lv-line);
   border-radius: 8px;
 }
