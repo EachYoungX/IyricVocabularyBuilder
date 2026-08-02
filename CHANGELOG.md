@@ -36,6 +36,7 @@ This file records only completed and verified refactoring stages. Internal plans
 - README screenshot links and public documentation paths verified.
 - Browser flow passed for manual paste import, multi-song import, index rebuild, word lookup, dictionary display, adding a word to personal vocabulary, and updating vocabulary status.
 - Browser layout audit passed for desktop and mobile import dialog overflow, mobile pagination, and vocabulary detail alignment.
+- Follow-up browser audit on 2026-08-02 passed for the 390px mobile layout of the home, My Vocabulary, and Settings pages, dark theme switching, and closing an open Settings select while scrolling; no horizontal overflow was observed.
 
 ## Stage 6 - 2026-07-01
 
