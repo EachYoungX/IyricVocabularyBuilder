@@ -3,6 +3,7 @@ package com.each17.backend.vocabulary.repository;
 import com.each17.backend.vocabulary.entity.Vocabulary;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -23,4 +24,9 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, String> 
     Page<Vocabulary> findByWordNotContainingOrderByWordAsc(String excluded, Pageable pageable);
     List<Vocabulary> findByRecommendedFalseOrderByLearningScoreAscWordAsc(Pageable pageable);
     List<Vocabulary> findByWordContainingOrderByWordAsc(String included, Pageable pageable);
+
+    @Query("SELECT v FROM Vocabulary v "
+            + "WHERE v.recommended = false OR v.learningScore < 0.5 OR v.word LIKE '% %' "
+            + "ORDER BY v.learningScore ASC, v.word ASC")
+    Page<Vocabulary> findCleanupCandidates(Pageable pageable);
 }

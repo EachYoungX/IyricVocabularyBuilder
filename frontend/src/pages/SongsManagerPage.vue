@@ -12,7 +12,7 @@
         <template v-slot:before>
           <div class="column no-wrap fit">
             <!-- 工具栏 (固定高度) -->
-            <div class="q-pa-sm bg-white col-auto song-toolbar">
+            <div class="q-pa-sm col-auto song-toolbar">
               <q-input v-model="filter" dense outlined clearable :label="t('searchPlaceholder')" class="q-mb-sm" />
               <div class="row items-center q-gutter-sm">
                 <template v-if="isBatchMode">
@@ -40,7 +40,7 @@
 
         <!-- 右侧/下方：详情预览 -->
         <template v-slot:after>
-          <div class="q-pa-md fit column no-wrap bg-white">
+          <div class="q-pa-md fit column no-wrap song-detail-surface">
 
             <!-- 空状态 -->
             <div v-if="!selectedSongs.length" class="col column flex-center text-center">
@@ -64,16 +64,16 @@
                   <div class="text-body1">{{ selectedSong?.artist || t('unknown') }}</div>
                 </q-card-section>
                 <q-separator />
-                <q-card-section class="col">
+                <q-card-section class="col song-lyrics-section">
                   <div class="text-caption text-grey-7 q-mb-xs">{{ t('lyricsPreview') }}</div>
                   <pre class="song-lyrics-preview">{{ selectedSong?.lyrics || t('emptyLyrics') }}</pre>
                 </q-card-section>
               </q-card>
 
-              <div class="row q-gutter-sm justify-end col-auto q-pt-sm">
-                <q-btn :label="t('delete')" color="negative" flat size="sm" @click="confirmDelete" />
-                <q-btn :label="t('editLyrics')" color="secondary" flat size="sm"
-                  icon="edit_note" @click="lyricEditorVisible = true" />
+              <div class="song-detail-actions row q-gutter-sm justify-end col-auto q-pt-sm">
+                <q-btn :label="t('delete')" color="negative" outline no-caps icon="delete_forever" @click="confirmDelete" />
+                <q-btn :label="t('editLyrics')" color="secondary" outline no-caps icon="edit_note"
+                  @click="lyricEditorVisible = true" />
               </div>
             </div>
 
@@ -291,7 +291,13 @@ onMounted(() => {
 
 .song-toolbar {
   border-bottom: 1px solid var(--lv-line);
-  background: var(--lv-surface-solid) !important;
+  background: var(--lv-surface-solid);
+}
+
+.song-detail-surface {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--lv-page-bg);
 }
 
 /* 确保表格组件作为 Flex 子项正确填充 */
@@ -323,19 +329,34 @@ onMounted(() => {
   flex: 1;
   min-height: 0;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
   background: var(--lv-paper);
 }
 
-.song-lyrics-preview {
+.song-lyrics-section {
+  display: flex;
   min-height: 0;
-  max-height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.song-lyrics-preview {
+  flex: 1;
+  min-height: 0;
+  max-height: min(52dvh, 520px);
   margin: 0;
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  word-break: break-word;
   color: var(--lv-ink);
   font-family: var(--lv-font-serif);
   line-height: 1.75;
+}
+
+.song-detail-actions {
+  flex-wrap: wrap;
 }
 
 /* 响应式内边距 */

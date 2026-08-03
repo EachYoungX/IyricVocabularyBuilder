@@ -12,14 +12,6 @@
               :caption="t('settingsPage.appearanceCaption')" />
             <div class="row q-col-gutter-md q-mt-sm">
               <div class="col-12 col-md-6">
-                <SettingsSelect v-model="settings.fontScale" outlined emit-value map-options :options="fontScaleOptions"
-                  :label="t('settingsPage.fontScale')" @update:model-value="persistSettings" />
-              </div>
-              <div class="col-12 col-md-6">
-                <SettingsSelect v-model="settings.interfaceScale" outlined emit-value map-options :options="interfaceScaleOptions"
-                  :label="t('settingsPage.interfaceScale')" @update:model-value="persistSettings" />
-              </div>
-              <div class="col-12 col-md-6">
                 <SettingsSelect v-model="settings.themeMode" outlined emit-value map-options :options="themeOptions"
                   :label="t('settingsPage.themeMode')" @update:model-value="persistSettings" />
               </div>
@@ -316,12 +308,6 @@ const option = <T extends string | boolean>(key: string, value: T): Option<T> =>
   value,
 });
 
-const fontScaleOptions = computed(() => [
-  option('scaleCompact', 'compact'),
-  option('scaleStandard', 'standard'),
-  option('scaleLarge', 'large'),
-]);
-const interfaceScaleOptions = fontScaleOptions;
 const themeOptions = computed(() => [
   option('themeMidnightSail', 'midnight-sail'),
   option('themeSageLibrary', 'sage-library'),

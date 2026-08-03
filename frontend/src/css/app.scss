@@ -9,6 +9,7 @@
   --lv-ink: var(--lv-navy);
   --lv-ink-soft: #456882;
   --lv-paper: var(--lv-shell);
+  --lv-page-bg: var(--lv-shell);
   --lv-paper-warm: #fffaf7;
   --lv-surface: rgba(255, 255, 255, 0.86);
   --lv-surface-solid: #fffdfb;
@@ -18,6 +19,9 @@
   --lv-accent: var(--lv-sand);
   --lv-accent-strong: var(--lv-blue);
   --lv-accent-soft: rgba(210, 193, 182, 0.24);
+  --lv-drawer-active-bg: var(--lv-ink);
+  --lv-drawer-active-ink: var(--lv-paper);
+  --lv-brand-bg: var(--lv-ink);
   --lv-success: var(--lv-blue);
   --lv-danger: var(--lv-navy);
   --lv-radius-sm: 8px;
@@ -55,6 +59,7 @@
   --lv-blue: #6f8f72;
   --lv-sand: #d9c7a3;
   --lv-shell: #f7f4ea;
+  --lv-page-bg: #f7f4ea;
   --lv-ink-soft: #607a62;
   --lv-paper-warm: #fffdf5;
   --lv-surface: rgba(255, 253, 245, 0.88);
@@ -70,6 +75,7 @@
   --lv-blue: #4f6f9f;
   --lv-sand: #f0a98c;
   --lv-shell: #fff2e9;
+  --lv-page-bg: #fff2e9;
   --lv-ink-soft: #4f6f9f;
   --lv-paper-warm: #fffaf3;
   --lv-surface: rgba(255, 250, 243, 0.88);
@@ -80,12 +86,36 @@
   --lv-accent-soft: rgba(240, 169, 140, 0.22);
 }
 
-[data-theme="dusk-minimal"],
+[data-theme="dusk-minimal"] {
+  --lv-navy: #e8edf0;
+  --lv-blue: #9caeb8;
+  --lv-sand: #c9a88f;
+  --lv-shell: #17191d;
+  --lv-page-bg: #17191d;
+  --lv-ink: #e8edf0;
+  --lv-ink-soft: #b8c2c8;
+  --lv-paper: #17191d;
+  --lv-paper-warm: #202329;
+  --lv-surface: rgba(34, 37, 43, 0.94);
+  --lv-surface-solid: #22252b;
+  --lv-line: rgba(232, 237, 240, 0.14);
+  --lv-line-strong: rgba(232, 237, 240, 0.26);
+  --lv-muted: rgba(232, 237, 240, 0.58);
+  --lv-accent: #c9a88f;
+  --lv-accent-strong: #d7bca7;
+  --lv-accent-soft: rgba(201, 168, 143, 0.18);
+  --lv-drawer-active-bg: var(--lv-accent-soft);
+  --lv-drawer-active-ink: var(--lv-ink);
+  --lv-brand-bg: var(--lv-blue);
+  --lv-shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
 [data-theme="midnight-sail-dark"] {
   --lv-navy: #f5efe7;
   --lv-blue: #9fb8c9;
   --lv-sand: #b99d86;
   --lv-shell: #101821;
+  --lv-page-bg: #101821;
   --lv-ink: #f5efe7;
   --lv-ink-soft: #b8c8d5;
   --lv-paper: #101821;
@@ -98,6 +128,9 @@
   --lv-accent: #b99d86;
   --lv-accent-strong: #d2b79f;
   --lv-accent-soft: rgba(185, 157, 134, 0.18);
+  --lv-drawer-active-bg: var(--lv-accent-soft);
+  --lv-drawer-active-ink: var(--lv-ink);
+  --lv-brand-bg: var(--lv-blue);
   --lv-shadow-soft: 0 18px 50px rgba(0, 0, 0, 0.26);
 }
 
@@ -112,10 +145,7 @@ body {
   color: var(--lv-ink);
   font-size: calc(16px * var(--lv-font-scale));
   font-family: var(--lv-font-sans);
-  background:
-    radial-gradient(circle at 12% 8%, rgba(69, 104, 130, 0.10), transparent 30%),
-    radial-gradient(circle at 82% 12%, rgba(210, 193, 182, 0.18), transparent 26%),
-    linear-gradient(135deg, var(--lv-paper) 0%, var(--lv-paper-warm) 100%);
+  background: var(--lv-page-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -304,6 +334,11 @@ body {
   box-shadow: none !important;
 }
 
+.q-drawer {
+  color: var(--lv-ink);
+  background: var(--lv-page-bg) !important;
+}
+
 .q-field--outlined .q-field__control::before,
 .q-table__card,
 .q-list--bordered {
@@ -447,6 +482,8 @@ body {
 }
 
 .q-notification {
+  max-width: min(380px, calc(100vw - 32px));
+  white-space: normal;
   border: 1px solid var(--lv-line);
   border-radius: var(--lv-radius-md);
   box-shadow: var(--lv-shadow-soft);

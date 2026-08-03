@@ -106,6 +106,14 @@
               :label="t('editableLyricsContent')"
             />
 
+            <q-banner v-if="activeDraft.isNonEnglish" rounded class="non-english-warning q-mt-md">
+              <template #avatar>
+                <q-icon name="language" />
+              </template>
+              <div class="text-weight-medium">{{ t('nonEnglishLyricsDetected') }}</div>
+              <div class="text-caption">{{ activeDraft.languageWarning || t('nonEnglishLyricsWarningMessage') }}</div>
+            </q-banner>
+
             <q-banner rounded class="import-boundary-banner q-mt-md">
               {{ t('songImportBoundaryHint') }}
             </q-banner>
@@ -235,10 +243,11 @@ async function handleFileSelect(files: File[] | null) {
   if (drafts.value.length && !activeDraft.value) activeIndex.value = 0;
   selectedFiles.value = null;
 
+  const nonEnglishCount = parsedDrafts.filter((draft) => draft.isNonEnglish).length;
   Notify.create({
     group: 'file-parsing',
-    type: failedCount ? 'warning' : 'positive',
-    message: t('filesParsedSuccessfully', { songCount: parsedDrafts.length, fileCount: files.length }),
+    type: failedCount || nonEnglishCount ? 'warning' : 'positive',
+    message: `${t('filesParsedSuccessfully', { songCount: parsedDrafts.length, fileCount: files.length })}${nonEnglishCount ? t('nonEnglishSongs', { nonEnglish: nonEnglishCount }) : ''}`,
     timeout: 4000,
     position: 'top-right',
   });
@@ -491,6 +500,12 @@ async function finishImport() {
   color: var(--lv-ink);
   background: rgba(212, 167, 98, 0.14);
   border: 1px solid rgba(212, 167, 98, 0.32);
+}
+
+.non-english-warning {
+  color: var(--lv-ink);
+  background: var(--lv-accent-soft);
+  border: 1px solid var(--lv-line-strong);
 }
 
 .import-action-bar {

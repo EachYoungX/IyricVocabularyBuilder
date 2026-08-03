@@ -127,6 +127,15 @@ public class VocabularyServiceImpl implements VocabularyService {
             throw new ValidationException("limit must be between 1 and 200");
         }
 
+        Page<Vocabulary> cleanupPage = vocabularyRepository.findCleanupCandidates(PageRequest.of(0, limit));
+        if (cleanupPage != null) {
+            return cleanupPage.getContent().stream()
+                    .map(this::toQualityCandidate)
+                    .filter(item -> !item.getReasons().isEmpty())
+                    .toList();
+        }
+
+        // Keep compatibility with lightweight repository mocks that predate the optimized query.
         Map<String, Vocabulary> candidates = new LinkedHashMap<>();
         Pageable pageable = PageRequest.of(0, limit);
         vocabularyRepository.findByRecommendedFalseOrderByLearningScoreAscWordAsc(pageable)

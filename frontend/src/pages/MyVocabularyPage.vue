@@ -72,7 +72,14 @@
               {{ t('keptCleanupCandidateCount', { count: keptCleanupWords.size }) }}
             </span>
           </div>
-          <div class="row q-gutter-sm">
+          <div class="row q-gutter-sm cleanup-actions">
+            <q-btn
+              flat
+              dense
+              icon="select_all"
+              :label="qualitySelectionLabel"
+              @click="toggleAllQualityCandidates"
+            />
             <q-btn
               v-if="keptCleanupWords.size > 0"
               flat
@@ -113,7 +120,6 @@
           v-model:selected="selectedQualityCandidates"
           flat
           bordered
-          dense
           row-key="word"
           selection="multiple"
           :rows="qualityCandidates"
@@ -121,6 +127,8 @@
           :loading="qualityLoading"
           :rows-per-page-options="[8, 15, 30]"
           :pagination="{ rowsPerPage: 8 }"
+          :rows-per-page-label="t('recordsPerPage')"
+          :pagination-label="paginationLabel"
         >
           <template #body-cell-word="props">
             <q-td :props="props">
@@ -165,6 +173,11 @@
       </div>
     </q-expansion-item>
 
+    <div class="personal-vocabulary-heading q-mt-lg">
+      <div class="text-subtitle1 text-weight-bold">{{ t('personalVocabularySection') }}</div>
+      <div class="text-caption text-grey-7">{{ t('personalVocabularySectionHint') }}</div>
+    </div>
+
     <div class="toolbar row items-center q-col-gutter-sm q-mt-md">
       <div class="col-12 col-md-4">
         <q-input v-model="searchText" dense outlined clearable debounce="150" :placeholder="t('searchPersonalVocabulary')">
@@ -172,6 +185,9 @@
             <q-icon name="search" />
           </template>
         </q-input>
+        <div class="text-caption text-grey-7 q-mt-xs">
+          {{ t('filteredVocabularyCount', { count: filteredRows.length }) }}
+        </div>
       </div>
       <div class="col-12 col-md-3">
         <q-select
@@ -232,6 +248,8 @@
           :loading="store.isLoading"
           :rows-per-page-options="[15, 30, 50, 0]"
           :pagination="{ rowsPerPage: 15 }"
+          :rows-per-page-label="t('recordsPerPage')"
+          :pagination-label="paginationLabel"
           @row-click="handleRowClick"
         >
           <template #body-cell-lemma="props">
@@ -418,6 +436,9 @@ const cleanupSummaryCards = computed(() => [
   { key: 'selectedOccurrences', label: t('cleanupSelectedOccurrences'), value: selectedCleanupImpact.value.occurrences },
   { key: 'selectedSongs', label: t('cleanupSelectedSongs'), value: selectedCleanupImpact.value.songs },
 ]);
+const qualitySelectionLabel = computed(() => selectedQualityCandidates.value.length === qualityCandidates.value.length
+  ? t('clearAllCandidates')
+  : t('selectAllCandidates'));
 
 onMounted(() => {
   void loadData();
@@ -467,7 +488,7 @@ async function loadOccurrences(lemma: string) {
 async function loadQualityCandidates() {
   qualityLoading.value = true;
   try {
-    const candidates = await VocabularyService.getVocabularyQualityCandidates(80);
+    const candidates = await VocabularyService.getVocabularyQualityCandidates(200);
     qualityCandidates.value = candidates.filter((candidate) => !keptCleanupWords.value.has(candidate.word));
     selectedQualityCandidates.value = [];
   } catch {
@@ -475,6 +496,18 @@ async function loadQualityCandidates() {
   } finally {
     qualityLoading.value = false;
   }
+}
+
+function toggleAllQualityCandidates() {
+  selectedQualityCandidates.value = selectedQualityCandidates.value.length === qualityCandidates.value.length
+    ? []
+    : [...qualityCandidates.value];
+}
+
+function paginationLabel(firstRowIndex: number, lastRowIndex: number, totalRowsNumber: number) {
+  return totalRowsNumber === 0
+    ? t('noData')
+    : t('paginationRange', { first: firstRowIndex, last: lastRowIndex, total: totalRowsNumber });
 }
 
 async function exportVocabularyCsv() {
@@ -935,7 +968,17 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 <style lang="scss" scoped>
 .my-vocabulary-page {
   color: var(--lv-ink);
-  background: var(--lv-paper);
+  background: var(--lv-page-bg);
+}
+
+.personal-vocabulary-heading {
+  padding: 14px 0 0;
+  border-top: 1px solid var(--lv-line);
+}
+
+.cleanup-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .page-head {
@@ -1058,5 +1101,11 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
   text-overflow: ellipsis;
   vertical-align: bottom;
   white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .cleanup-actions {
+    justify-content: flex-start;
+  }
 }
 </style>

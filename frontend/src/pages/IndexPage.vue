@@ -146,10 +146,10 @@
                           </q-chip>
                         </div>
                         <div class="word-status-action">
-                          <q-btn v-if="!selectedUserWord" color="primary" size="sm" :loading="personalActionLoading" @click="addSelectedWord">
+                          <q-btn v-if="!selectedUserWord" color="primary" outline no-caps icon="bookmark_add" :loading="personalActionLoading" @click="addSelectedWord">
                             {{ t('addToPersonalVocabulary') }}
                           </q-btn>
-                          <q-btn-dropdown v-else color="primary" size="sm" dense unelevated :loading="personalActionLoading" :label="t('updateLearningStatus')">
+                          <q-btn-dropdown v-else color="primary" no-caps icon="school" unelevated :loading="personalActionLoading" :label="t('updateLearningStatus')">
                             <q-list>
                               <q-item v-for="status in learningStatuses" :key="status" clickable v-close-popup @click="updateSelectedWordStatus(status)">
                                 <q-item-section>{{ formatVocabularyStatus(status) }}</q-item-section>
@@ -158,7 +158,7 @@
                           </q-btn-dropdown>
                         </div>
                       </div>
-                      <div class="learning-value-row q-mt-sm">
+                      <div class="learning-value-row q-mt-md">
                         <q-chip
                           dense
                           :color="selectedWordIsLowValue ? 'amber-2' : 'green-2'"
@@ -166,28 +166,27 @@
                         >
                           {{ selectedWordIsLowValue ? t('lowValueWordMarker') : t('recommendedLearningValue') }}
                         </q-chip>
-                        <q-space />
-                        <q-btn
-                          flat
-                          dense
-                          size="sm"
-                          icon="trending_up"
-                          :loading="learningValueLoading"
-                          :disable="!vocabularyStore.getSelectedWord || !selectedWordIsLowValue"
-                          :label="t('markRecommendedWord')"
-                          @click="updateSelectedWordLearningValue(true)"
-                        />
-                        <q-btn
-                          flat
-                          dense
-                          size="sm"
-                          color="warning"
-                          icon="block"
-                          :loading="learningValueLoading"
-                          :disable="!vocabularyStore.getSelectedWord || selectedWordIsLowValue"
-                          :label="t('markLowValueWord')"
-                          @click="updateSelectedWordLearningValue(false)"
-                        />
+                        <div class="learning-value-actions">
+                          <q-btn
+                            outline
+                            no-caps
+                            icon="trending_up"
+                            :loading="learningValueLoading"
+                            :disable="!vocabularyStore.getSelectedWord || !selectedWordIsLowValue"
+                            :label="t('markRecommendedWord')"
+                            @click="updateSelectedWordLearningValue(true)"
+                          />
+                          <q-btn
+                            outline
+                            no-caps
+                            color="warning"
+                            icon="block"
+                            :loading="learningValueLoading"
+                            :disable="!vocabularyStore.getSelectedWord || selectedWordIsLowValue"
+                            :label="t('markLowValueWord')"
+                            @click="updateSelectedWordLearningValue(false)"
+                          />
+                        </div>
                       </div>
                     </div>
                     <div v-else-if="dictionaryStore.getError" class="text-center text-negative">
@@ -287,6 +286,9 @@ async function addSelectedWord() {
   personalActionLoading.value = true;
   try {
     await userVocabularyStore.addWord(vocabularyStore.getSelectedWord);
+    $q.notify({ type: 'positive', position: 'top-right', message: t('vocabularyAddedSuccessfully') });
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('vocabularyAddFailed') });
   } finally {
     personalActionLoading.value = false;
   }
@@ -301,6 +303,9 @@ async function updateSelectedWordStatus(status: VocabularyStatus) {
       status,
       masteryScoreForStatus(status),
     );
+    $q.notify({ type: 'positive', position: 'top-right', message: t('vocabularyStatusUpdated') });
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('vocabularyStatusUpdateFailed') });
   } finally {
     personalActionLoading.value = false;
   }
@@ -319,6 +324,9 @@ async function updateSelectedWordLearningValue(recommended: boolean) {
       size: vocabularyStore.wordPageSize,
       prefix: vocabularyStore.wordSearchPrefix || undefined,
     });
+    $q.notify({ type: 'positive', position: 'top-right', message: t('learningValueUpdated') });
+  } catch {
+    $q.notify({ type: 'negative', position: 'top-right', message: t('learningValueUpdateFailed') });
   } finally {
     learningValueLoading.value = false;
   }
@@ -521,9 +529,13 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 
 .word-status-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--lv-line);
+  border-bottom: 1px solid var(--lv-line);
 }
 
 .word-status-left,
@@ -540,18 +552,33 @@ function masteryScoreForStatus(status: VocabularyStatus) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.learning-value-row :deep(.q-btn) {
-  min-height: 30px;
-  font-size: 12px;
+.learning-value-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .status-chip {
   min-height: 28px;
   padding-inline: 12px;
   font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .word-status-action,
+  .learning-value-actions {
+    width: 100%;
+  }
+
+  .word-status-action :deep(.q-btn),
+  .learning-value-actions :deep(.q-btn) {
+    width: 100%;
+  }
 }
 
 .pagination-container {

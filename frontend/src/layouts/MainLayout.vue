@@ -141,7 +141,7 @@ function toggleLanguage() {
   font-family: var(--lv-font-serif);
   font-size: 17px;
   line-height: 1;
-  background: var(--lv-ink);
+  background: var(--lv-brand-bg);
   border: 1px solid rgba(27, 60, 83, 0.18);
   border-radius: 50%;
   box-shadow: 0 8px 18px rgba(27, 60, 83, 0.12);
@@ -159,9 +159,7 @@ function toggleLanguage() {
 
 .app-drawer {
   color: var(--lv-ink);
-  background:
-    linear-gradient(180deg, rgba(249, 243, 239, 0.98), rgba(249, 248, 246, 0.98)),
-    var(--lv-paper);
+  background: var(--lv-page-bg);
   border-right-color: var(--lv-line);
 }
 
@@ -200,12 +198,12 @@ function toggleLanguage() {
 }
 
 :deep(.drawer-active) {
-  color: var(--lv-paper) !important;
-  background: var(--lv-ink) !important;
+  color: var(--lv-drawer-active-ink) !important;
+  background: var(--lv-drawer-active-bg) !important;
 }
 
 :deep(.drawer-active .q-icon) {
-  color: var(--lv-paper) !important;
+  color: var(--lv-drawer-active-ink) !important;
 }
 
 :deep(.q-item__label--header) {
