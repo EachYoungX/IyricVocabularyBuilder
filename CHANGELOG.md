@@ -39,6 +39,8 @@ This file records only completed and verified refactoring stages. Internal plans
 - Follow-up browser audit on 2026-08-02 passed for the 390px mobile layout of the home, My Vocabulary, and Settings pages, dark theme switching, and closing an open Settings select while scrolling; no horizontal overflow was observed.
 
 - 后续修订（2026-08-03）：修正两个深色主题的页面与侧栏底色及 active 状态，补充非英文歌曲导入警告，限制导入通知和歌词详情的宽度/溢出；词库清洗支持全候选选择，个人词库区补充搜索结果反馈与中文分页文案；统一词库操作按钮、推荐/低学习价值操作和移动端换行；移除当前未产生明显效果的界面大小与字体大小设置；清洗候选改用单次分页查询，并保留测试兼容 fallback。未修改歌词分词逻辑。
+- 后续修订（2026-08-03）：调整歌曲导入反馈为“导入中短通知、成功自动退出并进入歌曲库、失败保留原因弹窗”；补充逐首失败原因展示，并修正前端 store 吞掉导入请求异常导致页面只显示“没有任务 ID”的问题。
+- 后续修订（2026-08-03）：收窄导入失败弹窗，避免被全局对话框宽度规则拉伸；导入任务 ID 解析兼容嵌套响应结构，并将缺少任务 ID 的错误本地化。
 
 ## Stage 6 - 2026-07-01
 

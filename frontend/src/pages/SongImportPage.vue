@@ -157,16 +157,20 @@
     <q-dialog v-model="showProgressDialog" persistent>
       <q-card class="import-progress-card">
         <q-card-section>
-          <div class="text-h6">{{ t('importing') }}</div>
+          <div class="text-h6">{{ t('importFailed') }}</div>
         </q-card-section>
-        <q-card-section>
-          <q-linear-progress :value="importProgress" color="primary" size="10px" rounded class="q-mb-sm" />
-          <div class="row justify-between text-caption">
-            <span>{{ t('importSuccess') }}: {{ importTask?.successCount || 0 }}</span>
-            <span class="text-negative" v-if="importTask?.failedCount">{{ t('failures') }}: {{ importTask.failedCount }}</span>
-          </div>
+        <q-card-section class="q-pt-none">
+          <div class="text-body2">{{ importFailureMessage || t('importFailedMessage') }}</div>
+          <q-list v-if="importTask?.failedItems?.length" dense class="q-mt-md import-failure-list">
+            <q-item v-for="(item, index) in importTask.failedItems" :key="`${item.index}-${index}`">
+              <q-item-section>
+                <q-item-label>{{ item.title || t('untitledSong') }}</q-item-label>
+                <q-item-label caption>{{ item.error }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
         </q-card-section>
-        <q-card-actions align="right" v-if="!isImporting">
+        <q-card-actions align="right">
           <q-btn color="primary" no-caps :label="t('done')" @click="finishImport" />
         </q-card-actions>
       </q-card>
@@ -199,6 +203,8 @@ const isImporting = ref(false);
 const importTask = ref<ImportTaskResult | null>(null);
 const taskId = ref<string | null>(null);
 const showProgressDialog = ref(false);
+const importFailureMessage = ref<string | null>(null);
+let dismissImportNotice: (() => void) | null = null;
 
 const activeDraft = computed(() => drafts.value[activeIndex.value] || null);
 const canImport = computed(() => {
@@ -206,12 +212,6 @@ const canImport = computed(() => {
     && drafts.value.length <= importLimit
     && drafts.value.every((draft) => draft.title?.trim() && draft.artist?.trim() && draft.lyrics?.trim());
 });
-const importProgress = computed(() => {
-  if (!importTask.value) return 0;
-  const processed = (importTask.value.successCount ?? 0) + (importTask.value.failedCount ?? 0);
-  return importTask.value.total ? processed / importTask.value.total : 0;
-});
-
 async function handleFileSelect(files: File[] | null) {
   if (!files?.length) {
     selectedFiles.value = null;
@@ -220,6 +220,7 @@ async function handleFileSelect(files: File[] | null) {
 
   Notify.create({
     group: 'file-parsing',
+    classes: 'song-import-notification',
     spinner: true,
     message: t('parsingFiles', { count: files.length }),
     timeout: 0,
@@ -299,8 +300,19 @@ async function importSongs() {
   if (!canImport.value) return;
 
   isImporting.value = true;
-  showProgressDialog.value = true;
+  showProgressDialog.value = false;
   importTask.value = null;
+  importFailureMessage.value = null;
+  dismissImportNotice?.();
+  dismissImportNotice = Notify.create({
+    group: 'song-import',
+    classes: 'song-import-notification',
+    spinner: true,
+    type: 'ongoing',
+    message: t('importing'),
+    timeout: 0,
+    position: 'top-right',
+  });
 
   const basicSongs: SongImportRequest[] = drafts.value.map((draft) => ({
     title: draft.title,
@@ -311,7 +323,7 @@ async function importSongs() {
   try {
     const result: unknown = await songsStore.importSongs(basicSongs);
     const receivedTaskId = readTaskId(result);
-    if (!receivedTaskId) throw new Error('No Task ID received from server');
+    if (!receivedTaskId) throw new Error(t('importTaskIdMissing'));
 
     taskId.value = receivedTaskId;
     importTask.value = {
@@ -325,11 +337,10 @@ async function importSongs() {
     pollTaskStatus(receivedTaskId);
   } catch (error) {
     isImporting.value = false;
-    Notify.create({
-      type: 'negative',
-      message: error instanceof Error ? error.message : t('importFailedMessage'),
-      position: 'top-right',
-    });
+    dismissImportNotice?.();
+    dismissImportNotice = null;
+    importFailureMessage.value = error instanceof Error ? error.message : t('importFailedMessage');
+    showProgressDialog.value = true;
   }
 }
 
@@ -337,7 +348,10 @@ function readTaskId(result: unknown) {
   if (typeof result === 'string') return result;
   if (!result || typeof result !== 'object') return null;
   const record = result as Record<string, unknown>;
-  return (record.taskId as string) || (record.id as string) || (record.task_id as string) || null;
+  const directTaskId = record.taskId || record.id || record.task_id;
+  if (typeof directTaskId === 'string' && directTaskId.trim()) return directTaskId;
+  if (record.data && typeof record.data === 'object') return readTaskId(record.data);
+  return null;
 }
 
 function pollTaskStatus(currentTaskId: string) {
@@ -354,32 +368,48 @@ function pollTaskStatus(currentTaskId: string) {
         importTask.value = taskResult;
         if (taskResult.status === ImportTaskResultEnum.status.COMPLETED || taskResult.status === ImportTaskResultEnum.status.FAILED) {
           isImporting.value = false;
+          dismissImportNotice?.();
+          dismissImportNotice = null;
           if (taskResult.status === ImportTaskResultEnum.status.COMPLETED) {
             await songsStore.fetchAllSongs(false);
           }
+          if (taskResult.failedCount) {
+            importFailureMessage.value = t('importFailedMessage');
+            showProgressDialog.value = true;
+            return;
+          }
+          clearDrafts();
+          Notify.create({
+            type: 'positive',
+            message: t('importSuccessMessage', { success: taskResult.successCount }),
+            position: 'top-right',
+          });
+          await router.push('/songs');
           return;
         }
       }
       if (attempts < maxAttempts) window.setTimeout(() => void poll(), pollInterval);
       else {
         isImporting.value = false;
-        Notify.create({ type: 'warning', message: t('taskTimedOut'), position: 'top-right' });
+        dismissImportNotice?.();
+        dismissImportNotice = null;
+        importFailureMessage.value = t('taskTimedOut');
+        showProgressDialog.value = true;
       }
     } catch {
       isImporting.value = false;
-      Notify.create({ type: 'negative', message: t('importFailedMessage'), position: 'top-right' });
+      dismissImportNotice?.();
+      dismissImportNotice = null;
+      importFailureMessage.value = t('importFailedMessage');
+      showProgressDialog.value = true;
     }
   };
 
   window.setTimeout(() => void poll(), pollInterval);
 }
 
-async function finishImport() {
+function finishImport() {
   showProgressDialog.value = false;
-  if (importTask.value?.status === ImportTaskResultEnum.status.COMPLETED && !importTask.value.failedCount) {
-    clearDrafts();
-    await router.push('/songs');
-  }
 }
 </script>
 
@@ -524,8 +554,15 @@ async function finishImport() {
   box-shadow: 0 -10px 24px rgba(27, 60, 83, 0.08);
 }
 
-.import-progress-card {
-  width: min(420px, calc(100vw - 32px));
+.import-failure-list {
+  max-height: 36dvh;
+  overflow: auto;
+  border: 1px solid var(--lv-line);
+}
+
+:global(.q-dialog .import-progress-card) {
+  width: min(520px, calc(100vw - 32px)) !important;
+  max-width: calc(100vw - 32px) !important;
 }
 
 @media (max-width: 900px) {

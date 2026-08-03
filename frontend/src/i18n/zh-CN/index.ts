@@ -218,6 +218,7 @@ export default {
   songAddedToPreviewList: '歌曲已添加到预览列表',
   importingSongs: '正在导入 {count} 首歌曲，请稍候...',
   importFailedMessage: '导入失败，请重试',
+  importTaskIdMissing: '服务器未返回导入任务 ID',
   importCompleted: '导入完成！成功 {success} 首',
   failedSongs: '，失败 {failed} 首',
   nonEnglishSongs: '，{nonEnglish} 首含非英语歌词',

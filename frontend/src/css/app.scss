@@ -489,6 +489,12 @@ body {
   box-shadow: var(--lv-shadow-soft);
 }
 
+.q-notification.song-import-notification {
+  width: fit-content;
+  min-width: 0;
+  max-width: min(260px, calc(100vw - 32px));
+}
+
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .q-page {
     padding-bottom: env(safe-area-inset-bottom);

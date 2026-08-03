@@ -59,8 +59,8 @@ export const useSongsStore = defineStore('songs', () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('unknownError');
       error.value = errorMessage;
-      Notify.create({ type: 'negative', message: t('importSongsFailed', { error: errorMessage }), position: 'top-right' });
       console.error('Error importing songs:', err);
+      throw err;
     } finally {
       isLoading.value = false;
     }
