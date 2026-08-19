@@ -48,8 +48,13 @@ public class SongController {
     }
     
     @PostMapping("/import")
-    public ResponseEntity<ApiResponse<SongImportResponseDto>> importSongs(@RequestBody List<SongImportRequestDto> songsToImport) {
-        SongImportResponseDto response = songService.importSongsAsync(songsToImport);
+    public ResponseEntity<ApiResponse<SongImportResponseDto>> importSongs(
+            @RequestBody List<SongImportRequestDto> songsToImport,
+            @RequestParam(defaultValue = "false") boolean autoAddToPersonalVocabulary
+    ) {
+        SongImportResponseDto response = autoAddToPersonalVocabulary
+                ? songService.importSongsAsync(songsToImport, true)
+                : songService.importSongsAsync(songsToImport);
         return ResponseEntity.accepted().body(ApiResponse.accepted(response));
     }
     

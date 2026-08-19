@@ -19,6 +19,12 @@ public class Song {
     
     @Column(nullable = false)
     private String artist;
+
+    @Column(name = "raw_title")
+    private String rawTitle;
+
+    @Column(name = "raw_artist")
+    private String rawArtist;
     
     @Lob // 表示这是一个大的文本字段
     @Column(nullable = false, columnDefinition = "TEXT")

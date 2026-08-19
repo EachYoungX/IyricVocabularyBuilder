@@ -1,6 +1,6 @@
 <template>
   <q-page class="my-vocabulary-page q-pa-md">
-    <div class="page-head row items-start justify-between q-gutter-md">
+    <div class="page-head row items-start justify-between q-gutter-md" style="order: 1">
       <div>
         <div class="text-h5 text-weight-bold">{{ t('myVocabularyTitle') }}</div>
         <div class="text-body2 text-grey-7">{{ t('myVocabularySubtitle') }}</div>
@@ -10,7 +10,7 @@
       </q-btn>
     </div>
 
-    <div class="stats-row q-mt-md">
+    <div class="stats-row q-mt-md" style="order: 2">
       <div v-for="stat in statsCards" :key="stat.key" class="stat-tile">
         <div class="stat-value">{{ stat.value }}</div>
         <div class="stat-label">{{ stat.label }}</div>
@@ -18,7 +18,7 @@
     </div>
 
     <q-expansion-item
-      class="quality-panel q-mt-md"
+      class="quality-panel data-management-panel q-mt-md"
       icon="import_export"
       :label="t('vocabularyDataManagement')"
       :caption="t('vocabularyDataManagementHint')"
@@ -58,7 +58,7 @@
     </q-expansion-item>
 
     <q-expansion-item
-      class="quality-panel q-mt-md"
+      class="quality-panel cleanup-panel q-mt-md"
       icon="rule"
       :label="t('vocabularyCleanupCandidates')"
       :caption="t('vocabularyCleanupCandidatesHint')"
@@ -139,16 +139,15 @@
           </template>
           <template #body-cell-reasons="props">
             <q-td :props="props">
-              <q-chip
+              <SemanticChip
+                tone="warning"
                 v-for="reason in props.row.reasons"
                 :key="reason"
                 dense
                 size="sm"
-                color="amber-2"
-                text-color="brown-8"
               >
                 {{ qualityReasonLabel(reason) }}
-              </q-chip>
+              </SemanticChip>
             </q-td>
           </template>
           <template #body-cell-example="props">
@@ -173,12 +172,12 @@
       </div>
     </q-expansion-item>
 
-    <div class="personal-vocabulary-heading q-mt-lg">
+    <div class="personal-vocabulary-heading q-mt-lg" style="order: 3">
       <div class="text-subtitle1 text-weight-bold">{{ t('personalVocabularySection') }}</div>
       <div class="text-caption text-grey-7">{{ t('personalVocabularySectionHint') }}</div>
     </div>
 
-    <div class="toolbar row items-center q-col-gutter-sm q-mt-md">
+    <div class="toolbar row items-center q-col-gutter-sm q-mt-md" style="order: 4">
       <div class="col-12 col-md-4">
         <q-input v-model="searchText" dense outlined clearable debounce="150" :placeholder="t('searchPersonalVocabulary')">
           <template #prepend>
@@ -235,7 +234,7 @@
       </div>
     </div>
 
-    <q-splitter v-model="splitter" class="content-splitter q-mt-md" :limits="[45, 72]">
+    <q-splitter v-model="splitter" class="content-splitter q-mt-md" style="order: 5" :limits="[45, 72]">
       <template #before>
         <q-table
           v-model:selected="selected"
@@ -308,9 +307,9 @@
             <div v-else-if="occurrenceError" class="text-negative">{{ occurrenceError }}</div>
             <div v-else-if="occurrences.length === 0" class="text-grey-7">{{ t('noOccurrencesFound') }}</div>
             <q-list v-else separator>
-              <q-item v-for="(occurrence, index) in occurrences" :key="`${occurrence.songId}-${occurrence.lineIndex}-${index}`" class="occurrence-item">
+              <q-item v-for="(occurrence, index) in occurrences" :key="`${occurrence.songId}-${occurrence.lineIndex}-${index}`" clickable class="occurrence-item" @click="openOccurrenceSong(occurrence.songId)">
                 <q-item-section>
-                  <q-item-label class="text-weight-medium">{{ occurrence.songTitle }}</q-item-label>
+                  <q-item-label class="text-weight-medium">{{ occurrence.songTitle }}<span v-if="occurrence.songArtist"> · {{ occurrence.songArtist }}</span></q-item-label>
                   <q-item-label caption>{{ t('lineNumber', { number: displayLineNumber(occurrence.lineIndex) }) }}</q-item-label>
                   <q-item-label class="lyric-line q-mt-xs">{{ occurrence.lyricLine }}</q-item-label>
                 </q-item-section>
@@ -338,10 +337,17 @@ import {
   type VocabularyQualityCandidate,
   type WordOccurrence,
 } from 'src/services/api';
+import SemanticChip from 'src/components/SemanticChip.vue';
+import { useRouter } from 'vue-router';
 
 const { t } = useI18n();
 const store = useUserVocabularyStore();
+const router = useRouter();
 const KEPT_CLEANUP_WORDS_STORAGE_KEY = 'lv-kept-cleanup-candidate-words';
+
+function openOccurrenceSong(songId?: number) {
+  if (songId) void router.push({ path: '/songs', query: { songId: String(songId) } });
+}
 
 const splitter = ref(58);
 const searchText = ref('');
@@ -967,6 +973,8 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 
 <style lang="scss" scoped>
 .my-vocabulary-page {
+  display: flex;
+  flex-direction: column;
   color: var(--lv-ink);
   background: var(--lv-page-bg);
 }
@@ -1089,9 +1097,14 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 }
 
 .quality-panel {
+  order: 6;
   background: var(--lv-surface-solid);
   border: 1px solid var(--lv-line);
   border-radius: 8px;
+}
+
+.data-management-panel {
+  order: 7;
 }
 
 .candidate-example {

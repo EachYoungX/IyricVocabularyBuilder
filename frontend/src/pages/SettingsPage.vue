@@ -58,9 +58,6 @@
                 </q-list>
               </div>
             </q-expansion-item>
-            <q-banner rounded class="settings-note q-mt-md">
-              {{ t('settingsPage.reviewTimingDeferred') }}
-            </q-banner>
           </q-card-section>
         </q-card>
 
@@ -88,6 +85,11 @@
                 <SettingsSelect v-model="settings.fillerWordHandling" outlined emit-value map-options
                   :options="fillerWordOptions" :label="t('settingsPage.fillerWordHandling')"
                   @update:model-value="persistSettings" />
+              </div>
+              <div class="col-12">
+                <q-toggle v-model="settings.autoAddImportedWords" color="primary"
+                  :label="t('settingsPage.autoAddImportedWords')" @update:model-value="persistSettings" />
+                <div class="settings-help">{{ t('settingsPage.autoAddImportedWordsHelp') }}</div>
               </div>
             </div>
           </q-card-section>

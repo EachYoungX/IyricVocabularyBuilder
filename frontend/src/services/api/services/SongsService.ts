@@ -52,12 +52,16 @@ export class SongsService {
      */
     public static importSongsAsync(
         requestBody: Array<SongImportRequest>,
+        autoAddToPersonalVocabulary: boolean = false,
     ): CancelablePromise<SongImportTaskResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/songs/import',
             body: requestBody,
             mediaType: 'application/json',
+            query: {
+                'autoAddToPersonalVocabulary': autoAddToPersonalVocabulary,
+            },
         });
     }
     /**

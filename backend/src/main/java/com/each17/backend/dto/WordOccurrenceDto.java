@@ -9,6 +9,7 @@ import lombok.*;
 public class WordOccurrenceDto {
     private Long songId;
     private String songTitle;
+    private String songArtist;
     private Long lyricLineId;
     private Integer lineIndex;
     private String lyricLine;

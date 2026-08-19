@@ -13,6 +13,8 @@ public class SongMapper {
             .id(Long.valueOf(song.getId()))
             .title(song.getTitle())
             .artist(song.getArtist())
+            .rawTitle(song.getRawTitle())
+            .rawArtist(song.getRawArtist())
             .lyrics(song.getLyrics())
             .build();
     }
@@ -21,6 +23,8 @@ public class SongMapper {
         return Song.builder()
             .title(dto.getTitle())
             .artist(dto.getArtist())
+            .rawTitle(dto.getTitle())
+            .rawArtist(dto.getArtist())
             .lyrics(dto.getLyrics())
             .rawLyrics(dto.getLyrics())
             .importVersion(1)
@@ -32,7 +36,6 @@ public class SongMapper {
             .title(dto.getTitle())
             .artist(dto.getArtist())
             .lyrics(dto.getLyrics())
-            .rawLyrics(dto.getLyrics())
             .build();
     }
     

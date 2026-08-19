@@ -50,10 +50,10 @@
                 <q-item-label>{{ draft.title || t('untitledSong') }}</q-item-label>
                 <q-item-label caption>{{ draft.artist || t('unknownArtist') }}</q-item-label>
                 <div class="row q-gutter-xs q-mt-xs">
-                  <q-chip v-if="draft.sourceFormat" dense size="sm" color="grey-2">{{ draft.sourceFormat }}</q-chip>
-                  <q-chip v-if="draft.importSummary" dense size="sm" color="primary" text-color="white">
+                  <SemanticChip v-if="draft.sourceFormat">{{ draft.sourceFormat }}</SemanticChip>
+                  <SemanticChip v-if="draft.importSummary" tone="count">
                     {{ t('recognizedLyricLines', { count: draft.importSummary.lyricLines }) }}
-                  </q-chip>
+                  </SemanticChip>
                 </div>
               </q-item-section>
               <q-item-section side>
@@ -77,7 +77,7 @@
                 <div class="text-subtitle2">{{ t('rawImportContent') }}</div>
                 <div class="text-caption text-grey-7">{{ activeDraft.sourceName || t('manualInputSource') }}</div>
               </div>
-              <q-chip v-if="activeDraft.sourceFormat" dense color="grey-2">{{ activeDraft.sourceFormat }}</q-chip>
+              <SemanticChip v-if="activeDraft.sourceFormat">{{ activeDraft.sourceFormat }}</SemanticChip>
             </div>
             <q-input
               :model-value="activeDraft.rawSourceContent || t('manualInputSource')"
@@ -190,6 +190,7 @@ import type { ExtendedSongImportRequest } from 'src/types/songImport';
 import { buildImportSummary, parseImportFileContent } from 'src/utils/lyricsImportParser';
 import { detectLyricsLanguage } from 'src/utils/languageDetector';
 import { loadAppSettings } from 'src/utils/appSettings';
+import SemanticChip from 'src/components/SemanticChip.vue';
 
 const importLimit = 100;
 const { t } = useI18n();
@@ -383,9 +384,9 @@ function pollTaskStatus(currentTaskId: string) {
             type: 'positive',
             message: t('importSuccessMessage', { success: taskResult.successCount }),
             position: 'top-right',
-            timeout: 1200,
+            timeout: 250,
           });
-          await new Promise((resolve) => window.setTimeout(resolve, 1200));
+          await new Promise((resolve) => window.setTimeout(resolve, 250));
           await router.push('/songs');
           return;
         }

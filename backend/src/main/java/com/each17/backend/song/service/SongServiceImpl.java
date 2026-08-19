@@ -7,6 +7,7 @@ import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.mapper.SongMapper;
 import com.each17.backend.song.repository.SongRepository;
 import com.each17.backend.vocabulary.service.VocabularyService;
+import com.each17.backend.vocabulary.service.UserVocabularyService;
 import com.each17.backend.lyric.service.LyricStructureService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class SongServiceImpl implements SongService {
     private final SongRepository songRepository;
     private final SongMapper songMapper;
     private final VocabularyService vocabularyService;
+    private final UserVocabularyService userVocabularyService;
     private final LyricStructureService lyricStructureService;
 
     // [核心] 使用 ConcurrentHashMap 在内存中存储任务状态，保证线程安全
@@ -46,6 +48,11 @@ public class SongServiceImpl implements SongService {
 
     @Override
     public SongImportResponseDto importSongsAsync(List<SongImportRequestDto> songsToImport) {
+        return importSongsAsync(songsToImport, false);
+    }
+
+    @Override
+    public SongImportResponseDto importSongsAsync(List<SongImportRequestDto> songsToImport, boolean autoAddToPersonalVocabulary) {
         final UUID taskId = UUID.randomUUID();
         final int totalSongs = songsToImport.size();
 
@@ -64,7 +71,7 @@ public class SongServiceImpl implements SongService {
         log.info("[Task {}] Import task created for {} songs.", taskId, totalSongs);
 
         // 2. 调用异步方法来执行实际的耗时操作
-        processSongImport(taskId, songsToImport);
+        processSongImport(taskId, songsToImport, autoAddToPersonalVocabulary);
 
         // 3. 立即返回任务信息给前端
         return SongImportResponseDto.builder()
@@ -78,6 +85,13 @@ public class SongServiceImpl implements SongService {
     @Transactional
     @Override
     public void processSongImport(UUID taskId, List<SongImportRequestDto> songsToImport) {
+        processSongImport(taskId, songsToImport, false);
+    }
+
+    @Async
+    @Transactional
+    @Override
+    public void processSongImport(UUID taskId, List<SongImportRequestDto> songsToImport, boolean autoAddToPersonalVocabulary) {
         log.info("----------------------------------------------------");
         log.info("[Task {}] @Async method processSongImport has started in thread: {}", taskId, Thread.currentThread().getName());
 
@@ -102,6 +116,9 @@ public class SongServiceImpl implements SongService {
                 if (existing.isPresent()) {
                     if (lyricStructureService.isSameContent(existing.get(), songDto.getLyrics())) {
                         lyricStructureService.structureSong(existing.get(), songDto.getLyrics(), false);
+                        if (autoAddToPersonalVocabulary) {
+                            userVocabularyService.addDefaultWordsForSong(existing.get().getId());
+                        }
                         taskResult.setSuccessCount(taskResult.getSuccessCount() + 1);
                         continue;
                     }
@@ -110,6 +127,9 @@ public class SongServiceImpl implements SongService {
 
                 Song savedSong = songRepository.save(song);
                 lyricStructureService.structureSong(savedSong, songDto.getLyrics(), true);
+                if (autoAddToPersonalVocabulary) {
+                    userVocabularyService.addDefaultWordsForSong(savedSong.getId());
+                }
 
                 taskResult.setSuccessCount(taskResult.getSuccessCount() + 1);
 

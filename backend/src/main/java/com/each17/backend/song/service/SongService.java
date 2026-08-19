@@ -19,10 +19,12 @@ public interface SongService {
     void deleteSong(Long id);
     void deleteSongs(List<Long> ids);
     SongImportResponseDto importSongsAsync(List<SongImportRequestDto> songsToImport);
+    SongImportResponseDto importSongsAsync(List<SongImportRequestDto> songsToImport, boolean autoAddToPersonalVocabulary);
 
     @Async
     @Transactional
     void processSongImport(UUID taskId, List<SongImportRequestDto> songsToImport);
+    void processSongImport(UUID taskId, List<SongImportRequestDto> songsToImport, boolean autoAddToPersonalVocabulary);
 
     ImportTaskResultDto getImportTaskResult(UUID taskId);
 }

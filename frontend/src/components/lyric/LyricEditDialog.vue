@@ -29,9 +29,9 @@
                   <div class="text-subtitle1 text-weight-medium">{{ t('originalImport') }}</div>
                   <div class="text-caption text-grey-7">{{ t('originalImportHint') }}</div>
                 </div>
-                <q-chip v-if="document" dense color="primary" text-color="white">
+                <SemanticChip v-if="document" tone="count">
                   {{ t('lyricLineCount', { count: document.lines.length }) }}
-                </q-chip>
+                </SemanticChip>
               </div>
 
               <div class="raw-meta-grid">
@@ -73,8 +73,8 @@
                 <q-btn
                   flat
                   color="secondary"
-                  :label="t('restoreOriginalLyrics')"
-                  :disable="!document?.rawLyrics"
+                  :label="t('restoreOriginalSong')"
+                  :disable="!document?.rawLyrics && !songSnapshot?.rawTitle && !songSnapshot?.rawArtist"
                   @click="restoreOriginalLyrics"
                 />
                 <q-btn flat :label="t('cancel')" v-close-popup />
@@ -104,6 +104,7 @@ import {
   type LyricDocument,
   type Song,
 } from 'src/services/api';
+import SemanticChip from 'src/components/SemanticChip.vue';
 
 const props = defineProps<{
   modelValue: boolean;
@@ -129,8 +130,8 @@ const editableSong = ref({
 });
 
 const rawLyricsForDisplay = computed(() => document.value?.rawLyrics || t('emptyLyrics'));
-const readonlyTitle = computed(() => songSnapshot.value?.title || props.songTitle || t('untitledSong'));
-const readonlyArtist = computed(() => songSnapshot.value?.artist || t('unknown'));
+const readonlyTitle = computed(() => songSnapshot.value?.rawTitle || songSnapshot.value?.title || props.songTitle || t('untitledSong'));
+const readonlyArtist = computed(() => songSnapshot.value?.rawArtist || songSnapshot.value?.artist || t('unknown'));
 const isDirty = computed(() => JSON.stringify(editableSong.value) !== originalSongJson.value);
 const isFormValid = computed(() =>
   editableSong.value.title.trim().length > 0

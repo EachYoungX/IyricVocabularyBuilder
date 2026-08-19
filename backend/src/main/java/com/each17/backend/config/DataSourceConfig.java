@@ -64,12 +64,16 @@ public class DataSourceConfig {
         ));
 
         addColumnIfMissing(jdbcTemplate, columns, "raw_lyrics", "TEXT");
+        addColumnIfMissing(jdbcTemplate, columns, "raw_title", "TEXT");
+        addColumnIfMissing(jdbcTemplate, columns, "raw_artist", "TEXT");
         addColumnIfMissing(jdbcTemplate, columns, "normalized_lyrics", "TEXT");
         addColumnIfMissing(jdbcTemplate, columns, "lyrics_hash", "TEXT");
         addColumnIfMissing(jdbcTemplate, columns, "import_version", "INTEGER NOT NULL DEFAULT 1");
         addColumnIfMissing(jdbcTemplate, columns, "updated_at", "TEXT");
 
         jdbcTemplate.update("UPDATE songs SET raw_lyrics = lyrics WHERE raw_lyrics IS NULL");
+        jdbcTemplate.update("UPDATE songs SET raw_title = title WHERE raw_title IS NULL");
+        jdbcTemplate.update("UPDATE songs SET raw_artist = artist WHERE raw_artist IS NULL");
         jdbcTemplate.update("UPDATE songs SET normalized_lyrics = raw_lyrics WHERE normalized_lyrics IS NULL");
         jdbcTemplate.update("UPDATE songs SET import_version = 1 WHERE import_version IS NULL");
         jdbcTemplate.update("UPDATE songs SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL");

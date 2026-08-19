@@ -3,7 +3,7 @@
     <div class="page-masthead col-auto q-mb-md">
       <div>
         <div class="masthead-kicker">{{ t('englishLearningWorkspace') }}</div>
-        <div class="masthead-title serif-display">{{ t('vocabularyList') }}</div>
+        <div class="masthead-title serif-display">{{ t('totalVocabulary') }}</div>
       </div>
       <div class="masthead-accent" aria-hidden="true"></div>
     </div>
@@ -28,9 +28,9 @@
               <q-card flat bordered class="q-pa-sm q-mb-md">
                 <div class="row items-center justify-between q-mb-xs">
                   <div class="text-subtitle2">{{ t('personalVocabulary') }}</div>
-                  <q-chip dense color="primary" text-color="white">
+                  <SemanticChip tone="count">
                     {{ userVocabularyStore.getStats?.totalCount ?? 0 }}
-                  </q-chip>
+                  </SemanticChip>
                 </div>
                 <div class="row q-col-gutter-xs text-caption">
                   <div class="col-6">{{ t('newWordsCount', { count: userVocabularyStore.getStats?.newCount ?? 0 }) }}</div>
@@ -90,14 +90,13 @@
                       <q-spinner color="primary" size="3em" />
                     </div>
                     <q-list v-if="showLyricContext && !vocabularyStore.getIsLoading" bordered separator class="occurrence-list">
-                      <q-item v-for="(occurrence, index) in vocabularyStore.getWordOccurrences" :key="index">
+                      <q-item v-for="(occurrence, index) in vocabularyStore.getWordOccurrences" :key="index" clickable @click="openOccurrenceSong(occurrence.songId)">
                         <q-item-section top>
                           <q-item-label caption>
-                            {{ occurrence.songTitle }}
-                            <q-chip v-if="showLowValueMarker(occurrence.learningScore)" dense size="sm" color="amber-2"
-                              text-color="brown-8" class="q-ml-xs">
-                              {{ t('lowValueWordMarker') }}
-                            </q-chip>
+                            {{ occurrence.songTitle }}<span v-if="occurrence.songArtist"> · {{ occurrence.songArtist }}</span>
+                            <SemanticChip v-if="showLowValueMarker(occurrence.learningScore)" tone="excluded" class="q-ml-xs">
+                              {{ t('excludedVocabularyMarker') }}
+                            </SemanticChip>
                           </q-item-label>
                           <q-item-label>{{ occurrence.lyricLine }}</q-item-label>
                         </q-item-section>
@@ -125,9 +124,9 @@
                         {{ dictionaryStore.getDictionaryEntry.phonetic }}
                       </div>
                       <div v-if="showPhoneticAndPos" class="q-mt-sm">
-                        <q-chip v-if="dictionaryStore.getDictionaryEntry.pos" dense>
+                        <SemanticChip v-if="dictionaryStore.getDictionaryEntry.pos">
                           {{ dictionaryStore.getDictionaryEntry.pos }}
-                        </q-chip>
+                        </SemanticChip>
                       </div>
                       <div v-if="showEnglishDefinition" class="q-mt-sm">
                         <div class="text-body1">{{ dictionaryStore.getDictionaryEntry.definition }}</div>
@@ -138,12 +137,12 @@
                       <q-separator class="q-my-md" />
                       <div class="word-status-row">
                         <div class="word-status-left">
-                          <q-chip v-if="selectedUserWord" color="secondary" text-color="white" class="status-chip">
+                          <SemanticChip v-if="selectedUserWord" tone="status" class="status-chip">
                             {{ formatVocabularyStatus(selectedUserWord.status) }}
-                          </q-chip>
-                          <q-chip v-else class="status-chip">
+                          </SemanticChip>
+                          <SemanticChip v-else class="status-chip">
                             {{ t('notInPersonalVocabulary') }}
-                          </q-chip>
+                          </SemanticChip>
                         </div>
                         <div class="word-status-action">
                           <q-btn v-if="!selectedUserWord" color="primary" outline no-caps icon="bookmark_add" :loading="personalActionLoading" @click="addSelectedWord">
@@ -159,13 +158,9 @@
                         </div>
                       </div>
                       <div class="learning-value-row q-mt-md">
-                        <q-chip
-                          dense
-                          :color="selectedWordIsLowValue ? 'amber-2' : 'green-2'"
-                          :text-color="selectedWordIsLowValue ? 'brown-8' : 'green-9'"
-                        >
-                          {{ selectedWordIsLowValue ? t('lowValueWordMarker') : t('recommendedLearningValue') }}
-                        </q-chip>
+                        <SemanticChip :tone="selectedWordIsLowValue ? 'excluded' : 'status'">
+                          {{ selectedWordIsLowValue ? t('excludedVocabularyMarker') : t('normalVocabularyMarker') }}
+                        </SemanticChip>
                         <div class="learning-value-actions">
                           <q-btn
                             outline
@@ -173,7 +168,7 @@
                             icon="trending_up"
                             :loading="learningValueLoading"
                             :disable="!vocabularyStore.getSelectedWord || !selectedWordIsLowValue"
-                            :label="t('markRecommendedWord')"
+                            :label="t('restoreExcludedVocabulary')"
                             @click="updateSelectedWordLearningValue(true)"
                           />
                           <q-btn
@@ -183,7 +178,7 @@
                             icon="block"
                             :loading="learningValueLoading"
                             :disable="!vocabularyStore.getSelectedWord || selectedWordIsLowValue"
-                            :label="t('markLowValueWord')"
+                            :label="t('excludeVocabulary')"
                             @click="updateSelectedWordLearningValue(false)"
                           />
                         </div>
@@ -217,9 +212,12 @@ import { useVocabularyExplorer } from 'src/composables/useVocabularyExplorer';
 import { VocabularyService, VocabularyStatus, type WordOccurrence } from 'src/services/api';
 import { useUserVocabularyStore } from 'src/stores/userVocabularyStore';
 import { loadAppSettings, type AppSettings } from 'src/utils/appSettings';
+import SemanticChip from 'src/components/SemanticChip.vue';
+import { useRouter } from 'vue-router';
 
 const { t } = useI18n();
 const $q = useQuasar();
+const router = useRouter();
 const {
   currentPage,
   dictionaryStore,
@@ -313,6 +311,17 @@ async function updateSelectedWordStatus(status: VocabularyStatus) {
 
 async function updateSelectedWordLearningValue(recommended: boolean) {
   if (!vocabularyStore.getSelectedWord) return;
+  if (!recommended && selectedUserWord.value) {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      $q.dialog({
+        title: t('excludePersonalVocabularyTitle'),
+        message: t('excludePersonalVocabularyMessage'),
+        cancel: true,
+        ok: t('continueExcludeVocabulary'),
+      }).onOk(() => resolve(true)).onCancel(() => resolve(false));
+    });
+    if (!confirmed) return;
+  }
   learningValueLoading.value = true;
   try {
     const selectedWord = vocabularyStore.getSelectedWord;
@@ -330,6 +339,10 @@ async function updateSelectedWordLearningValue(recommended: boolean) {
   } finally {
     learningValueLoading.value = false;
   }
+}
+
+function openOccurrenceSong(songId?: number) {
+  if (songId) void router.push({ path: '/songs', query: { songId: String(songId) } });
 }
 
 function masteryScoreForStatus(status: VocabularyStatus) {

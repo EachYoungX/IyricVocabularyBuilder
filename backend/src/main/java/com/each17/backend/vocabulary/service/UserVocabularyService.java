@@ -13,4 +13,5 @@ public interface UserVocabularyService {
     List<UserVocabularyReviewItemDto> getReviewQueue(int limit);
     void deleteWord(Long id);
     void clearAllWords();
+    void addDefaultWordsForSong(Long songId);
 }

@@ -22,6 +22,7 @@ export type AppSettings = {
   roleLabelHandling: RoleLabelHandling;
   repeatedChorusHandling: RepeatedChorusHandling;
   fillerWordHandling: FillerWordHandling;
+  autoAddImportedWords: boolean;
   definitionLanguage: DefinitionLanguage;
   dictionaryDisplay: DictionaryDisplayItem[];
   lemmaSearch: boolean;
@@ -38,6 +39,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   roleLabelHandling: 'AUTO_HIDE',
   repeatedChorusHandling: 'KEEP_ALL',
   fillerWordHandling: 'NOT_RECOMMENDED',
+  autoAddImportedWords: false,
   definitionLanguage: 'BILINGUAL',
   dictionaryDisplay: ['BRIEF', 'PHONETIC_POS', 'LYRIC_CONTEXT'],
   lemmaSearch: true,
@@ -97,6 +99,7 @@ export function normalizeAppSettings(value: unknown): AppSettings | null {
       ['NOT_RECOMMENDED', 'NORMAL', 'EXCLUDE_STATS'],
       DEFAULT_APP_SETTINGS.fillerWordHandling,
     ),
+    autoAddImportedWords: pickBoolean(value.autoAddImportedWords, DEFAULT_APP_SETTINGS.autoAddImportedWords),
     definitionLanguage: pickValue(
       value.definitionLanguage,
       ['ZH', 'EN', 'BILINGUAL'],

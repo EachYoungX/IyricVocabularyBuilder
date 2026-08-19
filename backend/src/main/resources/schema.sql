@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS songs (
                                      id     INTEGER PRIMARY KEY AUTOINCREMENT,
                                      title  TEXT NOT NULL,
                                      artist TEXT NOT NULL,
+                                     raw_title TEXT,
+                                     raw_artist TEXT,
                                      lyrics TEXT NOT NULL,
                                      raw_lyrics TEXT,
                                      normalized_lyrics TEXT,

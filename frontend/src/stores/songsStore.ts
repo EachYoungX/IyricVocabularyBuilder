@@ -9,6 +9,7 @@ import {
 } from 'src/services/api';
 import { Notify } from 'quasar';
 import { useI18n } from 'vue-i18n';
+import { loadAppSettings } from 'src/utils/appSettings';
 
 export const useSongsStore = defineStore('songs', () => {
   // I18n
@@ -54,7 +55,7 @@ export const useSongsStore = defineStore('songs', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const result = await SongsService.importSongsAsync(songsToImport);
+      const result = await SongsService.importSongsAsync(songsToImport, loadAppSettings().autoAddImportedWords);
       return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : t('unknownError');

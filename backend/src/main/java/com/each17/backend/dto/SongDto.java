@@ -10,5 +10,7 @@ public class SongDto {
     private Long id;
     private String title;
     private String artist;
+    private String rawTitle;
+    private String rawArtist;
     private String lyrics;
 }

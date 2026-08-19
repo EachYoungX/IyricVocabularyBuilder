@@ -113,10 +113,12 @@ import { useSongsStore } from 'src/stores/songsStore'
 import { Notify } from 'quasar'
 import type { Song } from 'src/services/api'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import LyricEditDialog from 'components/lyric/LyricEditDialog.vue'
 
 const $q = useQuasar()
 const songsStore = useSongsStore()
+const route = useRoute()
 const { t } = useI18n()
 const songsTable = ref<QTable | null>(null)
 const splitterModel = ref(50)
@@ -274,10 +276,17 @@ const batchDeleteSongs = async () => {
 }
 
 // 初始化加载
-onMounted(() => {
-  if (songsStore.songs.length === 0) {
-    void songsStore.fetchAllSongs()
+async function initializeSongs() {
+  if (songsStore.songs.length === 0) await songsStore.fetchAllSongs(false)
+  const requestedSongId = Number(route.query.songId)
+  if (Number.isFinite(requestedSongId)) {
+    const song = songsStore.songs.find((item: Song) => item.id === requestedSongId)
+    if (song) selectedSongs.value = [song]
   }
+}
+
+onMounted(() => {
+  void initializeSongs()
 })
 </script>
 

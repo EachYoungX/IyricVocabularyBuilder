@@ -423,6 +423,13 @@ paths:
       tags: [Songs]
       summary: 异步批量导入歌曲（推荐方式）
       operationId: importSongsAsync
+      parameters:
+        - name: autoAddToPersonalVocabulary
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: 导入后将常规英文词加入个人词库 / Add regular English words to personal vocabulary after import
       requestBody:
         required: true
         content:
@@ -865,6 +872,9 @@ components:
         songTitle:
           type: string
           example: "Yesterday"
+        songArtist:
+          type: string
+          example: "The Beatles"
         lyricLineId:
           type: integer
           format: int64
@@ -1060,6 +1070,12 @@ components:
         artist:
           type: string
           example: "The Beatles"
+        rawTitle:
+          type: string
+          nullable: true
+        rawArtist:
+          type: string
+          nullable: true
         lyrics:
           type: string
           example: "Yesterday, all my troubles seemed so far away\n..."

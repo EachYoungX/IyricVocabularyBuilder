@@ -5,6 +5,8 @@ import com.each17.backend.common.exception.ValidationException;
 import com.each17.backend.dto.*;
 import com.each17.backend.lyric.service.EnglishLemmaService;
 import com.each17.backend.lyric.service.LyricTokenizationService;
+import com.each17.backend.lyric.repository.LyricTokenRepository;
+import com.each17.backend.lyric.entity.LyricToken;
 import com.each17.backend.vocabulary.entity.UserVocabulary;
 import com.each17.backend.vocabulary.entity.Vocabulary;
 import com.each17.backend.vocabulary.entity.VocabularyStatus;
@@ -17,6 +19,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -24,7 +27,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Slf4j
 public class UserVocabularyServiceImpl implements UserVocabularyService {
     private static final String LOCAL_USER_ID = "local";
@@ -34,6 +37,18 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
     private final LyricTokenizationService tokenizationService;
     private final EnglishLemmaService lemmaService;
     private final ObjectMapper objectMapper;
+    private final LyricTokenRepository lyricTokenRepository;
+
+    // Keeps lightweight unit-test construction compatible with the pre-import-automation service shape.
+    public UserVocabularyServiceImpl(
+            UserVocabularyRepository userVocabularyRepository,
+            VocabularyRepository vocabularyRepository,
+            LyricTokenizationService tokenizationService,
+            EnglishLemmaService lemmaService,
+            ObjectMapper objectMapper
+    ) {
+        this(userVocabularyRepository, vocabularyRepository, tokenizationService, lemmaService, objectMapper, null);
+    }
 
     @Override
     @Transactional
@@ -142,6 +157,17 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
     @Transactional
     public void clearAllWords() {
         userVocabularyRepository.deleteByUserId(LOCAL_USER_ID);
+    }
+
+    @Override
+    @Transactional
+    public void addDefaultWordsForSong(Long songId) {
+        lyricTokenRepository.findDistinctByLyricLineSongIdAndLearningScoreGreaterThan(songId, 0.5)
+                .stream()
+                .map(LyricToken::getLemma)
+                .filter(lemma -> lemma != null && !lemma.isBlank())
+                .distinct()
+                .forEach(lemma -> addWord(UserVocabularyRequestDto.builder().lemma(lemma).build()));
     }
 
     private String normalizeLemma(String rawWord) {

@@ -22,6 +22,12 @@
   --lv-drawer-active-bg: var(--lv-ink);
   --lv-drawer-active-ink: var(--lv-paper);
   --lv-brand-bg: var(--lv-ink);
+  --lv-surface-muted: color-mix(in srgb, var(--lv-surface) 78%, var(--lv-page-bg));
+  --lv-primary-soft: color-mix(in srgb, var(--lv-primary, var(--lv-blue)) 18%, transparent);
+  --lv-primary-ink: var(--lv-ink);
+  --lv-warning-bg: rgba(212, 167, 98, 0.16);
+  --lv-warning-ink: var(--lv-ink);
+  --lv-warning-line: rgba(212, 167, 98, 0.46);
   --lv-success: var(--lv-blue);
   --lv-danger: var(--lv-navy);
   --lv-radius-sm: 8px;

@@ -12,6 +12,8 @@ import java.util.List;
 public interface LyricTokenRepository extends JpaRepository<LyricToken, Long> {
     List<LyricToken> findByLemma(String lemma);
 
+    List<LyricToken> findDistinctByLyricLineSongIdAndLearningScoreGreaterThan(Long songId, Double score);
+
     @Modifying
     @Query("delete from LyricToken token where token.lyricLine.song.id = :songId")
     void deleteBySongId(Long songId);
