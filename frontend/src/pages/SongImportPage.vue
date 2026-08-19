@@ -383,7 +383,9 @@ function pollTaskStatus(currentTaskId: string) {
             type: 'positive',
             message: t('importSuccessMessage', { success: taskResult.successCount }),
             position: 'top-right',
+            timeout: 1200,
           });
+          await new Promise((resolve) => window.setTimeout(resolve, 1200));
           await router.push('/songs');
           return;
         }
