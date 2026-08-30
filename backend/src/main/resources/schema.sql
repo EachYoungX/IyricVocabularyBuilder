@@ -34,9 +34,11 @@ CREATE INDEX IF NOT EXISTS idx_lyric_lines_song
 CREATE TABLE IF NOT EXISTS lyric_tokens (
                                             id              INTEGER PRIMARY KEY AUTOINCREMENT,
                                             lyric_line_id   INTEGER NOT NULL,
+                                            token_position  INTEGER NOT NULL DEFAULT 0,
                                             surface_form    TEXT NOT NULL,
                                             normalized_form TEXT NOT NULL,
                                             lemma           TEXT NOT NULL,
+                                            lemma_status    TEXT NOT NULL DEFAULT 'FALLBACK',
                                             start_offset    INTEGER NOT NULL,
                                             end_offset      INTEGER NOT NULL,
                                             token_type      TEXT NOT NULL,

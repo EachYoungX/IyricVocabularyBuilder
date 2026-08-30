@@ -39,11 +39,13 @@ class UserVocabularyServiceImplTest {
         MockitoAnnotations.openMocks(this);
         when(tokenizationService.normalize(anyString())).thenAnswer(invocation -> invocation.getArgument(0, String.class).toLowerCase());
         EnglishLemmaService lemmaService = new EnglishLemmaService();
-        when(tokenizationService.normalizeToLemmaPhrase(anyString())).thenAnswer(invocation ->
-                Arrays.stream(invocation.getArgument(0, String.class).toLowerCase().split("\\s+"))
-                        .map(lemmaService::lemma)
-                        .collect(Collectors.joining(" "))
-        );
+        when(tokenizationService.normalizeToLemmaPhrase(anyString())).thenAnswer(invocation -> {
+            String normalized = invocation.getArgument(0, String.class).toLowerCase();
+            String[] parts = normalized.split("\\s+");
+            return parts.length == 1
+                    ? lemmaService.lemma(parts[0])
+                    : Arrays.stream(parts).collect(Collectors.joining(" "));
+        });
         userVocabularyService = new UserVocabularyServiceImpl(
                 userVocabularyRepository,
                 vocabularyRepository,
@@ -75,7 +77,7 @@ class UserVocabularyServiceImplTest {
 
     @Test
     void addWordCreatesPhraseVocabulary() {
-        when(userVocabularyRepository.findByUserIdAndLemma("local", "silver lining")).thenReturn(Optional.empty());
+        when(userVocabularyRepository.findByUserIdAndLemma("local", "silver linings")).thenReturn(Optional.empty());
         when(userVocabularyRepository.save(any(UserVocabulary.class))).thenAnswer(invocation -> {
             UserVocabulary saved = invocation.getArgument(0);
             saved.setId(2L);
@@ -86,7 +88,7 @@ class UserVocabularyServiceImplTest {
                 .lemma("Silver Linings")
                 .build());
 
-        assertEquals("silver lining", result.getLemma());
+        assertEquals("silver linings", result.getLemma());
     }
 
     @Test

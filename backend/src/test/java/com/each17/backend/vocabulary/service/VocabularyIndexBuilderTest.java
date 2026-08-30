@@ -8,7 +8,10 @@ import com.each17.backend.lyric.service.EnglishLemmaService;
 import com.each17.backend.lyric.service.LearningValuePolicy;
 import com.each17.backend.lyric.service.LyricTokenizationService;
 import com.each17.backend.song.entity.Song;
+import com.each17.backend.vocabulary.entity.Vocabulary;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.each17.backend.dto.WordOccurrenceDto;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -66,7 +69,7 @@ class VocabularyIndexBuilderTest {
     }
 
     @Test
-    void indexesAdjacentRecommendedPhrases() {
+    void doesNotIndexAdjacentWordsAsPhrases() throws Exception {
         Song song = Song.builder().id(3L).title("Phrase Song").artist("Artist").lyrics("blue sky").build();
         LyricLine line = LyricLine.builder()
                 .id(30L)
@@ -80,8 +83,13 @@ class VocabularyIndexBuilderTest {
 
         var result = builder.rebuildFromSongs(List.of(song));
 
-        assertTrue(result.stream().anyMatch(vocabulary -> vocabulary.getWord().equals("blue sky")
-                && vocabulary.getOccurrenceCount() == 1
-                && vocabulary.getRecommended()));
+        assertTrue(result.stream().noneMatch(vocabulary -> vocabulary.getWord().contains(" ")));
+        assertTrue(result.stream().anyMatch(vocabulary -> vocabulary.getWord().equals("blue")));
+        assertTrue(result.stream().anyMatch(vocabulary -> vocabulary.getWord().equals("sky")));
+
+        Vocabulary blue = result.stream().filter(vocabulary -> vocabulary.getWord().equals("blue")).findFirst().orElseThrow();
+        var occurrences = new ObjectMapper().readValue(blue.getOccurrences(), new TypeReference<List<WordOccurrenceDto>>() {});
+        assertEquals(0, occurrences.get(0).getTokenPosition());
+        assertEquals("blue", occurrences.get(0).getNormalizedForm());
     }
 }

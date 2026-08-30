@@ -140,9 +140,6 @@ public class VocabularyServiceImpl implements VocabularyService {
         Pageable pageable = PageRequest.of(0, limit);
         vocabularyRepository.findByRecommendedFalseOrderByLearningScoreAscWordAsc(pageable)
                 .forEach(item -> candidates.put(item.getWord(), item));
-        vocabularyRepository.findByWordContainingOrderByWordAsc(" ", PageRequest.of(0, limit * 2)).stream()
-                .filter(item -> !qualityReasons(item).isEmpty())
-                .forEach(item -> candidates.putIfAbsent(item.getWord(), item));
 
         return candidates.values().stream()
                 .map(this::toQualityCandidate)
@@ -273,12 +270,6 @@ public class VocabularyServiceImpl implements VocabularyService {
         List<String> reasons = new ArrayList<>();
         if (Boolean.FALSE.equals(vocabulary.getRecommended()) || vocabulary.getLearningScore() < 0.5) {
             reasons.add("LOW_LEARNING_VALUE");
-        }
-        if (word.contains(" ")) {
-            reasons.add("PHRASE_CANDIDATE");
-        }
-        if (word.matches(".*\\b[a-z]+n't\\b.*") && word.contains(" ")) {
-            reasons.add("CONTRACTION_PHRASE");
         }
         if (word.matches(".*\\b[a-z]{2,}v\\b.*") || word.matches(".*\\b[a-z]{2,}av\\b.*")) {
             reasons.add("POSSIBLE_TRUNCATED_LEMMA");

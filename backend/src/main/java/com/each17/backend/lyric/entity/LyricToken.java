@@ -11,7 +11,10 @@ import lombok.*;
 @Entity
 @Table(name = "lyric_tokens", indexes = {
         @Index(name = "idx_lyric_tokens_line", columnList = "lyric_line_id"),
-        @Index(name = "idx_lyric_tokens_lemma", columnList = "lemma")
+        @Index(name = "idx_lyric_tokens_line_position", columnList = "lyric_line_id, token_position", unique = true),
+        @Index(name = "idx_lyric_tokens_lemma", columnList = "lemma"),
+        @Index(name = "idx_lyric_tokens_normalized", columnList = "normalized_form"),
+        @Index(name = "idx_lyric_tokens_lemma_location", columnList = "lemma, lyric_line_id, token_position")
 })
 public class LyricToken {
     @Id
@@ -22,6 +25,9 @@ public class LyricToken {
     @JoinColumn(name = "lyric_line_id", nullable = false)
     private LyricLine lyricLine;
 
+    @Column(name = "token_position", nullable = false)
+    private Integer tokenPosition;
+
     @Column(name = "surface_form", nullable = false)
     private String surfaceForm;
 
@@ -30,6 +36,10 @@ public class LyricToken {
 
     @Column(nullable = false)
     private String lemma;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lemma_status", nullable = false)
+    private LyricLemmaStatus lemmaStatus;
 
     @Column(name = "start_offset", nullable = false)
     private Integer startOffset;

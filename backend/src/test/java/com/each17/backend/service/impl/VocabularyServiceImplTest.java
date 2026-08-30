@@ -225,7 +225,7 @@ class VocabularyServiceImplTest {
     }
 
     @Test
-    void testGetQualityCandidatesExplainsLowValueAndSuspiciousPhrases() throws JsonProcessingException {
+    void testGetQualityCandidatesOnlyUsesExplicitLearningValueSignals() throws JsonProcessingException {
         Vocabulary lowValue = Vocabulary.builder()
                 .word("yeah")
                 .occurrences("[]")
@@ -234,29 +234,15 @@ class VocabularyServiceImplTest {
                 .learningScore(0.25)
                 .recommended(false)
                 .build();
-        Vocabulary phrase = Vocabulary.builder()
-                .word("ain't leav")
-                .occurrences("[]")
-                .occurrenceCount(1)
-                .songCount(1)
-                .learningScore(1.0)
-                .recommended(true)
-                .build();
-
         when(vocabularyRepository.findByRecommendedFalseOrderByLearningScoreAscWordAsc(PageRequest.of(0, 10)))
                 .thenReturn(List.of(lowValue));
-        when(vocabularyRepository.findByWordContainingOrderByWordAsc(eq(" "), any(Pageable.class)))
-                .thenReturn(List.of(phrase));
         when(objectMapper.readValue(anyString(), any(TypeReference.class))).thenReturn(List.of());
 
         var result = vocabularyService.getQualityCandidates(10);
 
-        assertEquals(2, result.size());
+        assertEquals(1, result.size());
         assertEquals("yeah", result.get(0).getWord());
         assertTrue(result.get(0).getReasons().contains("LOW_LEARNING_VALUE"));
-        assertEquals("ain't leav", result.get(1).getWord());
-        assertTrue(result.get(1).getReasons().contains("CONTRACTION_PHRASE"));
-        assertTrue(result.get(1).getReasons().contains("POSSIBLE_TRUNCATED_LEMMA"));
     }
 
     @Test
