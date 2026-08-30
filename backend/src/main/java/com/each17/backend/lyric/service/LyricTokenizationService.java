@@ -28,20 +28,23 @@ public class LyricTokenizationService {
         }
 
         Matcher matcher = WORD_PATTERN.matcher(line.getNormalizedText());
+        int tokenPosition = 0;
         while (matcher.find()) {
             String surface = matcher.group();
             String normalized = normalize(surface);
             if (normalized.isBlank()) continue;
 
-            String lemma = lemmaService.lemma(normalized);
-            double score = learningValuePolicy.score(normalized, lemma);
+            EnglishLemmaService.LemmaResolution lemmaResolution = lemmaService.resolve(normalized);
+            double score = learningValuePolicy.score(normalized, lemmaResolution.lemma());
             LyricTokenType type = score < 0.5 ? LyricTokenType.LOW_VALUE
                     : normalized.contains("'") ? LyricTokenType.CONTRACTION : LyricTokenType.WORD;
             tokens.add(LyricToken.builder()
                     .lyricLine(line)
+                    .tokenPosition(tokenPosition++)
                     .surfaceForm(surface)
                     .normalizedForm(normalized)
-                    .lemma(lemma)
+                    .lemma(lemmaResolution.lemma())
+                    .lemmaStatus(lemmaResolution.status())
                     .startOffset(matcher.start())
                     .endOffset(matcher.end())
                     .tokenType(type)
@@ -59,11 +62,21 @@ public class LyricTokenizationService {
     }
 
     public String normalizeToLemmaPhrase(String value) {
+        String normalizedPhrase = normalizePhrase(value);
+        if (normalizedPhrase.contains(" ")) {
+            return normalizedPhrase;
+        }
+        return lemmaService.lemma(normalizedPhrase);
+    }
+
+    /**
+     * Normalizes a user-entered phrase without applying word lemma rules to each
+     * part. Phrase canonicalization belongs to the phrase dictionary layer.
+     */
+    public String normalizePhrase(String value) {
         if (value == null) return "";
         return Arrays.stream(value.split("\\s+"))
                 .map(this::normalize)
-                .filter(part -> !part.isBlank())
-                .map(lemmaService::lemma)
                 .filter(part -> !part.isBlank())
                 .collect(Collectors.joining(" "));
     }

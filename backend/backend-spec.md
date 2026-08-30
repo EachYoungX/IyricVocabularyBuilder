@@ -9,7 +9,7 @@
 ### 1.2. 核心技术栈
 
 - **框架**: Spring Boot 3.5.7
-- **语言**: Java 21
+- **语言**: Java 25
 - **数据访问**: Spring Data JPA
 - **数据库**: SQLite (通过 `sqlite-jdbc` 驱动)
 - **Web 服务**: Spring Web (Tomcat 内嵌)
@@ -61,8 +61,10 @@ spring:
 # --- 自定义配置 ---
 app:
   dictionary:
-    # 词典数据库的位置，使用 classpath 资源协议
-    db-path: "classpath:dictionary.sqlite"
+    # 词典数据库由附属词库项目发布，通过环境变量注入 JDBC URL
+    enabled: false
+    datasource:
+      url: "jdbc:sqlite:/absolute/path/lyric-dictionary.sqlite"
 ```
 
 ## 3. 数据库与实体 (Entity)
@@ -305,11 +307,9 @@ public class SongServiceImpl implements SongService {
 
       // --- 词典数据源 (dictionary) ---
       @Bean(name = "dictionaryDataSource")
-      public DataSource dictionaryDataSource(@Value("${app.dictionary.db-path}") String dbPath) {
-          // 注意：需要手动处理 classpath 资源路径
-          String resolvedPath = resolveClasspathResourcePath(dbPath);
+      public DataSource dictionaryDataSource(@Value("${app.dictionary.datasource.url}") String url) {
           return DataSourceBuilder.create()
-              .url("jdbc:sqlite:" + resolvedPath)
+              .url(url)
               .driverClassName("org.sqlite.JDBC")
               .build();
       }

@@ -18,7 +18,7 @@ The project focuses on one practical learning loop: import lyrics you are allowe
 - **Recoverable cleanup**: the app keeps raw lyrics, normalized lyrics, line classification, and user corrections instead of silently deleting context.
 - **Lemma-based search**: related forms such as `running`, `ran`, and `runs` can be grouped under `run`.
 - **Vocabulary in context**: words are reviewed inside the lyric lines where they actually appear.
-- **Offline dictionary integration**: the bundled ECDICT SQLite snapshot provides English definitions and Chinese explanations.
+- **Offline dictionary integration**: local development keeps an ignored ECDICT SQLite copy; phrase releases are maintained separately.
 - **Personal vocabulary loop**: learners can add words, update status, track familiarity, view stats, and review pending words.
 - **Chinese learner friendly**: product copy, edge cases, and documentation are written around Chinese-native learners studying English through songs.
 
@@ -38,8 +38,8 @@ The learning flow is intentionally linear:
 | Layer | Stack |
 |---|---|
 | Frontend | Vue 3, Quasar 2, TypeScript, Pinia, Vue Router, Axios |
-| Backend | Java 21, Spring Boot 3.5, Spring Web, Spring Data JPA |
-| Database | SQLite user database + bundled ECDICT SQLite dictionary |
+| Backend | Java 25, Spring Boot 3.5, Spring Web, Spring Data JPA |
+| Database | SQLite user database + local ECDICT SQLite dictionary |
 | API Contract | OpenAPI 3.1, generated TypeScript client |
 | Tooling | Maven Wrapper, pnpm, ESLint, Vite |
 
@@ -50,7 +50,7 @@ At a high level, the app is split into four parts:
 - The learner uses a Vue and Quasar frontend for importing songs, browsing vocabulary, managing lyrics, and tracking personal word status.
 - The frontend talks to a Spring Boot API through an OpenAPI-generated TypeScript client.
 - The backend stores songs, structured lyric lines, tokenized vocabulary, and personal learning records in a local SQLite user database.
-- Dictionary lookup reads from a bundled ECDICT SQLite dictionary, while the vocabulary index builder derives searchable lemma entries from the user's imported lyrics.
+- Dictionary lookup reads the local ECDICT SQLite copy during development, while the vocabulary index builder derives searchable lemma entries from the user's imported lyrics. A release or external SQLite can override this path through configuration.
 
 ## Local Development
 
@@ -73,7 +73,20 @@ The development profile uses a local SQLite database:
 backend/data/app_data.db
 ```
 
-If the database does not exist, the backend initializes it from `schema.sql` and applies the required lightweight migrations.
+If the database does not exist, the backend initializes it from `schema.sql` and applies the required lightweight migrations. Development reads `backend/src/main/resources/dictionary.sqlite`, which is ignored by Git and can be refreshed from the companion dictionary repository. The app also supports a no-dictionary profile.
+
+Optional dictionary override:
+
+```text
+APP_DICTIONARY_ENABLED=true
+APP_DICTIONARY_DB_URL=jdbc:sqlite:/absolute/path/lyric-dictionary.sqlite
+```
+
+For a no-dictionary build or local run:
+
+```text
+SPRING_PROFILES_ACTIVE=dev,no-dictionary
+```
 
 ### Frontend
 
@@ -144,14 +157,14 @@ pnpm build
 
 3. Serve `frontend/dist/spa` as a static site and proxy API requests to the backend.
 
-Before making a public deployment, configure the frontend API base URL or reverse proxy, keep `backend/data/app_data.db` out of git, avoid publishing user-imported lyrics, and keep the ECDICT source and MIT License notice visible.
+Before making a public deployment, configure the frontend API base URL or reverse proxy, keep `backend/data/app_data.db` out of git, avoid publishing user-imported lyrics, and include the dictionary release attribution when a dictionary package is distributed.
 
 ## Data And Copyright Boundary
 
 - This repository does not include or distribute a lyrics database.
 - Users should only import lyrics they are allowed to use or process.
 - Imported lyrics, cleanup results, vocabulary indexes, and personal learning state are stored locally.
-- Dictionary data comes from [ECDICT](https://github.com/skywind3000/ECDICT), licensed under the MIT License.
+- The companion `LyricVocabularyDictionary` repository maintains source data and refreshed releases. The main project keeps a local ECDICT runtime copy for development; ECDICT data comes from [ECDICT](https://github.com/skywind3000/ECDICT), licensed under the MIT License.
 - The app includes a dictionary source page so public demos can keep data attribution transparent.
 
 ## Repository Layout
@@ -160,7 +173,7 @@ Before making a public deployment, configure the frontend API base URL or revers
 .
 ├── backend/                 # Spring Boot API
 │   ├── src/main/java/       # domain code
-│   ├── src/main/resources/  # schema, OpenAPI, dictionary resource
+│   ├── src/main/resources/  # schema, OpenAPI, runtime configuration
 │   └── data/                # local runtime database, ignored by git
 ├── frontend/                # Quasar Vue app
 │   ├── src/components/
@@ -171,6 +184,8 @@ Before making a public deployment, configure the frontend API base URL or revers
 ├── CHANGELOG.md             # completed and verified stages
 └── README.zh-CN.md          # Chinese README
 ```
+
+2ndLA source data, processing JSON, translation batches, and phrase release files are maintained outside this repository. The local ECDICT SQLite copy is ignored and used only as a development/runtime asset.
 
 ## Status
 

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.jdbc.core.RowMapper; // 导入 RowMapper
+import org.springframework.beans.factory.annotation.Value;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -22,6 +23,8 @@ public class DictionaryServiceImpl implements DictionaryService {
     // [核心修复] 不再注入配置字符串，而是直接注入为 dictionaryDataSource 配置的 JdbcTemplate
     @Qualifier("dictionaryJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
+    @Value("${app.dictionary.enabled:true}")
+    private boolean enabled = true;
     private final Map<String, DictionaryEntryDto> lookupCache = new ConcurrentHashMap<>();
 
     // 定义一个可复用的 RowMapper，用于将数据库查询结果映射到 DTO
@@ -44,6 +47,9 @@ public class DictionaryServiceImpl implements DictionaryService {
 
     @Override
     public DictionaryEntryDto lookupWord(String word) {
+        if (!enabled) {
+            throw new DictionaryNotFoundException(word);
+        }
         String normalizedWord = word.toLowerCase();
         DictionaryEntryDto cached = lookupCache.get(normalizedWord);
         if (cached != null) return cached;
@@ -70,6 +76,16 @@ public class DictionaryServiceImpl implements DictionaryService {
 
     @Override
     public DictionarySourceDto getSourceInfo() {
+        if (!enabled) {
+            return DictionarySourceDto.builder()
+                    .sourceName("NONE")
+                    .dictionaryVersion("disabled")
+                    .requiresAttribution(false)
+                    .commercialUseAllowed(false)
+                    .redistributionAllowed(false)
+                    .attributionText("No dictionary is configured for this runtime.")
+                    .build();
+        }
         return DictionarySourceDto.builder()
                 .sourceName("ECDICT")
                 .sourceUrl("https://github.com/skywind3000/ECDICT")

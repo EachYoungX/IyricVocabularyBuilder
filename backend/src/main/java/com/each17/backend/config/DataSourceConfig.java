@@ -48,6 +48,7 @@ public class DataSourceConfig {
             populator.execute(dataSource);
             migrateSongColumns(dataSource);
             migrateVocabularyColumns(dataSource);
+            migrateLyricTokenColumns(dataSource);
             System.out.println(">>> schema.sql execution finished.");
         } else {
             System.err.println("!!! WARNING: schema.sql not found! Tables will not be created.");
@@ -103,6 +104,45 @@ public class DataSourceConfig {
     private void addVocabularyColumnIfMissing(JdbcTemplate jdbcTemplate, Set<String> columns, String name, String definition) {
         if (!columns.contains(name)) {
             jdbcTemplate.execute("ALTER TABLE vocabulary ADD COLUMN " + name + " " + definition);
+            columns.add(name);
+        }
+    }
+
+    private void migrateLyricTokenColumns(DataSource dataSource) {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        Set<String> columns = new HashSet<>(jdbcTemplate.query(
+                "PRAGMA table_info(lyric_tokens)",
+                (rs, rowNum) -> rs.getString("name")
+        ));
+
+        addLyricTokenColumnIfMissing(jdbcTemplate, columns, "token_position", "INTEGER NOT NULL DEFAULT 0");
+        addLyricTokenColumnIfMissing(jdbcTemplate, columns, "lemma_status", "TEXT NOT NULL DEFAULT 'FALLBACK'");
+
+        jdbcTemplate.execute("""
+                WITH ranked AS (
+                    SELECT id,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY lyric_line_id
+                               ORDER BY start_offset, end_offset, id
+                           ) - 1 AS position
+                    FROM lyric_tokens
+                )
+                UPDATE lyric_tokens
+                SET token_position = (
+                    SELECT position FROM ranked WHERE ranked.id = lyric_tokens.id
+                )
+                """);
+        jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_lyric_tokens_line_position "
+                + "ON lyric_tokens(lyric_line_id, token_position)");
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_lyric_tokens_normalized "
+                + "ON lyric_tokens(normalized_form)");
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_lyric_tokens_lemma_location "
+                + "ON lyric_tokens(lemma, lyric_line_id, token_position)");
+    }
+
+    private void addLyricTokenColumnIfMissing(JdbcTemplate jdbcTemplate, Set<String> columns, String name, String definition) {
+        if (!columns.contains(name)) {
+            jdbcTemplate.execute("ALTER TABLE lyric_tokens ADD COLUMN " + name + " " + definition);
             columns.add(name);
         }
     }

@@ -3,10 +3,12 @@ package com.each17.backend.dictionary.service;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.sql.ResultSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -31,5 +33,14 @@ class DictionaryServiceImplTest {
         assertEquals("voyage", service.lookupWord("voyage").getWord());
 
         verify(jdbcTemplate, times(1)).queryForObject(anyString(), any(RowMapper.class), eq("voyage"));
+    }
+
+    @Test
+    void disabledDictionaryDoesNotQueryDatasource() {
+        ReflectionTestUtils.setField(service, "enabled", false);
+
+        assertThrows(com.each17.backend.common.exception.DictionaryNotFoundException.class,
+                () -> service.lookupWord("voyage"));
+        verifyNoInteractions(jdbcTemplate);
     }
 }

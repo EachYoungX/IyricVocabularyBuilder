@@ -2,7 +2,7 @@
 .DS_Store
 Thumbs.db
 Desktop.ini
-docs
+internal_docs
 
 # IDEs and editors
 .idea/
@@ -89,7 +89,7 @@ backend/data/*.sqlite-*
 backend/data/*.sqlite3
 backend/data/*.sqlite3-*
 
-# The bundled dictionary is too large for a regular GitHub push. Provide it
-# through a documented download/import step or explicitly adopt Git LFS.
+# Keep the local development ECDICT copy out of normal Git history.
 backend/src/main/resources/dictionary.sqlite
 backend/src/test/resources/dictionary.sqlite
+local-dictionaries/

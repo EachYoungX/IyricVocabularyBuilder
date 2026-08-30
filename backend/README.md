@@ -6,7 +6,7 @@ This backend turns user-provided English lyrics into normalized lyric lines, lem
 
 ## Stack
 
-- Java 21
+- Java 25
 - Spring Boot 3.5
 - Spring Web
 - Spring Data JPA
@@ -29,7 +29,9 @@ This runtime database is ignored by git. If the database does not exist, the bac
 src/main/resources/schema.sql
 ```
 
-The bundled dictionary uses an ECDICT SQLite snapshot exposed through a separate dictionary datasource.
+Development keeps a local, Git-ignored ECDICT SQLite copy at `src/main/resources/dictionary.sqlite`. Phrase source data and refreshed phrase releases are maintained in the companion `LyricVocabularyDictionary` repository.
+
+Set `APP_DICTIONARY_DB_URL` to override the local dictionary with another SQLite JDBC URL. Set the `no-dictionary` Spring profile for a runtime without dictionary data.
 
 ## Main Domains
 
@@ -109,7 +111,7 @@ http://localhost:8080
 
 ## Dictionary Source
 
-Dictionary entries are derived from [ECDICT](https://github.com/skywind3000/ECDICT), licensed under the MIT License. Source and license metadata is available from:
+Phrase releases are maintained outside this repository. The local word dictionary is derived from [ECDICT](https://github.com/skywind3000/ECDICT), licensed under the MIT License. Source and license metadata is available from:
 
 ```text
 GET /api/dictionary/source
