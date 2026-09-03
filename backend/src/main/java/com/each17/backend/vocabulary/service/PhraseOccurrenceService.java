@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 @Service
 public class PhraseOccurrenceService {
     private static final String TOKENIZER_VERSION = "1";
-    private static final String LINE_CLASSIFIER_VERSION = "7";
+    private static final String LINE_CLASSIFIER_VERSION = "9";
     private static final String PHRASE_MATCHER_VERSION = "4";
     private final Object cacheLock = new Object();
     private volatile boolean allSongsCacheReady;

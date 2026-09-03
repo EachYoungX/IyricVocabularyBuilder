@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 
 @Component
 public class CreditLineClassifier {
-    private static final String ROLE = "(?:producer|co-producer|executive producer|writer|written by|lyrics|lyrics by|lyricist|composer|composed by|performed by|performer|vocals?|singer|guitar(?:ist)?|bass(?:ist)?|drums?|drummer|piano|keyboard|strings?|(?:\\d+(?:st|nd|rd|th)\\s+)?(?:violin|viola|cello|contrabass)|recording\\s*&\\s*mixing\\s+engineer|(?:recording|mixing)(?:\\s+assistant)?\\s+engineer|mix engineer|mixed by|mastering engineer|mastered by|recording studio|mixing studio|engineer|arranged by|arranger|featuring|feat\\.)";
+    private static final String ROLE = "(?:producer|produced by|co-producer|executive producer|writer|written by|lyrics|lyrics by|lyricist|composer|composed by|performed by|performer|vocals?|singer|guitar(?:ist)?|bass(?:ist)?|drums?|drummer|piano|keyboard|strings?|(?:\\d+(?:st|nd|rd|th)\\s+)?(?:violin|viola|cello|contrabass)|recording\\s*&\\s*mixing\\s+engineer|(?:recording|mixing)(?:\\s+assistant)?\\s+engineer|mix engineer|mixed by|mastering engineer|mastered by|recording studio|mixing studio|engineer|arranged by|arranger|featuring|feat\\.)";
     private static final String CHINESE_ROLE = "(?:词|曲|作词|作曲|编曲|制作|制作人|监制|混音|混音师|母带|演唱|演奏|歌手|乐器)";
     private static final Pattern ROLE_WITH_SEPARATOR = Pattern.compile(
             "^\\s*(?<label>" + ROLE + "|" + CHINESE_ROLE + ")\\s*(?:[:：-])\\s*(?<value>\\S.+)$",
@@ -48,7 +48,8 @@ public class CreditLineClassifier {
         if (normalized.contains("composer") || normalized.contains("composed") || normalized.equals("曲") || normalized.equals("作曲")) return SongCreditType.COMPOSER;
         if (normalized.contains("co-producer")) return SongCreditType.CO_PRODUCER;
         if (normalized.contains("executive producer")) return SongCreditType.EXECUTIVE_PRODUCER;
-        if (normalized.contains("producer") || normalized.equals("制作") || normalized.equals("制作人") || normalized.equals("监制")) return SongCreditType.PRODUCER;
+        if (normalized.contains("producer") || normalized.equals("produced by")
+                || normalized.equals("制作") || normalized.equals("制作人") || normalized.equals("监制")) return SongCreditType.PRODUCER;
         if (normalized.contains("mix")) return SongCreditType.MIXING_ENGINEER;
         if (normalized.contains("master")) return SongCreditType.MASTERING_ENGINEER;
         if (normalized.contains("arrang") || normalized.equals("编曲")) return SongCreditType.ARRANGER;

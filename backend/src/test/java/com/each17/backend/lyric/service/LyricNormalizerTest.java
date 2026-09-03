@@ -33,4 +33,9 @@ class LyricNormalizerTest {
         assertEquals("I'm running", LyricNormalizer.removeTimestamps("[02:44.16]I'm running"));
         assertEquals("Keep this", LyricNormalizer.removeTimestamps("[00:01][00:02.500]Keep this"));
     }
+
+    @Test
+    void removesAccidentalEscapingFromNormalizedBusinessText() {
+        assertEquals("Produced by:Lil Silva", normalizer.normalizeLineForStorage("Produced by\\:Lil Silva"));
+    }
 }

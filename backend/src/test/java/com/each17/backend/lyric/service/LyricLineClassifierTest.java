@@ -98,6 +98,41 @@ class LyricLineClassifierTest {
     }
 
     @Test
+    void parsesLrcPreludeBeforeConfirmingTheFirstLyric() {
+        var result = classifier.classifyLines(List.of(
+                line("[00:00.00]With You Around - BANKS/塞壬唱片-MSR"),
+                line("[00:06.95]Composed by：Jillian Banks/Tyrone Carter/Christopher Taylor"),
+                line("[00:11.12]Produced by：Lil Silva"),
+                line("[00:15.00]Oh, wanna bound"),
+                line("[00:16.00]Sobering down my heart hole")
+        ), "With You Around", "BANKS、塞壬唱片-MSR");
+
+        assertEquals(List.of(LyricLineType.METADATA, LyricLineType.CREDIT, LyricLineType.CREDIT,
+                LyricLineType.LYRIC, LyricLineType.LYRIC), result.stream()
+                .map(LyricLineClassifier.Classification::lineType).toList());
+    }
+
+    @Test
+    void parsesPlainTextPreludeWithTheSameRules() {
+        var result = classifier.classifyLines(List.of(
+                line("With You Around - BANKS/塞壬唱片-MSR"),
+                line("Composed by：Jillian Banks/Tyrone Carter/Christopher Taylor"),
+                line("Produced by：Lil Silva"),
+                line("Oh, wanna bound"),
+                line("Sobering down my heart hole"),
+                line("Circling around")
+        ), "With You Around", "BANKS/塞壬唱片-MSR");
+
+        assertEquals(List.of(LyricLineType.METADATA, LyricLineType.CREDIT, LyricLineType.CREDIT,
+                LyricLineType.LYRIC, LyricLineType.LYRIC, LyricLineType.LYRIC), result.stream()
+                .map(LyricLineClassifier.Classification::lineType).toList());
+    }
+
+    private LyricNormalizer.NormalizedLine line(String text) {
+        return new LyricNormalizer.NormalizedLine(text, LyricNormalizer.removeTimestamps(text), false);
+    }
+
+    @Test
     void keepsARepeatedSongTitleAsLyricsWhenItIsNotATitleArtistHeader() {
         var result = classifier.classifyLines(List.of(
                 new LyricNormalizer.NormalizedLine("There For You", "There For You", false),

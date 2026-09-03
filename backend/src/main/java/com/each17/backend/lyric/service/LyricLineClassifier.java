@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 
 @Component
 public class LyricLineClassifier {
-    private static final int MAX_HEADER_CANDIDATE_LINES = 20;
+    private static final int MAX_PRELUDE_LINES = 30;
     private static final Pattern SPEAKER = Pattern.compile("^[A-Z][A-Za-z'-]+(?:\\s+[A-Z][A-Za-z'-]+){0,3}:$");
     private static final Set<String> PERFORMANCE_TERMS = Set.of(
             "guitar solo", "piano solo", "instrumental", "crowd cheering", "spoken", "applause"
@@ -73,25 +73,66 @@ public class LyricLineClassifier {
     }
 
     public List<Classification> classifyLines(List<LyricNormalizer.NormalizedLine> lines, String title, String artist) {
-        List<Classification> classifications = new ArrayList<>();
-        boolean headerMode = true;
-        int ordinaryLyricLines = 0;
-        int nonEmptyCandidateLines = 0;
-        for (LyricNormalizer.NormalizedLine line : lines) {
-            Classification classification = classify(line.normalizedText(), line.formatMetadata(), headerMode, title, artist);
-            classifications.add(classification);
-            if (classification.lineType() != LyricLineType.EMPTY) {
-                nonEmptyCandidateLines++;
-                if (nonEmptyCandidateLines >= MAX_HEADER_CANDIDATE_LINES) headerMode = false;
-            }
-            if (classification.lineType() == LyricLineType.LYRIC && hasOrdinaryLyricStructure(line.normalizedText())) {
-                ordinaryLyricLines++;
-                if (ordinaryLyricLines >= 2) headerMode = false;
-            } else if (classification.lineType() != LyricLineType.EMPTY) {
-                ordinaryLyricLines = 0;
+        List<Classification> prelude = lines.stream()
+                .map(line -> classify(line.normalizedText(), line.formatMetadata(), true, title, artist))
+                .toList();
+        if (!hasPreludeSignal(lines, prelude)) {
+            return lines.stream()
+                    .map(line -> classify(line.normalizedText(), line.formatMetadata(), false, title, artist))
+                    .toList();
+        }
+
+        int firstLyricLine = findFirstLyricLine(lines, prelude);
+        if (firstLyricLine < 0) return prelude;
+
+        List<Classification> result = new ArrayList<>();
+        for (int index = 0; index < lines.size(); index++) {
+            if (index < firstLyricLine) {
+                Classification classification = prelude.get(index);
+                result.add(classification.lineType() == LyricLineType.LYRIC
+                        ? unknownHeader()
+                        : classification);
+            } else {
+                LyricNormalizer.NormalizedLine line = lines.get(index);
+                result.add(classify(line.normalizedText(), line.formatMetadata(), false, title, artist));
             }
         }
-        return List.copyOf(classifications);
+        return List.copyOf(result);
+    }
+
+    private boolean hasPreludeSignal(List<LyricNormalizer.NormalizedLine> lines, List<Classification> classifications) {
+        int nonEmpty = 0;
+        for (int index = 0; index < lines.size() && nonEmpty < MAX_PRELUDE_LINES; index++) {
+            LyricNormalizer.NormalizedLine line = lines.get(index);
+            Classification classification = classifications.get(index);
+            if (classification.lineType() == LyricLineType.EMPTY) continue;
+            nonEmpty++;
+            if (line.formatMetadata()
+                    || classification.lineType() == LyricLineType.METADATA
+                    || classification.lineType() == LyricLineType.CREDIT
+                    || classification.lineType() == LyricLineType.SECTION_LABEL
+                    || classification.lineType() == LyricLineType.PERFORMANCE_NOTE) return true;
+        }
+        return false;
+    }
+
+    private int findFirstLyricLine(List<LyricNormalizer.NormalizedLine> lines, List<Classification> classifications) {
+        int consecutiveLyrics = 0;
+        for (int index = 0; index < lines.size(); index++) {
+            Classification classification = classifications.get(index);
+            if (classification.lineType() == LyricLineType.LYRIC
+                    && hasOrdinaryLyricStructure(lines.get(index).normalizedText())) {
+                consecutiveLyrics++;
+                if (consecutiveLyrics >= 2) return index - consecutiveLyrics + 1;
+            } else if (classification.lineType() != LyricLineType.EMPTY) {
+                consecutiveLyrics = 0;
+            }
+        }
+        return -1;
+    }
+
+    private Classification unknownHeader() {
+        return new Classification(LyricLineType.UNKNOWN, LyricClassificationSource.RULE, true, 0.5);
     }
 
     private Classification classify(String normalizedText, boolean formatMetadata, boolean headerMode,

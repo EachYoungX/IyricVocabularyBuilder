@@ -58,7 +58,8 @@ public class LyricNormalizer {
 
     private String normalizeLine(String line) {
         String withoutTimestamp = removeTimestamps(line);
-        String unicodeNormalized = Normalizer.normalize(withoutTimestamp, Normalizer.Form.NFKC);
+        String withoutEscapedColon = withoutTimestamp.replace("\\:", ":");
+        String unicodeNormalized = Normalizer.normalize(withoutEscapedColon, Normalizer.Form.NFKC);
         return HORIZONTAL_WHITESPACE.matcher(unicodeNormalized).replaceAll(" ").trim();
     }
 
