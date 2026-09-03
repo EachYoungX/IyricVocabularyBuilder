@@ -333,7 +333,7 @@ export default {
   loadLyricsForEditingFailed: 'Failed to load lyrics for editing',
   saveLyricsFailed: 'Failed to save lyrics',
   dictionarySourceTitle: 'Dictionary Source and License',
-  dictionarySourceSubtitle: 'This project helps Chinese-speaking learners study English vocabulary from lyrics, so dictionary source and license details are shown transparently.',
+  dictionarySourceSubtitle: 'Word and phrase dictionaries are shown separately with their own sources, licenses, and URLs.',
   dictionarySourceName: 'Source name',
   dictionarySourceUrl: 'Source URL',
   dictionaryLicenseName: 'License',

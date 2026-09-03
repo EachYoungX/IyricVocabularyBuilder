@@ -13,7 +13,7 @@ export class DictionaryService {
      * @returns DictionarySource 词典来源与授权信息 / Dictionary source and license metadata
      * @throws ApiError
      */
-    public static getDictionarySource(): CancelablePromise<DictionarySource> {
+    public static getDictionarySource(): CancelablePromise<Array<DictionarySource>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/dictionary/source',

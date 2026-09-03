@@ -587,7 +587,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DictionarySource'
+                type: array
+                items:
+                  $ref: '#/components/schemas/DictionarySource'
 
   /api/dictionary/{word}:
     get:

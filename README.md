@@ -164,7 +164,7 @@ Before making a public deployment, configure the frontend API base URL or revers
 - This repository does not include or distribute a lyrics database.
 - Users should only import lyrics they are allowed to use or process.
 - Imported lyrics, cleanup results, vocabulary indexes, and personal learning state are stored locally.
-- The companion `LyricVocabularyDictionary` repository maintains source data and refreshed releases. The main project keeps a local ECDICT runtime copy for development; ECDICT data comes from [ECDICT](https://github.com/skywind3000/ECDICT), licensed under the MIT License.
+- The companion `LyricVocabularyDictionary` repository maintains source data and refreshed releases. Word data comes from [ECDICT](https://github.com/skywind3000/ECDICT) under the MIT License; phrase data comes from [2ndLA/english-phrases](https://github.com/2ndLA/english-phrases) under CC BY-SA 4.0.
 - The app includes a dictionary source page so public demos can keep data attribution transparent.
 
 ## Repository Layout

@@ -331,7 +331,7 @@ export default {
   loadLyricsForEditingFailed: '加载歌词编辑内容失败',
   saveLyricsFailed: '保存歌词失败',
   dictionarySourceTitle: '词典来源与版权说明',
-  dictionarySourceSubtitle: '本项目面向中文用户学习英文歌词词汇，词典数据来源和授权信息在这里透明展示。',
+  dictionarySourceSubtitle: '单词词典与短语词典分开展示各自的来源、许可证和地址。',
   dictionarySourceName: '词典源名称',
   dictionarySourceUrl: '来源地址',
   dictionaryLicenseName: '许可证',

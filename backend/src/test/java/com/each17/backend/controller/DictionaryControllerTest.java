@@ -17,6 +17,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.List;
+
 @WebMvcTest(DictionaryController.class)
 class DictionaryControllerTest {
 
@@ -60,16 +62,28 @@ class DictionaryControllerTest {
 
     @Test
     void testGetSourceInfo() throws Exception {
-        when(dictionaryService.getSourceInfo()).thenReturn(DictionarySourceDto.builder()
-                .sourceName("ECDICT")
-                .licenseName("MIT License")
-                .requiresAttribution(true)
-                .build());
+        when(dictionaryService.getSourceInfo()).thenReturn(List.of(
+                DictionarySourceDto.builder()
+                        .sourceName("ECDICT")
+                        .sourceUrl("https://github.com/skywind3000/ECDICT")
+                        .licenseName("MIT License")
+                        .requiresAttribution(true)
+                        .build(),
+                DictionarySourceDto.builder()
+                        .sourceName("2ndLA/english-phrases")
+                        .sourceUrl("https://github.com/2ndLA/english-phrases")
+                        .licenseName("CC BY-SA 4.0")
+                        .requiresAttribution(true)
+                        .build()));
 
         mockMvc.perform(get("/api/dictionary/source"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.sourceName").value("ECDICT"))
-                .andExpect(jsonPath("$.data.licenseName").value("MIT License"))
-                .andExpect(jsonPath("$.data.requiresAttribution").value(true));
+                .andExpect(jsonPath("$.data[0].sourceName").value("ECDICT"))
+                .andExpect(jsonPath("$.data[0].sourceUrl").value("https://github.com/skywind3000/ECDICT"))
+                .andExpect(jsonPath("$.data[0].licenseName").value("MIT License"))
+                .andExpect(jsonPath("$.data[0].requiresAttribution").value(true))
+                .andExpect(jsonPath("$.data[1].sourceName").value("2ndLA/english-phrases"))
+                .andExpect(jsonPath("$.data[1].sourceUrl").value("https://github.com/2ndLA/english-phrases"))
+                .andExpect(jsonPath("$.data[1].licenseName").value("CC BY-SA 4.0"));
     }
 }

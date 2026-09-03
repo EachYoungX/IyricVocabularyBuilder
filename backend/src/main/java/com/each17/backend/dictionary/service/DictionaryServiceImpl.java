@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -107,29 +108,43 @@ public class DictionaryServiceImpl implements DictionaryService {
     }
 
     @Override
-    public DictionarySourceDto getSourceInfo() {
+    public List<DictionarySourceDto> getSourceInfo() {
         if (!enabled) {
-            return DictionarySourceDto.builder()
+            return List.of(DictionarySourceDto.builder()
                     .sourceName("NONE")
                     .dictionaryVersion("disabled")
                     .requiresAttribution(false)
                     .commercialUseAllowed(false)
                     .redistributionAllowed(false)
                     .attributionText("No dictionary is configured for this runtime.")
-                    .build();
+                    .build());
         }
         Map<String, String> meta = metadataRepository == null ? Map.of() : metadataRepository.findAll();
-        return DictionarySourceDto.builder()
-                .sourceName("ECDICT + 2ndLA")
-                .sourceUrl("https://github.com/skywind3000/ECDICT")
-                .dictionaryVersion(meta.getOrDefault("package.version", "unknown"))
-                .importedAt(meta.getOrDefault("build.time", "unknown"))
-                .licenseName("MIT License; phrase data CC BY-SA 4.0")
-                .requiresAttribution(true)
-                .commercialUseAllowed(true)
-                .redistributionAllowed(true)
-                .attributionText("Word data is derived from ECDICT; phrase data is derived from 2ndLA/english-phrases.")
-                .build();
+        String importedAt = meta.getOrDefault("build.time", "unknown");
+        return List.of(
+                DictionarySourceDto.builder()
+                        .sourceName("ECDICT")
+                        .sourceUrl("https://github.com/skywind3000/ECDICT")
+                        .dictionaryVersion(meta.getOrDefault("ecdict.commit", "unknown"))
+                        .importedAt(importedAt)
+                        .licenseName("MIT License")
+                        .requiresAttribution(true)
+                        .commercialUseAllowed(true)
+                        .redistributionAllowed(true)
+                        .attributionText("Word dictionary source used for word lookup.")
+                        .build(),
+                DictionarySourceDto.builder()
+                        .sourceName("2ndLA/english-phrases")
+                        .sourceUrl("https://github.com/2ndLA/english-phrases")
+                        .dictionaryVersion(meta.getOrDefault("2ndla.commit", "unknown"))
+                        .importedAt(importedAt)
+                        .licenseName("CC BY-SA 4.0")
+                        .requiresAttribution(true)
+                        .commercialUseAllowed(true)
+                        .redistributionAllowed(true)
+                        .attributionText("Phrase dictionary source used for phrase matching.")
+                        .build()
+        );
     }
 
     private static final class DictionaryEntryRowMapper implements RowMapper<DictionaryEntryDto> {

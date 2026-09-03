@@ -111,7 +111,7 @@ http://localhost:8080
 
 ## Dictionary Source
 
-Phrase releases are maintained outside this repository. The local word dictionary is derived from [ECDICT](https://github.com/skywind3000/ECDICT), licensed under the MIT License. Source and license metadata is available from:
+Phrase releases are maintained outside this repository. Word data comes from [ECDICT](https://github.com/skywind3000/ECDICT) under the MIT License, and phrase data comes from [2ndLA/english-phrases](https://github.com/2ndLA/english-phrases) under CC BY-SA 4.0. Both sources are returned separately by:
 
 ```text
 GET /api/dictionary/source

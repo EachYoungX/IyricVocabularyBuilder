@@ -125,31 +125,21 @@
               <div v-if="dictionaryLoading" class="text-center q-py-md">
                 <q-spinner color="primary" size="28px" />
               </div>
-              <div v-else-if="dictionarySource" class="q-gutter-sm">
-                <div class="source-row">
-                  <span>{{ t('dictionarySourceName') }}</span>
-                  <strong>{{ dictionarySource.sourceName }}</strong>
+              <div v-else-if="dictionarySources.length" class="dictionary-source-grid">
+                <div v-for="source in dictionarySources" :key="source.sourceName" class="dictionary-source-item">
+                  <div class="source-row">
+                    <span>{{ t('dictionarySourceName') }}</span>
+                    <strong>{{ source.sourceName }}</strong>
+                  </div>
+                  <a v-if="source.sourceUrl" class="source-link" :href="source.sourceUrl" target="_blank" rel="noopener noreferrer">
+                    {{ source.sourceUrl }}
+                  </a>
+                  <div class="source-row">
+                    <span>{{ t('dictionaryLicenseName') }}</span>
+                    <strong>{{ source.licenseName }}</strong>
+                  </div>
+                  <p class="settings-help q-mt-sm">{{ source.attributionText }}</p>
                 </div>
-                <a v-if="dictionarySource.sourceUrl" class="source-link" :href="dictionarySource.sourceUrl" target="_blank">
-                  {{ dictionarySource.sourceUrl }}
-                </a>
-                <div class="source-row">
-                  <span>{{ t('dictionaryLicenseName') }}</span>
-                  <strong>{{ dictionarySource.licenseName }}</strong>
-                </div>
-                <div class="source-row">
-                  <span>{{ t('requiresAttribution') }}</span>
-                  <strong>{{ yesNo(dictionarySource.requiresAttribution) }}</strong>
-                </div>
-                <div class="source-row">
-                  <span>{{ t('commercialUseAllowed') }}</span>
-                  <strong>{{ yesNo(dictionarySource.commercialUseAllowed) }}</strong>
-                </div>
-                <div class="source-row">
-                  <span>{{ t('redistributionAllowed') }}</span>
-                  <strong>{{ yesNo(dictionarySource.redistributionAllowed) }}</strong>
-                </div>
-                <p class="settings-help q-mt-sm">{{ dictionarySource.attributionText }}</p>
               </div>
               <div v-else class="text-negative">{{ t('dictionarySourceLoadFailed') }}</div>
             </div>
@@ -297,7 +287,7 @@ const $q = useQuasar();
 const settings = ref<AppSettings>(loadAppSettings());
 const motionPreference = ref<MotionPreference>(getStoredMotionPreference() ?? applyMotionPreference());
 const dictionaryLoading = ref(false);
-const dictionarySource = ref<DictionarySource | null>(null);
+const dictionarySources = ref<DictionarySource[]>([]);
 const songCount = ref<number | null>(null);
 const vocabularyStats = ref<UserVocabularyStats | null>(null);
 const backupFile = ref<File | null>(null);
@@ -385,11 +375,6 @@ const dataStats = computed(() => [
   { label: t('settingsPage.localDataSize'), value: estimateLocalStorageSize() },
 ]);
 
-function yesNo(value?: boolean) {
-  if (value === undefined) return t('unknown');
-  return value ? t('yes') : t('no');
-}
-
 function persistSettings() {
   saveAppSettings(settings.value);
   $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.settingsSaved') });
@@ -414,7 +399,7 @@ function buildBackupPayload(
     },
     settings: settings.value,
     motionPreference: motionPreference.value,
-    dictionarySource: dictionarySource.value,
+    dictionarySources: dictionarySources.value,
     stats,
     songs,
     vocabulary,
@@ -649,7 +634,7 @@ async function loadSettingsData() {
       SongsService.getAllSongs().catch(() => null),
       UserVocabularyService.getUserVocabularyStats().catch(() => null),
     ]);
-    dictionarySource.value = source;
+    dictionarySources.value = source ?? [];
     songCount.value = songs?.length ?? null;
     vocabularyStats.value = stats;
   } finally {
@@ -723,6 +708,22 @@ onMounted(() => {
   border-radius: var(--lv-radius-md);
 }
 
+.dictionary-source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dictionary-source-item {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  background: var(--lv-paper);
+  border: 1px solid var(--lv-line);
+  border-radius: var(--lv-radius-sm);
+}
+
 .source-row {
   display: flex;
   justify-content: space-between;
@@ -739,6 +740,12 @@ onMounted(() => {
   display: inline-block;
   color: var(--lv-blue);
   overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .dictionary-source-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stat-card {

@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/dictionary")
 @RequiredArgsConstructor
@@ -19,7 +21,7 @@ public class DictionaryController {
     private final DictionaryService dictionaryService;
 
     @GetMapping("/source")
-    public ResponseEntity<ApiResponse<DictionarySourceDto>> getSourceInfo() {
+    public ResponseEntity<ApiResponse<List<DictionarySourceDto>>> getSourceInfo() {
         return ResponseEntity.ok(ApiResponse.success(dictionaryService.getSourceInfo()));
     }
 

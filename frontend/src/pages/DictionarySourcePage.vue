@@ -13,56 +13,33 @@
           <q-spinner color="primary" size="32px" />
         </q-card-section>
 
-        <q-card-section v-else-if="source" class="q-gutter-md">
-          <q-list bordered separator>
-            <q-item>
-              <q-item-section>
-                <q-item-label caption>{{ t('dictionarySourceName') }}</q-item-label>
-                <q-item-label>{{ source.sourceName }}</q-item-label>
-              </q-item-section>
-            </q-item>
-
-            <q-item v-if="source.sourceUrl" clickable tag="a" :href="source.sourceUrl" target="_blank">
-              <q-item-section>
-                <q-item-label caption>{{ t('dictionarySourceUrl') }}</q-item-label>
-                <q-item-label class="text-primary">{{ source.sourceUrl }}</q-item-label>
-              </q-item-section>
-            </q-item>
-
-            <q-item>
-              <q-item-section>
-                <q-item-label caption>{{ t('dictionaryLicenseName') }}</q-item-label>
-                <q-item-label>{{ source.licenseName }}</q-item-label>
-              </q-item-section>
-            </q-item>
-
-            <q-item>
-              <q-item-section>
-                <q-item-label caption>{{ t('dictionaryAttribution') }}</q-item-label>
-                <q-item-label>{{ source.attributionText }}</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div class="row q-col-gutter-sm">
-            <div class="col-12 col-sm-4">
-              <q-banner rounded class="source-banner">
-                <q-icon :name="source.requiresAttribution ? 'check_circle' : 'cancel'" color="primary" class="q-mr-sm" />
-                {{ t('requiresAttribution') }}: {{ yesNo(source.requiresAttribution) }}
-              </q-banner>
-            </div>
-            <div class="col-12 col-sm-4">
-              <q-banner rounded class="source-banner">
-                <q-icon :name="source.commercialUseAllowed ? 'check_circle' : 'cancel'" color="primary" class="q-mr-sm" />
-                {{ t('commercialUseAllowed') }}: {{ yesNo(source.commercialUseAllowed) }}
-              </q-banner>
-            </div>
-            <div class="col-12 col-sm-4">
-              <q-banner rounded class="source-banner">
-                <q-icon :name="source.redistributionAllowed ? 'check_circle' : 'cancel'" color="primary" class="q-mr-sm" />
-                {{ t('redistributionAllowed') }}: {{ yesNo(source.redistributionAllowed) }}
-              </q-banner>
-            </div>
+        <q-card-section v-else-if="sources.length" class="q-gutter-md">
+          <div class="source-grid">
+            <q-card v-for="item in sources" :key="item.sourceName" flat bordered class="source-item">
+              <q-card-section>
+                <div class="text-h6 text-weight-bold source-item-title">{{ item.sourceName }}</div>
+                <div class="source-detail">
+                  <span class="source-label">{{ t('dictionarySourceUrl') }}</span>
+                  <a v-if="item.sourceUrl" :href="item.sourceUrl" target="_blank" rel="noopener noreferrer" class="source-link">
+                    {{ item.sourceUrl }}
+                  </a>
+                </div>
+                <div class="source-detail">
+                  <span class="source-label">{{ t('dictionaryLicenseName') }}</span>
+                  <strong>{{ item.licenseName }}</strong>
+                </div>
+                <div class="source-detail">
+                  <span class="source-label">{{ t('dictionaryAttribution') }}</span>
+                  <span>{{ item.attributionText }}</span>
+                </div>
+              </q-card-section>
+              <q-separator />
+              <q-card-section class="source-flags">
+                <div><q-icon :name="item.requiresAttribution ? 'check_circle' : 'cancel'" color="primary" /> {{ t('requiresAttribution') }}: {{ yesNo(item.requiresAttribution) }}</div>
+                <div><q-icon :name="item.commercialUseAllowed ? 'check_circle' : 'cancel'" color="primary" /> {{ t('commercialUseAllowed') }}: {{ yesNo(item.commercialUseAllowed) }}</div>
+                <div><q-icon :name="item.redistributionAllowed ? 'check_circle' : 'cancel'" color="primary" /> {{ t('redistributionAllowed') }}: {{ yesNo(item.redistributionAllowed) }}</div>
+              </q-card-section>
+            </q-card>
           </div>
 
           <q-banner rounded class="source-note">
@@ -85,7 +62,7 @@ import { DictionaryService, type DictionarySource } from 'src/services/api';
 
 const { t } = useI18n();
 const loading = ref(false);
-const source = ref<DictionarySource | null>(null);
+const sources = ref<DictionarySource[]>([]);
 
 function yesNo(value?: boolean) {
   if (value === undefined) return t('unknown');
@@ -95,7 +72,7 @@ function yesNo(value?: boolean) {
 async function loadDictionarySource() {
   loading.value = true;
   try {
-    source.value = await DictionaryService.getDictionarySource();
+    sources.value = await DictionaryService.getDictionarySource();
   } finally {
     loading.value = false;
   }
@@ -108,7 +85,7 @@ onMounted(() => {
 
 <style scoped>
 .page-content {
-  max-width: 880px;
+  max-width: 1120px;
 }
 
 .source-card {
@@ -120,6 +97,52 @@ onMounted(() => {
   color: var(--lv-ink);
 }
 
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.source-item {
+  height: 100%;
+  background: var(--lv-paper);
+  border-color: var(--lv-line);
+}
+
+.source-item-title {
+  color: var(--lv-ink);
+  margin-bottom: 16px;
+}
+
+.source-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+  color: var(--lv-ink-soft);
+}
+
+.source-label {
+  color: var(--lv-muted);
+  font-size: 0.78rem;
+}
+
+.source-detail strong {
+  color: var(--lv-ink);
+}
+
+.source-link {
+  color: var(--lv-blue);
+  overflow-wrap: anywhere;
+}
+
+.source-flags {
+  display: grid;
+  gap: 8px;
+  color: var(--lv-ink-soft);
+  font-size: 0.84rem;
+}
+
 .source-banner {
   color: var(--lv-ink-soft);
   background: var(--lv-accent-soft);
@@ -129,5 +152,11 @@ onMounted(() => {
   color: var(--lv-ink);
   background: rgba(210, 193, 182, 0.22);
   border: 1px solid var(--lv-line);
+}
+
+@media (max-width: 700px) {
+  .source-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
