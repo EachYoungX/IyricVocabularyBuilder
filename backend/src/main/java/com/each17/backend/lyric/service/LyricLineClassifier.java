@@ -22,15 +22,22 @@ public class LyricLineClassifier {
 
     private final SectionLabelClassifier sectionLabelClassifier;
     private final CreditLineClassifier creditLineClassifier;
+    private final TitleArtistMetadataClassifier titleArtistMetadataClassifier;
 
     public LyricLineClassifier() {
-        this(new SectionLabelClassifier(), new CreditLineClassifier());
+        this(new SectionLabelClassifier(), new CreditLineClassifier(), new TitleArtistMetadataClassifier());
     }
 
     @Autowired
     public LyricLineClassifier(SectionLabelClassifier sectionLabelClassifier, CreditLineClassifier creditLineClassifier) {
+        this(sectionLabelClassifier, creditLineClassifier, new TitleArtistMetadataClassifier());
+    }
+
+    public LyricLineClassifier(SectionLabelClassifier sectionLabelClassifier, CreditLineClassifier creditLineClassifier,
+                               TitleArtistMetadataClassifier titleArtistMetadataClassifier) {
         this.sectionLabelClassifier = sectionLabelClassifier;
         this.creditLineClassifier = creditLineClassifier;
+        this.titleArtistMetadataClassifier = titleArtistMetadataClassifier;
     }
 
     public Classification classify(String normalizedText) {
@@ -90,7 +97,8 @@ public class LyricLineClassifier {
     private Classification classify(String normalizedText, boolean formatMetadata, boolean headerMode,
                                     String title, String artist) {
         Classification base = classify(normalizedText, formatMetadata, headerMode);
-        if (base.lineType() == LyricLineType.LYRIC && headerMode && isTimedTitleCredit(normalizedText, title, artist)) {
+        if (base.lineType() == LyricLineType.LYRIC && headerMode
+                && titleArtistMetadataClassifier.matches(normalizedText, title, artist)) {
             return new Classification(LyricLineType.METADATA, LyricClassificationSource.RULE, true, 0.97);
         }
         return base;
@@ -102,20 +110,6 @@ public class LyricLineClassifier {
 
     private boolean hasOrdinaryLyricStructure(String text) {
         return text != null && text.matches(".*[A-Za-z].*");
-    }
-
-    private boolean isTimedTitleCredit(String text, String title, String artist) {
-        if (title == null || artist == null || title.isBlank() || artist.isBlank()
-                || text == null || !text.matches(".*\\s+-\\s+.*")) return false;
-        String[] parts = text.split("\\s+-\\s+", 2);
-        if (parts.length != 2) return false;
-        String lineTitle = parts[0].replaceFirst("\\s*\\([^)]*\\)\\s*$", "");
-        return normalizeForComparison(lineTitle).equals(normalizeForComparison(title))
-                && normalizeForComparison(parts[1]).equals(normalizeForComparison(artist));
-    }
-
-    private String normalizeForComparison(String value) {
-        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private String stripBrackets(String text) {

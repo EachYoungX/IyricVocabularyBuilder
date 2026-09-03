@@ -12,97 +12,98 @@
 
       <q-separator />
 
-      <q-card-section class="col scroll">
-        <div v-if="loading" class="fit flex flex-center">
-          <q-spinner color="primary" size="3em" />
-        </div>
+      <q-form class="lyric-dialog-form col column no-wrap" @submit.prevent="saveSong">
+        <q-card-section class="editor-body col">
+          <div v-if="loading" class="fit flex flex-center">
+            <q-spinner color="primary" size="3em" />
+          </div>
 
-        <q-banner v-else-if="error" rounded class="bg-red-1 text-negative">
-          {{ error }}
-        </q-banner>
+          <q-banner v-else-if="error" rounded class="bg-red-1 text-negative">
+            {{ error }}
+          </q-banner>
 
-        <div v-else class="row q-col-gutter-lg lyric-editor-grid">
-          <div class="col-12 col-md-6">
-            <section class="lyric-editor-pane raw-pane">
+          <div v-else class="editor-content column no-wrap">
+            <section class="song-info-panel">
               <div class="pane-heading">
                 <div>
-                  <div class="text-subtitle1 text-weight-medium">{{ t('originalImport') }}</div>
-                  <div class="text-caption text-grey-7">{{ t('originalImportHint') }}</div>
+                  <div class="text-subtitle1 text-weight-medium">{{ t('songInformation') }}</div>
+                  <div class="text-caption text-grey-7">{{ t('songInformationHint') }}</div>
                 </div>
                 <SemanticChip v-if="document" tone="count">
                   {{ t('lyricLineCount', { count: document.lines.length }) }}
                 </SemanticChip>
               </div>
 
-              <div class="raw-meta-grid">
-                <div>
-                  <div class="text-caption text-grey-7">{{ t('title') }}</div>
-                  <div class="text-body1">{{ readonlyTitle }}</div>
-                </div>
-                <div>
-                  <div class="text-caption text-grey-7">{{ t('artist') }}</div>
-                  <div class="text-body1">{{ readonlyArtist }}</div>
-                </div>
-                <div v-if="document?.album">
-                  <div class="text-caption text-grey-7">{{ t('album') }}</div>
-                  <div class="text-body1">{{ document.album }}</div>
-                </div>
+              <div class="song-info-grid">
+                <q-input v-model="editableSong.title" :label="t('title') + ' *'" outlined dense />
+                <q-input v-model="editableSong.artist" :label="t('artist') + ' *'" outlined dense />
+                <q-input v-model="editableSong.album" :label="t('album')" outlined dense />
               </div>
 
-              <div v-if="document?.credits?.length" class="credit-list q-mt-md">
+              <div class="recognized-meta" v-if="songSnapshot?.rawTitle || songSnapshot?.rawArtist">
+                <span>{{ t('recognizedSongInfo') }}</span>
+                <span v-if="songSnapshot?.rawTitle">{{ t('title') }}: {{ songSnapshot.rawTitle }}</span>
+                <span v-if="songSnapshot?.rawArtist">{{ t('artist') }}: {{ songSnapshot.rawArtist }}</span>
+              </div>
+
+              <div v-if="document?.credits?.length" class="credit-list">
                 <div class="text-caption text-grey-7">{{ t('songCredits') }}</div>
-                <div v-for="credit in document.credits" :key="`${credit.id}-${credit.creditType}-${credit.creditValue}`" class="credit-row">
+                <div v-for="(credit, creditIndex) in document.credits" :key="`${creditIndex}-${credit.creditType}-${credit.creditValue}`" class="credit-row">
                   <span class="credit-label">{{ credit.creditLabel || credit.creditType }}</span>
                   <span>{{ credit.creditValue }}</span>
                 </div>
               </div>
-
-              <pre class="lyrics-preview">{{ rawLyricsForDisplay }}</pre>
             </section>
-          </div>
 
-          <div class="col-12 col-md-6">
-            <q-form class="lyric-editor-pane editable-pane" @submit.prevent="saveSong">
-              <div class="pane-heading">
-                <div>
-                  <div class="text-subtitle1 text-weight-medium">{{ t('learningLyrics') }}</div>
-                  <div class="text-caption text-grey-7">{{ t('learningLyricsHint') }}</div>
+            <div class="comparison-grid">
+              <section class="lyric-editor-pane raw-pane">
+                <div class="pane-heading pane-heading-fixed">
+                  <div>
+                    <div class="text-subtitle1 text-weight-medium">{{ t('originalImport') }}</div>
+                    <div class="text-caption text-grey-7">{{ t('originalImportHint') }}</div>
+                  </div>
                 </div>
-              </div>
+                <pre class="lyrics-preview">{{ rawLyricsForDisplay }}</pre>
+              </section>
 
-              <q-input v-model="editableSong.title" :label="t('title') + ' *'" outlined />
-              <q-input v-model="editableSong.artist" :label="t('artist') + ' *'" outlined />
-              <q-input v-model="editableSong.album" :label="t('album')" outlined />
-              <q-input
-                v-model="editableSong.lyrics"
-                :label="t('lyrics') + ' *'"
-                outlined
-                type="textarea"
-                autogrow
-                class="lyrics-input"
-              />
-
-              <div class="row q-gutter-sm justify-end">
-                <q-btn
-                  flat
-                  color="secondary"
-                  :label="t('restoreOriginalSong')"
-                  :disable="!document?.rawLyrics && !songSnapshot?.rawTitle && !songSnapshot?.rawArtist"
-                  @click="restoreOriginalLyrics"
+              <section class="lyric-editor-pane editable-pane">
+                <div class="pane-heading pane-heading-fixed">
+                  <div>
+                    <div class="text-subtitle1 text-weight-medium">{{ t('learningLyrics') }}</div>
+                    <div class="text-caption text-grey-7">{{ t('learningLyricsHint') }}</div>
+                  </div>
+                </div>
+                <q-input
+                  v-model="editableSong.lyrics"
+                  :label="t('lyrics') + ' *'"
+                  outlined
+                  type="textarea"
+                  class="learning-input"
+                  input-class="learning-textarea"
                 />
-                <q-btn flat :label="t('cancel')" v-close-popup />
-                <q-btn
-                  color="primary"
-                  type="submit"
-                  :label="t('save')"
-                  :loading="saving"
-                  :disable="!isFormValid || !isDirty"
-                />
-              </div>
-            </q-form>
+              </section>
+            </div>
           </div>
-        </div>
-      </q-card-section>
+        </q-card-section>
+
+        <q-card-actions class="editor-footer justify-end">
+          <q-btn
+            flat
+            color="secondary"
+            :label="t('restoreParsedResult')"
+            :disable="!document?.normalizedLyrics"
+            @click="restoreOriginalLyrics"
+          />
+          <q-btn flat :label="t('cancel')" v-close-popup />
+          <q-btn
+            color="primary"
+            type="submit"
+            :label="t('save')"
+            :loading="saving"
+            :disable="!isFormValid || !isDirty"
+          />
+        </q-card-actions>
+      </q-form>
     </q-card>
   </q-dialog>
 </template>
@@ -228,27 +229,73 @@ async function saveSong() {
 <style scoped lang="scss">
 .lyric-dialog {
   width: min(1180px, 96vw);
-  height: min(820px, 92vh);
+  height: min(900px, 94dvh);
+  max-height: 94dvh;
   background: var(--lv-surface-solid);
 }
 
 .lyric-dialog-header {
+  flex: 0 0 auto;
   background:
     linear-gradient(90deg, rgba(210, 193, 182, 0.18), transparent),
     var(--lv-surface-solid);
 }
 
-.lyric-editor-grid {
-  min-height: 100%;
+.lyric-dialog-form,
+.editor-body {
+  min-height: 0;
+}
+
+.editor-body {
+  overflow: hidden;
+  padding: 16px 20px;
+}
+
+.editor-content {
+  height: 100%;
+  min-height: 0;
+  gap: 16px;
+}
+
+.song-info-panel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--lv-line);
+  border-radius: var(--lv-radius-md);
+  background: var(--lv-paper);
+}
+
+.song-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.recognized-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--lv-muted);
+  font-size: 0.82rem;
+}
+
+.comparison-grid {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  min-height: 280px;
 }
 
 .lyric-editor-pane {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  height: 100%;
+  gap: 12px;
   min-height: 0;
-  padding: 18px;
+  padding: 16px;
   border: 1px solid var(--lv-line);
   border-radius: var(--lv-radius-md);
   background: var(--lv-paper);
@@ -261,19 +308,14 @@ async function saveSong() {
   gap: 12px;
 }
 
-.raw-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--lv-line);
-  border-radius: var(--lv-radius-sm);
-  background: var(--lv-surface-solid);
+.pane-heading-fixed {
+  flex: 0 0 auto;
+  min-height: 46px;
 }
 
 .lyrics-preview {
-  flex: 1;
-  min-height: 360px;
+  flex: 1 1 0;
+  min-height: 0;
   margin: 0;
   padding: 14px;
   overflow: auto;
@@ -288,6 +330,8 @@ async function saveSong() {
 }
 
 .credit-list {
+  max-height: 84px;
+  overflow: auto;
   border: 1px solid var(--lv-border);
   border-radius: 10px;
   padding: 10px 12px;
@@ -306,24 +350,57 @@ async function saveSong() {
   color: var(--lv-muted);
 }
 
-.lyrics-input {
-  flex: 1;
-  min-height: 360px;
+.learning-input {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+:deep(.learning-input .q-field__inner),
+:deep(.learning-input .q-field__control),
+:deep(.learning-input .q-field__control-container),
+:deep(.learning-textarea) {
+  min-height: 0;
+  height: 100%;
+}
+
+:deep(.learning-textarea) {
+  resize: none;
+}
+
+.editor-footer {
+  flex: 0 0 auto;
+  min-height: 64px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--lv-line);
+  background: var(--lv-surface-solid);
 }
 
 @media (max-width: 600px) {
   .lyric-dialog {
     width: 100vw;
     height: 100dvh;
+    max-height: 100dvh;
   }
 
   :deep(.q-card__section) {
     padding-left: 12px;
     padding-right: 12px;
   }
-  .lyric-editor-pane,
-  .lyrics-preview,
-  .lyrics-input {
+
+  .editor-body {
+    overflow: auto;
+  }
+
+  .song-info-grid,
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-grid {
+    min-height: 520px;
+  }
+
+  .lyric-editor-pane {
     min-height: 260px;
   }
 }
