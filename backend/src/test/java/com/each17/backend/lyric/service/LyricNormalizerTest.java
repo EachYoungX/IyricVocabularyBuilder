@@ -23,4 +23,10 @@ class LyricNormalizerTest {
         assertEquals("Hello world", result.text());
         assertEquals(1, result.lines().size());
     }
+
+    @Test
+    void removesLeadingTimestampsFromLegacyDisplayText() {
+        assertEquals("I'm running", LyricNormalizer.removeTimestamps("[02:44.16]I'm running"));
+        assertEquals("Keep this", LyricNormalizer.removeTimestamps("[00:01][00:02.500]Keep this"));
+    }
 }

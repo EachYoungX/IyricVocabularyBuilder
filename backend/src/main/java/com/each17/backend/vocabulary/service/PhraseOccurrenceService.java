@@ -9,6 +9,7 @@ import com.each17.backend.lyric.entity.LyricLine;
 import com.each17.backend.lyric.entity.LyricToken;
 import com.each17.backend.lyric.repository.LyricLineRepository;
 import com.each17.backend.lyric.repository.LyricTokenRepository;
+import com.each17.backend.lyric.service.LyricNormalizer;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.repository.SongRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -153,7 +154,7 @@ public class PhraseOccurrenceService {
     private List<PhraseOccurrenceDto> queryPhraseOccurrences(Long phraseId) {
         return jdbcTemplate.query("""
                 SELECT occurrence.phrase_id, occurrence.song_id, song.title, song.artist,
-                       occurrence.lyric_line_id, line.line_index, line.original_text,
+                       occurrence.lyric_line_id, line.line_index, line.normalized_text,
                        occurrence.start_token_position, occurrence.end_token_position,
                        occurrence.surface_phrase
                 FROM phrase_occurrence occurrence
@@ -171,7 +172,7 @@ public class PhraseOccurrenceService {
                 .songArtist(rs.getString("artist"))
                 .lyricLineId(rs.getLong("lyric_line_id"))
                 .lineIndex(rs.getInt("line_index"))
-                .lyricLine(rs.getString("original_text"))
+                .lyricLine(LyricNormalizer.removeTimestamps(rs.getString("normalized_text")))
                 .startTokenPosition(rs.getInt("start_token_position"))
                 .endTokenPosition(rs.getInt("end_token_position"))
                 .surfacePhrase(rs.getString("surface_phrase"))

@@ -38,8 +38,13 @@ public class LyricNormalizer {
         return new NormalizedLyrics(normalizedText, List.copyOf(lines));
     }
 
+    public static String removeTimestamps(String line) {
+        if (line == null) return "";
+        return LRC_TIMESTAMP.matcher(line).replaceFirst("");
+    }
+
     private String normalizeLine(String line) {
-        String withoutTimestamp = LRC_TIMESTAMP.matcher(line).replaceFirst("");
+        String withoutTimestamp = removeTimestamps(line);
         String unicodeNormalized = Normalizer.normalize(withoutTimestamp, Normalizer.Form.NFKC);
         return HORIZONTAL_WHITESPACE.matcher(unicodeNormalized).replaceAll(" ").trim();
     }

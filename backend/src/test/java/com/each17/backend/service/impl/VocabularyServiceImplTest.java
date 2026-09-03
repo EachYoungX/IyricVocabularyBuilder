@@ -165,7 +165,7 @@ class VocabularyServiceImplTest {
     void testGetWordOccurrences() throws JsonProcessingException {
         // Given
         String word = "love";
-        String occurrencesJson = "[{\"songTitle\":\"Yesterday\",\"lyricLine\":\"Yesterday, all my troubles seemed so far away\"}]";
+        String occurrencesJson = "[{\"songTitle\":\"Yesterday\",\"lyricLine\":\"[02:44.16]Yesterday, all my troubles seemed so far away\"}]";
         
         Vocabulary vocabulary = Vocabulary.builder()
                 .word(word)
@@ -174,7 +174,7 @@ class VocabularyServiceImplTest {
                 
         WordOccurrenceDto occurrenceDto = WordOccurrenceDto.builder()
                 .songTitle("Yesterday")
-                .lyricLine("Yesterday, all my troubles seemed so far away")
+                .lyricLine("[02:44.16]Yesterday, all my troubles seemed so far away")
                 .build();
                 
         List<WordOccurrenceDto> expectedOccurrences = Arrays.asList(occurrenceDto);
@@ -188,7 +188,7 @@ class VocabularyServiceImplTest {
         // Then
         assertEquals(expectedOccurrences.size(), result.size());
         assertEquals(expectedOccurrences.get(0).getSongTitle(), result.get(0).getSongTitle());
-        assertEquals(expectedOccurrences.get(0).getLyricLine(), result.get(0).getLyricLine());
+        assertEquals("Yesterday, all my troubles seemed so far away", result.get(0).getLyricLine());
         assertEquals(1.0, result.get(0).getLearningScore());
         
         verify(vocabularyRepository, times(1)).findById(word.toLowerCase());

@@ -7,6 +7,7 @@ import com.each17.backend.dto.VocabularyRebuildTaskDto;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
 import com.each17.backend.lyric.service.EnglishLemmaService;
+import com.each17.backend.lyric.service.LyricNormalizer;
 import com.each17.backend.lyric.service.LyricTokenizationService;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.vocabulary.entity.Vocabulary;
@@ -100,7 +101,7 @@ public class VocabularyServiceImpl implements VocabularyService {
             // [核心实现]
             Vocabulary vocabulary = vocabOpt.get();
             List<WordOccurrenceDto> occurrences = objectMapper.readValue(vocabulary.getOccurrences(), new TypeReference<>() {});
-            occurrences.forEach(occurrence -> occurrence.setLearningScore(vocabulary.getLearningScore()));
+            occurrences.forEach(occurrence -> sanitizeOccurrence(occurrence, vocabulary.getLearningScore()));
             return occurrences;
         } catch (JsonProcessingException e) {
             log.error("Failed to deserialize occurrences for lemma: {}", lemma, e);
@@ -273,10 +274,21 @@ public class VocabularyServiceImpl implements VocabularyService {
     private List<WordOccurrenceDto> readOccurrenceExamples(Vocabulary vocabulary, int limit) {
         try {
             List<WordOccurrenceDto> occurrences = objectMapper.readValue(vocabulary.getOccurrences(), new TypeReference<>() {});
-            return occurrences == null ? List.of() : occurrences.stream().limit(limit).toList();
+            return occurrences == null ? List.of() : occurrences.stream()
+                    .limit(limit)
+                    .map(occurrence -> {
+                        sanitizeOccurrence(occurrence, vocabulary.getLearningScore());
+                        return occurrence;
+                    })
+                    .toList();
         } catch (JsonProcessingException e) {
             log.warn("Failed to deserialize candidate occurrences for lemma: {}", vocabulary.getWord(), e);
             return List.of();
         }
+    }
+
+    private void sanitizeOccurrence(WordOccurrenceDto occurrence, Double learningScore) {
+        occurrence.setLyricLine(LyricNormalizer.removeTimestamps(occurrence.getLyricLine()));
+        occurrence.setLearningScore(learningScore);
     }
 }
