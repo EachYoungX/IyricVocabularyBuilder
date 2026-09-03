@@ -129,8 +129,10 @@
                             </SemanticChip>
                           </q-item-label>
                           <q-item-label>
-                            {{ occurrence.lyricLine }}
-                            <span v-if="contentMode === 'phrases' && occurrence.surfacePhrase" class="phrase-hit">{{ occurrence.surfacePhrase }}</span>
+                            <template v-for="(segment, segmentIndex) in lyricLineSegments(occurrence)" :key="segmentIndex">
+                              <strong v-if="segment.highlighted" class="phrase-hit">{{ segment.text }}</strong>
+                              <template v-else>{{ segment.text }}</template>
+                            </template>
                           </q-item-label>
                         </q-item-section>
                       </q-item>
@@ -297,6 +299,7 @@ type ExplorerOccurrence = {
   learningScore?: number;
   surfacePhrase?: string;
 };
+type LyricLineSegment = { text: string; highlighted: boolean };
 const contentMode = ref<VocabularyMode>('words');
 const phraseRows = ref<DictionaryPhrase[]>([]);
 const phraseTotal = ref(0);
@@ -309,6 +312,21 @@ const phraseOccurrenceError = ref('');
 const personalActionLoading = ref(false);
 const learningValueLoading = ref(false);
 const appSettings = ref<AppSettings>(loadAppSettings());
+
+const lyricLineSegments = (occurrence: ExplorerOccurrence): LyricLineSegment[] => {
+  const line = occurrence.lyricLine || '';
+  const phrase = occurrence.surfacePhrase?.trim() || '';
+  if (!line || !phrase) return [{ text: line, highlighted: false }];
+
+  const start = line.toLocaleLowerCase().indexOf(phrase.toLocaleLowerCase());
+  if (start < 0) return [{ text: line, highlighted: false }];
+
+  return [
+    { text: line.slice(0, start), highlighted: false },
+    { text: line.slice(start, start + phrase.length), highlighted: true },
+    { text: line.slice(start + phrase.length), highlighted: false },
+  ].filter((segment) => segment.text.length > 0);
+};
 const paginationMaxPages = computed(() => {
   if ($q.screen.lt.sm) return 3;
   if ($q.screen.lt.md || splitterModel.value < 28) return 4;

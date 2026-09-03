@@ -12,6 +12,7 @@ import com.each17.backend.lyric.entity.LyricToken;
 import com.each17.backend.lyric.entity.LyricLine;
 import com.each17.backend.lyric.repository.LyricLineRepository;
 import com.each17.backend.lyric.repository.LyricTokenRepository;
+import com.each17.backend.lyric.service.LyricLineClassifier;
 import com.each17.backend.common.exception.ValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -49,6 +50,7 @@ public class PhraseQueryService {
     public List<PhraseMatchDto> getSongPhrases(Long songId) {
         List<PhraseMatchDto> matches = new java.util.ArrayList<>(occurrenceService.findSongMatches(songId));
         for (LyricLine line : lyricLineRepository.findBySongIdOrderByLineIndexAsc(songId)) {
+            if (!LyricLineClassifier.isIndexableLine(line)) continue;
             List<LyricToken> tokens = lyricTokenRepository.findByLyricLineIdOrderByTokenPositionAsc(line.getId());
             matches.addAll(userPhraseMatches(tokens));
         }

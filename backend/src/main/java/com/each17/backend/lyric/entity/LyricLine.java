@@ -37,6 +37,10 @@ public class LyricLine {
     @Column(name = "line_type", nullable = false)
     private LyricLineType lineType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "classification_source", nullable = false)
+    private LyricClassificationSource classificationSource;
+
     @Column(nullable = false)
     private Boolean hidden;
 

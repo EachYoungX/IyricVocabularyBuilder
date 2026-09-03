@@ -21,12 +21,17 @@ public class LyricNormalizer {
         boolean previousEmpty = false;
 
         for (String rawLine : rawLines) {
-            if (LRC_METADATA.matcher(rawLine).matches()) continue;
+            boolean formatMetadata = LRC_METADATA.matcher(rawLine).matches();
+            if (formatMetadata) {
+                lines.add(new NormalizedLine(rawLine, rawLine.trim(), true));
+                previousEmpty = false;
+                continue;
+            }
             String normalized = normalizeLine(rawLine);
             if (LRC_TIMESTAMP.matcher(rawLine).find() && LRC_TITLE_CREDIT.matcher(normalized).matches()) continue;
             boolean empty = normalized.isEmpty();
             if (empty && previousEmpty) continue;
-            lines.add(new NormalizedLine(rawLine, normalized));
+            lines.add(new NormalizedLine(rawLine, normalized, false));
             previousEmpty = empty;
         }
 
@@ -34,13 +39,19 @@ public class LyricNormalizer {
             lines.remove(lines.size() - 1);
         }
 
-        String normalizedText = String.join("\n", lines.stream().map(NormalizedLine::normalizedText).toList());
+        String normalizedText = String.join("\n", lines.stream()
+                .filter(line -> !line.formatMetadata())
+                .map(NormalizedLine::normalizedText).toList());
         return new NormalizedLyrics(normalizedText, List.copyOf(lines));
     }
 
     public static String removeTimestamps(String line) {
         if (line == null) return "";
         return LRC_TIMESTAMP.matcher(line).replaceFirst("");
+    }
+
+    public String normalizeLineForStorage(String line) {
+        return normalizeLine(line == null ? "" : line);
     }
 
     private String normalizeLine(String line) {
@@ -50,5 +61,9 @@ public class LyricNormalizer {
     }
 
     public record NormalizedLyrics(String text, List<NormalizedLine> lines) {}
-    public record NormalizedLine(String originalText, String normalizedText) {}
+    public static boolean isFormatMetadata(String line) {
+        return line != null && LRC_METADATA.matcher(line).matches();
+    }
+
+    public record NormalizedLine(String originalText, String normalizedText, boolean formatMetadata) {}
 }

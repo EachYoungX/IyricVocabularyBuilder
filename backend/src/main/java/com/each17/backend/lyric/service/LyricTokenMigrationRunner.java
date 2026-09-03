@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Order(1)
 public class LyricTokenMigrationRunner implements ApplicationRunner {
-    private static final String VERSION = "token-index-v2";
+    private static final String VERSION = "lyric-index-v4";
+    private static final String LINE_CLASSIFIER_VERSION = "4";
+    private static final String PHRASE_MATCHER_VERSION = "3";
 
     @Qualifier("appJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
@@ -39,9 +41,20 @@ public class LyricTokenMigrationRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         String current = jdbcTemplate.query("SELECT value FROM app_meta WHERE key = 'lyric.token.migration'",
                 rows -> rows.next() ? rows.getString(1) : null);
-        if (VERSION.equals(current)) return;
-        for (Song song : songRepository.findAll()) lyricStructureService.rebuildTokensForSong(song.getId());
+        if (VERSION.equals(current)) {
+            writeVersionMetadata();
+            return;
+        }
+        for (Song song : songRepository.findAll()) lyricStructureService.reclassifySong(song.getId());
         jdbcTemplate.update("INSERT OR REPLACE INTO app_meta(key, value) VALUES ('lyric.token.migration', ?)", VERSION);
+        writeVersionMetadata();
         if (!songRepository.findAll().isEmpty()) vocabularyService.refreshVocabularyIndexAsync();
+    }
+
+    private void writeVersionMetadata() {
+        jdbcTemplate.update("INSERT OR REPLACE INTO app_meta(key, value) VALUES ('line.classifier.version', ?)",
+                LINE_CLASSIFIER_VERSION);
+        jdbcTemplate.update("INSERT OR REPLACE INTO app_meta(key, value) VALUES ('phrase.matcher.version', ?)",
+                PHRASE_MATCHER_VERSION);
     }
 }

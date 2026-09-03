@@ -1,44 +1,88 @@
 package com.each17.backend.lyric.service;
 
+import com.each17.backend.lyric.entity.LyricClassificationSource;
+import com.each17.backend.lyric.entity.LyricLine;
 import com.each17.backend.lyric.entity.LyricLineType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 @Component
 public class LyricLineClassifier {
-    private static final Pattern SECTION = Pattern.compile(
-            "^\\[(verse|pre-?chorus|chorus|bridge|intro|outro|hook|refrain|interlude|post-?chorus)(?:\\s+[^]]+)?]$",
-            Pattern.CASE_INSENSITIVE
-    );
     private static final Pattern SPEAKER = Pattern.compile("^[A-Z][A-Za-z'-]+(?:\\s+[A-Z][A-Za-z'-]+){0,3}:$");
-    private static final Pattern META = Pattern.compile(
-            "^(produced|written|lyrics|music|composed|performed|composer|arranged|arranger|lyricist)\\s*(by\\b|[:：]).*"
-                    + "|^(词|曲|作词|作曲|编曲|制作人|监制|作曲家|演唱|歌手)\\s*[:：].*",
-            Pattern.CASE_INSENSITIVE);
     private static final Set<String> PERFORMANCE_TERMS = Set.of(
             "guitar solo", "piano solo", "instrumental", "crowd cheering", "spoken", "applause"
     );
 
+    private final SectionLabelClassifier sectionLabelClassifier;
+    private final CreditLineClassifier creditLineClassifier;
+
+    public LyricLineClassifier() {
+        this(new SectionLabelClassifier(), new CreditLineClassifier());
+    }
+
+    @Autowired
+    public LyricLineClassifier(SectionLabelClassifier sectionLabelClassifier, CreditLineClassifier creditLineClassifier) {
+        this.sectionLabelClassifier = sectionLabelClassifier;
+        this.creditLineClassifier = creditLineClassifier;
+    }
+
     public Classification classify(String normalizedText) {
-        if (normalizedText.isEmpty()) return new Classification(LyricLineType.EMPTY, true, 1.0);
-        if (SECTION.matcher(normalizedText).matches()) {
-            return new Classification(LyricLineType.SECTION_LABEL, true, 0.99);
+        return classify(normalizedText, false, true);
+    }
+
+    public Classification classify(String normalizedText, boolean formatMetadata, boolean headerMode) {
+        if (normalizedText == null || normalizedText.isBlank()) {
+            return new Classification(LyricLineType.EMPTY, LyricClassificationSource.RULE, true, 1.0);
+        }
+        if (formatMetadata) {
+            return new Classification(LyricLineType.METADATA, LyricClassificationSource.FORMAT, true, 1.0);
+        }
+        if (sectionLabelClassifier.isSectionLabel(normalizedText)) {
+            return new Classification(LyricLineType.SECTION_LABEL, LyricClassificationSource.RULE, true, 0.99);
         }
 
         String semanticText = stripBrackets(normalizedText).toLowerCase(Locale.ROOT);
         if (PERFORMANCE_TERMS.contains(semanticText) || semanticText.endsWith(" solo")) {
-            return new Classification(LyricLineType.PERFORMANCE_NOTE, true, 0.9);
+            return new Classification(LyricLineType.PERFORMANCE_NOTE, LyricClassificationSource.RULE, true, 0.9);
         }
-        if (META.matcher(normalizedText).matches()) {
-            return new Classification(LyricLineType.META_INFO, true, 0.95);
+        if (headerMode && creditLineClassifier.isCredit(normalizedText)) {
+            return new Classification(LyricLineType.CREDIT, LyricClassificationSource.RULE, true, 0.98);
         }
         if (normalizedText.length() <= 80 && SPEAKER.matcher(normalizedText).matches()) {
-            return new Classification(LyricLineType.SPEAKER_LABEL, true, 0.92);
+            return new Classification(LyricLineType.SPEAKER_LABEL, LyricClassificationSource.RULE, true, 0.92);
         }
-        return new Classification(LyricLineType.LYRIC, false, 0.8);
+        return new Classification(LyricLineType.LYRIC, LyricClassificationSource.DEFAULT, false, 0.8);
+    }
+
+    public List<Classification> classifyLines(List<LyricNormalizer.NormalizedLine> lines) {
+        List<Classification> classifications = new ArrayList<>();
+        boolean headerMode = true;
+        int ordinaryLyricLines = 0;
+        for (LyricNormalizer.NormalizedLine line : lines) {
+            Classification classification = classify(line.normalizedText(), line.formatMetadata(), headerMode);
+            classifications.add(classification);
+            if (classification.lineType() == LyricLineType.LYRIC && hasOrdinaryLyricStructure(line.normalizedText())) {
+                ordinaryLyricLines++;
+                if (ordinaryLyricLines >= 2) headerMode = false;
+            } else if (classification.lineType() != LyricLineType.EMPTY) {
+                ordinaryLyricLines = 0;
+            }
+        }
+        return List.copyOf(classifications);
+    }
+
+    public static boolean isIndexableLine(LyricLine line) {
+        return line != null && line.getLineType() == LyricLineType.LYRIC;
+    }
+
+    private boolean hasOrdinaryLyricStructure(String text) {
+        return text != null && text.matches(".*[A-Za-z].*");
     }
 
     private String stripBrackets(String text) {
@@ -48,5 +92,10 @@ public class LyricLineClassifier {
         return text;
     }
 
-    public record Classification(LyricLineType lineType, boolean hidden, double confidence) {}
+    public record Classification(
+            LyricLineType lineType,
+            LyricClassificationSource source,
+            boolean hidden,
+            double confidence
+    ) {}
 }

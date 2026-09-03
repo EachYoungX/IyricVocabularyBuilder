@@ -50,6 +50,7 @@ public class DataSourceConfig {
             populator.execute(dataSource);
             migrateSongColumns(dataSource);
             migrateVocabularyColumns(dataSource);
+            migrateLyricLineColumns(dataSource);
             migrateLyricTokenColumns(dataSource);
             System.out.println(">>> schema.sql execution finished.");
         } else {
@@ -140,6 +141,20 @@ public class DataSourceConfig {
                 + "ON lyric_tokens(normalized_form)");
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_lyric_tokens_lemma_location "
                 + "ON lyric_tokens(lemma, lyric_line_id, token_position)");
+    }
+
+    private void migrateLyricLineColumns(DataSource dataSource) {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        Set<String> columns = new HashSet<>(jdbcTemplate.query(
+                "PRAGMA table_info(lyric_lines)",
+                (rs, rowNum) -> rs.getString("name")
+        ));
+
+        if (!columns.contains("classification_source")) {
+            jdbcTemplate.execute("ALTER TABLE lyric_lines ADD COLUMN classification_source TEXT NOT NULL DEFAULT 'DEFAULT'");
+        }
+        jdbcTemplate.update("UPDATE lyric_lines SET classification_source = 'DEFAULT' "
+                + "WHERE classification_source IS NULL OR TRIM(classification_source) = ''");
     }
 
     private void addLyricTokenColumnIfMissing(JdbcTemplate jdbcTemplate, Set<String> columns, String name, String definition) {

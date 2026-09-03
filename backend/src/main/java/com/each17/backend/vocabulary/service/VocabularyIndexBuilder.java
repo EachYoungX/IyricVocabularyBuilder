@@ -1,12 +1,13 @@
 package com.each17.backend.vocabulary.service;
 
 import com.each17.backend.dto.WordOccurrenceDto;
+import com.each17.backend.lyric.entity.LyricClassificationSource;
 import com.each17.backend.lyric.entity.LyricLine;
-import com.each17.backend.lyric.entity.LyricLineType;
 import com.each17.backend.lyric.entity.LyricToken;
 import com.each17.backend.lyric.repository.LyricLineRepository;
 import com.each17.backend.lyric.repository.LyricTokenRepository;
 import com.each17.backend.lyric.service.LearningValuePolicy;
+import com.each17.backend.lyric.service.LyricLineClassifier;
 import com.each17.backend.lyric.service.LyricTokenizationService;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.vocabulary.entity.Vocabulary;
@@ -72,7 +73,7 @@ public class VocabularyIndexBuilder {
     }
 
     private boolean shouldIndexLine(LyricLine line) {
-        return line.getLineType() == LyricLineType.LYRIC || line.getLineType() == LyricLineType.UNKNOWN;
+        return LyricLineClassifier.isIndexableLine(line);
     }
 
     private Vocabulary toVocabulary(Map.Entry<String, LemmaIndex> entry) {
@@ -105,7 +106,8 @@ public class VocabularyIndexBuilder {
                     .lineIndex(i)
                     .originalText(splitLines[i])
                     .normalizedText(splitLines[i])
-                    .lineType(LyricLineType.LYRIC)
+                    .lineType(com.each17.backend.lyric.entity.LyricLineType.LYRIC)
+                    .classificationSource(LyricClassificationSource.DEFAULT)
                     .hidden(false)
                     .confidence(0.5)
                     .userOverride(false)

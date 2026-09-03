@@ -4,6 +4,8 @@
 /* eslint-disable */
 export enum LyricLineType {
     LYRIC = 'LYRIC',
+    CREDIT = 'CREDIT',
+    METADATA = 'METADATA',
     SECTION_LABEL = 'SECTION_LABEL',
     SPEAKER_LABEL = 'SPEAKER_LABEL',
     PERFORMANCE_NOTE = 'PERFORMANCE_NOTE',

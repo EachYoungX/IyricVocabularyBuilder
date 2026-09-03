@@ -15,6 +15,7 @@ export { ImportTaskResult } from './models/ImportTaskResult';
 export type { LyricDocument } from './models/LyricDocument';
 export type { LyricImportRequest } from './models/LyricImportRequest';
 export type { LyricLine } from './models/LyricLine';
+export { LyricClassificationSource } from './models/LyricClassificationSource';
 export { LyricLineType } from './models/LyricLineType';
 export type { LyricLineUpdateRequest } from './models/LyricLineUpdateRequest';
 export type { LyricTokenContext } from './models/LyricTokenContext';

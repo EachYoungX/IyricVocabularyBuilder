@@ -5,6 +5,7 @@ import com.each17.backend.common.exception.NotFoundException;
 import com.each17.backend.common.exception.ValidationException;
 import com.each17.backend.lyric.dto.*;
 import com.each17.backend.lyric.entity.LyricLine;
+import com.each17.backend.lyric.entity.LyricClassificationSource;
 import com.each17.backend.lyric.repository.LyricLineRepository;
 import com.each17.backend.lyric.repository.LyricTokenRepository;
 import com.each17.backend.song.entity.Song;
@@ -136,15 +137,17 @@ public class LyricStructureService {
         Song savedSong = songRepository.save(song);
 
         List<LyricLine> lines = new ArrayList<>();
+        List<LyricLineClassifier.Classification> classifications = lyricLineClassifier.classifyLines(normalized.lines());
         for (int index = 0; index < normalized.lines().size(); index++) {
             LyricNormalizer.NormalizedLine normalizedLine = normalized.lines().get(index);
-            LyricLineClassifier.Classification classification = lyricLineClassifier.classify(normalizedLine.normalizedText());
+            LyricLineClassifier.Classification classification = classifications.get(index);
             LyricLine line = LyricLine.builder()
                     .song(savedSong)
                     .lineIndex(index)
                     .originalText(normalizedLine.originalText())
                     .normalizedText(normalizedLine.normalizedText())
                     .lineType(classification.lineType())
+                    .classificationSource(classification.source())
                     .hidden(classification.hidden())
                     .confidence(classification.confidence())
                     .userOverride(false)
@@ -157,6 +160,7 @@ public class LyricStructureService {
                 line.setLineType(override.getLineType());
                 line.setHidden(override.getHidden());
                 line.setConfidence(1.0);
+                line.setClassificationSource(LyricClassificationSource.MANUAL);
                 line.setUserOverride(true);
             }
             lines.add(line);
@@ -175,6 +179,7 @@ public class LyricStructureService {
         if (request.hidden() != null) line.setHidden(request.hidden());
         line.setConfidence(1.0);
         line.setUserOverride(true);
+        line.setClassificationSource(LyricClassificationSource.MANUAL);
         LyricLine savedLine = lyricLineRepository.save(line);
         if (tokenizationService != null) {
             lyricTokenRepository.deleteByLyricLineId(savedLine.getId());
@@ -199,6 +204,38 @@ public class LyricStructureService {
         rebuildSongTokens(song, lines);
     }
 
+    public void reclassifySong(Long songId) {
+        Song song = getSong(songId);
+        List<LyricLine> lines = lyricLineRepository.findBySongIdOrderByLineIndexAsc(songId);
+        if (lines.isEmpty()) {
+            structureSong(song, resolveRawLyrics(song), true);
+            return;
+        }
+
+        List<LyricNormalizer.NormalizedLine> normalizedLines = lines.stream()
+                .map(line -> new LyricNormalizer.NormalizedLine(
+                        line.getOriginalText(),
+                        lyricNormalizer.normalizeLineForStorage(line.getOriginalText()),
+                        LyricNormalizer.isFormatMetadata(line.getOriginalText())))
+                .toList();
+        List<LyricLineClassifier.Classification> classifications = lyricLineClassifier.classifyLines(normalizedLines);
+        for (int index = 0; index < lines.size(); index++) {
+            LyricLine line = lines.get(index);
+            if (line.getClassificationSource() == LyricClassificationSource.MANUAL
+                    || Boolean.TRUE.equals(line.getUserOverride())) {
+                continue;
+            }
+            LyricLineClassifier.Classification classification = classifications.get(index);
+            line.setNormalizedText(normalizedLines.get(index).normalizedText());
+            line.setLineType(classification.lineType());
+            line.setClassificationSource(classification.source());
+            line.setHidden(classification.hidden());
+            line.setConfidence(classification.confidence());
+        }
+        lyricLineRepository.saveAll(lines);
+        rebuildSongTokens(song, lines);
+    }
+
     private Song getSong(Long songId) {
         return songRepository.findById(songId)
                 .orElseThrow(() -> new NotFoundException("Song not found with id: " + songId));
@@ -220,8 +257,7 @@ public class LyricStructureService {
     }
 
     private boolean isTokenizable(LyricLine line) {
-        return line.getLineType() == com.each17.backend.lyric.entity.LyricLineType.LYRIC
-                || line.getLineType() == com.each17.backend.lyric.entity.LyricLineType.UNKNOWN;
+        return LyricLineClassifier.isIndexableLine(line);
     }
 
     private LyricDocumentDto toDocument(Song song, List<LyricLine> lines) {
@@ -234,7 +270,8 @@ public class LyricStructureService {
     private LyricLineDto toLineDto(LyricLine line) {
         return new LyricLineDto(
                 line.getId(), line.getLineIndex(), line.getOriginalText(), line.getNormalizedText(),
-                line.getLineType(), line.getHidden(), line.getConfidence(), line.getUserOverride()
+                line.getLineType(), line.getClassificationSource(), line.getHidden(), line.getConfidence(),
+                line.getUserOverride()
         );
     }
 }

@@ -900,7 +900,11 @@ components:
   schemas:
     LyricLineType:
       type: string
-      enum: [LYRIC, SECTION_LABEL, SPEAKER_LABEL, PERFORMANCE_NOTE, META_INFO, EMPTY, UNKNOWN]
+      enum: [LYRIC, CREDIT, METADATA, SECTION_LABEL, SPEAKER_LABEL, PERFORMANCE_NOTE, META_INFO, EMPTY, UNKNOWN]
+
+    LyricClassificationSource:
+      type: string
+      enum: [FORMAT, RULE, MANUAL, DEFAULT]
 
     LyricLine:
       type: object
@@ -916,6 +920,8 @@ components:
           type: string
         lineType:
           $ref: '#/components/schemas/LyricLineType'
+        classificationSource:
+          $ref: '#/components/schemas/LyricClassificationSource'
         hidden:
           type: boolean
         confidence:
@@ -923,7 +929,7 @@ components:
           format: double
         userOverride:
           type: boolean
-      required: [id, lineIndex, originalText, normalizedText, lineType, hidden, confidence, userOverride]
+      required: [id, lineIndex, originalText, normalizedText, lineType, classificationSource, hidden, confidence, userOverride]
 
     LyricDocument:
       type: object

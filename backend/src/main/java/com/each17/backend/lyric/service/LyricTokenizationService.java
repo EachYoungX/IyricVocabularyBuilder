@@ -23,7 +23,8 @@ public class LyricTokenizationService {
 
     public List<LyricToken> tokenize(LyricLine line) {
         List<LyricToken> tokens = new ArrayList<>();
-        if (line == null || line.getNormalizedText() == null || Boolean.TRUE.equals(line.getHidden())) {
+        if (!LyricLineClassifier.isIndexableLine(line) || line.getNormalizedText() == null
+                || Boolean.TRUE.equals(line.getHidden())) {
             return tokens;
         }
 

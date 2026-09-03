@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS lyric_lines (
                                            original_text   TEXT NOT NULL,
                                            normalized_text TEXT NOT NULL,
                                            line_type       TEXT NOT NULL,
+                                           classification_source TEXT NOT NULL DEFAULT 'DEFAULT',
                                            hidden          INTEGER NOT NULL DEFAULT 0,
                                            confidence      REAL NOT NULL,
                                            user_override   INTEGER NOT NULL DEFAULT 0,

@@ -8,20 +8,37 @@ import com.each17.backend.dictionary.service.PhrasePatternRepository;
 import com.each17.backend.dictionary.service.PhraseRepository;
 import com.each17.backend.dto.PhraseMatchDto;
 import com.each17.backend.lyric.entity.LyricToken;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class PhraseMatcher {
     private static final int MAX_BACKTRACK_BRANCHES = 200;
 
     private final PhraseAnchorRepository anchorRepository;
     private final PhraseRepository phraseRepository;
     private final PhrasePatternRepository patternRepository;
+    private final List<SlotValidator> slotValidators;
+
+    public PhraseMatcher(PhraseAnchorRepository anchorRepository, PhraseRepository phraseRepository,
+                          PhrasePatternRepository patternRepository) {
+        this(anchorRepository, phraseRepository, patternRepository, List.of(
+                new PossessiveSlotValidator(), new ReflexiveSlotValidator(),
+                new PronounSlotValidator(), new GerundSlotValidator()
+        ));
+    }
+
+    @Autowired
+    public PhraseMatcher(PhraseAnchorRepository anchorRepository, PhraseRepository phraseRepository,
+                          PhrasePatternRepository patternRepository, List<SlotValidator> slotValidators) {
+        this.anchorRepository = anchorRepository;
+        this.phraseRepository = phraseRepository;
+        this.patternRepository = patternRepository;
+        this.slotValidators = slotValidators;
+    }
 
     public List<PhraseMatchDto> findMatches(List<LyricToken> tokens) {
         return findMatches(tokens, null);
@@ -39,7 +56,7 @@ public class PhraseMatcher {
             anchors.forEach(anchor -> candidates.putIfAbsent(anchor.phraseId(), anchor));
         }
 
-        List<PhraseMatchDto> matches = new ArrayList<>();
+        List<MatchCandidate> matches = new ArrayList<>();
         for (Map.Entry<Long, PhraseAnchor> candidate : candidates.entrySet()) {
             Optional<PhraseEntry> phrase = phraseRepository.findById(candidate.getKey());
             if (phrase.isEmpty()) continue;
@@ -57,7 +74,7 @@ public class PhraseMatcher {
                     if (end < start || end >= tokens.size()) continue;
                     if (selectedPosition != null && (selectedPosition < start || selectedPosition > end)) continue;
                     if (!containsAnchor(tokens, start, endExclusive, candidate.getValue())) continue;
-                    matches.add(toDto(entry, start, end, tokens));
+                    matches.add(toCandidate(entry, pattern, start, end, tokens));
                 }
             }
         }
@@ -83,9 +100,20 @@ public class PhraseMatcher {
         int remainingMin = minimumTokens(pattern, patternIndex + 1);
         int upper = Math.min(max, tokens.size() - tokenIndex - remainingMin);
         for (int length = min; length <= upper; length++) {
+            if (!isValidSlot(element, tokens, tokenIndex, length)) continue;
             matchPattern(pattern, tokens, patternIndex + 1, tokenIndex + length,
                     branches + 1, ends);
         }
+    }
+
+    private boolean isValidSlot(PhrasePatternToken element, List<LyricToken> tokens, int start, int length) {
+        if ("GAP".equalsIgnoreCase(element.tokenType()) || element.slotHint() == null) return true;
+        List<LyricToken> span = tokens.subList(start, start + length);
+        return slotValidators.stream()
+                .filter(validator -> validator.supports(element.slotHint()))
+                .findFirst()
+                .map(validator -> validator.isValid(span))
+                .orElse(true);
     }
 
     private int minimumTokens(List<PhrasePatternToken> pattern, int from) {
@@ -121,8 +149,9 @@ public class PhraseMatcher {
         return false;
     }
 
-    private PhraseMatchDto toDto(PhraseEntry entry, int start, int end, List<LyricToken> tokens) {
-        return PhraseMatchDto.builder()
+    private MatchCandidate toCandidate(PhraseEntry entry, List<PhrasePatternToken> pattern,
+                                        int start, int end, List<LyricToken> tokens) {
+        PhraseMatchDto dto = PhraseMatchDto.builder()
                 .phraseId(entry.id())
                 .sourcePattern(entry.sourcePattern())
                 .canonicalPattern(entry.canonicalPattern())
@@ -137,24 +166,65 @@ public class PhraseMatcher {
                         .map(LyricToken::getSurfaceForm).collect(Collectors.joining(" ")))
                 .matchPriority(entry.matchPriority())
                 .build();
+        int literalCount = (int) pattern.stream().filter(PhrasePatternToken::isLiteral).count();
+        int hardSlotCount = (int) pattern.stream()
+                .filter(element -> isHardSlot(element.slotHint()))
+                .count();
+        int gapCount = (int) pattern.stream()
+                .filter(element -> "GAP".equalsIgnoreCase(safe(element.tokenType())))
+                .count();
+        int specificity = literalCount * 3 + hardSlotCount * 2
+                + (int) pattern.stream().filter(element -> !element.isLiteral()
+                && !"GAP".equalsIgnoreCase(safe(element.tokenType()))).count();
+        return new MatchCandidate(dto, specificity, literalCount, hardSlotCount, gapCount);
     }
 
-    private List<PhraseMatchDto> removeContainedDuplicates(List<PhraseMatchDto> matches) {
-        return matches.stream()
-                .collect(Collectors.toMap(match -> match.getPhraseId() + ":" + match.getStartTokenPosition() + ":" + match.getEndTokenPosition(),
-                        match -> match, (left, right) -> left))
-                .values().stream()
+    private boolean isHardSlot(String slotHint) {
+        return "POSSESSIVE".equalsIgnoreCase(safe(slotHint))
+                || "REFLEXIVE".equalsIgnoreCase(safe(slotHint))
+                || "PRONOUN".equalsIgnoreCase(safe(slotHint))
+                || "GERUND".equalsIgnoreCase(safe(slotHint));
+    }
+
+    private List<PhraseMatchDto> removeContainedDuplicates(List<MatchCandidate> matches) {
+        Map<String, MatchCandidate> deduplicated = matches.stream()
+                .collect(Collectors.toMap(match -> match.dto().getPhraseId() + ":"
+                                + match.dto().getStartTokenPosition() + ":" + match.dto().getEndTokenPosition(),
+                        match -> match, this::preferCandidate, LinkedHashMap::new));
+        return deduplicated.values().stream()
                 .filter(match -> matches.stream().noneMatch(other ->
-                        !other.getPhraseId().equals(match.getPhraseId())
-                                && other.getStartTokenPosition() <= match.getStartTokenPosition()
-                                && other.getEndTokenPosition() >= match.getEndTokenPosition()
-                                && (other.getEndTokenPosition() - other.getStartTokenPosition())
-                                > (match.getEndTokenPosition() - match.getStartTokenPosition())))
-                .sorted(Comparator.comparingInt(PhraseMatchDto::getStartTokenPosition)
-                        .thenComparing(Comparator.comparingInt(PhraseMatchDto::getEndTokenPosition).reversed())
-                        .thenComparing(Comparator.comparingInt(PhraseMatchDto::getMatchPriority).reversed()))
+                        !other.dto().getPhraseId().equals(match.dto().getPhraseId())
+                                && other.dto().getStartTokenPosition() <= match.dto().getStartTokenPosition()
+                                && other.dto().getEndTokenPosition() >= match.dto().getEndTokenPosition()
+                                && spanLength(other) > spanLength(match)))
+                .sorted(Comparator.comparingInt((MatchCandidate match) -> match.dto().getStartTokenPosition())
+                        .thenComparing(Comparator.comparingInt(this::spanLength).reversed())
+                        .thenComparing(Comparator.comparingInt(MatchCandidate::specificity).reversed())
+                        .thenComparing(Comparator.comparingInt((MatchCandidate match) -> match.dto().getMatchPriority()).reversed())
+                        .thenComparing(Comparator.comparingInt(MatchCandidate::literalCount).reversed())
+                        .thenComparingInt(MatchCandidate::gapCount))
+                .map(MatchCandidate::dto)
                 .toList();
     }
+
+    private MatchCandidate preferCandidate(MatchCandidate left, MatchCandidate right) {
+        return candidateComparator().compare(left, right) >= 0 ? left : right;
+    }
+
+    private Comparator<MatchCandidate> candidateComparator() {
+        return Comparator.comparingInt(MatchCandidate::specificity)
+                .thenComparingInt(this::spanLength)
+                .thenComparingInt(match -> match.dto().getMatchPriority())
+                .thenComparingInt(MatchCandidate::literalCount)
+                .thenComparing(Comparator.comparingInt(MatchCandidate::gapCount).reversed());
+    }
+
+    private int spanLength(MatchCandidate match) {
+        return match.dto().getEndTokenPosition() - match.dto().getStartTokenPosition();
+    }
+
+    private record MatchCandidate(PhraseMatchDto dto, int specificity, int literalCount,
+                                  int hardSlotCount, int gapCount) {}
 
     private String safe(String value) {
         return value == null ? "" : value;
