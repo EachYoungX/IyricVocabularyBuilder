@@ -90,32 +90,35 @@
           </q-card-section>
         </q-card>
 
-        <q-card flat bordered class="settings-card">
-          <q-card-section>
-            <SettingsSectionHeading icon="o_menu_book" :title="t('settingsPage.dictionaryTitle')"
-              :caption="t('settingsPage.dictionaryCaption')" />
-            <div class="row q-col-gutter-md q-mt-sm">
-              <div class="col-12 col-md-6">
-                <SettingsSelect v-model="settings.definitionLanguage" outlined emit-value map-options
-                  :options="definitionLanguageOptions" :label="t('settingsPage.definitionLanguage')"
-                  @update:model-value="persistSettings" />
-              </div>
-              <div class="col-12 col-md-6">
-                <q-option-group v-model="settings.dictionaryDisplay" :options="dictionaryDisplayOptions" type="checkbox"
-                  color="primary" @update:model-value="persistSettings" />
-              </div>
-              <div class="col-12 col-md-6">
-                <q-toggle v-model="settings.lemmaSearch" color="primary" :label="t('settingsPage.lemmaSearch')"
-                  @update:model-value="persistSettings" />
-                <div class="settings-help">{{ t('settingsPage.lemmaSearchHelp') }}</div>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-toggle v-model="settings.phraseDetection" color="primary" :label="t('settingsPage.phraseDetection')"
-                  @update:model-value="persistSettings" />
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <SettingsSection icon="o_menu_book" :title="t('settingsPage.dictionaryDisplaySectionTitle')"
+          :caption="t('settingsPage.dictionaryDisplaySectionCaption')">
+          <SettingRow :title="t('settingsPage.definitionLanguage')">
+            <SettingsSelect v-model="settings.definitionLanguage" class="setting-select" outlined dense emit-value
+              map-options :options="definitionLanguageOptions" :aria-label="t('settingsPage.definitionLanguage')"
+              @update:model-value="persistSettings" />
+          </SettingRow>
+          <SettingRow :title="t('settingsPage.definitionMode')" :description="t('settingsPage.definitionModeHelp')">
+            <q-option-group :model-value="definitionMode" :options="definitionModeOptions" type="radio" inline
+              color="primary" class="definition-mode-options" @update:model-value="setDefinitionMode" />
+          </SettingRow>
+          <SettingRow :title="t('settingsPage.displayContent')" :description="t('settingsPage.displayContentHelp')">
+            <q-option-group :model-value="displayContent" :options="displayContentOptions" type="checkbox" inline
+              color="primary" class="display-content-options" @update:model-value="setDisplayContent" />
+          </SettingRow>
+        </SettingsSection>
+
+        <SettingsSection icon="o_manage_search" :title="t('settingsPage.searchRecognitionSectionTitle')"
+          :caption="t('settingsPage.searchRecognitionSectionCaption')">
+          <SettingRow :title="t('settingsPage.lemmaSearch')" :description="t('settingsPage.lemmaSearchHelp')">
+            <q-toggle v-model="settings.lemmaSearch" color="primary" :aria-label="t('settingsPage.lemmaSearch')"
+              @update:model-value="persistSettings" />
+          </SettingRow>
+          <SettingRow :title="t('settingsPage.phraseDetection')"
+            :description="t('settingsPage.phraseDetectionHelp')">
+            <q-toggle v-model="settings.phraseDetection" color="primary"
+              :aria-label="t('settingsPage.phraseDetection')" @update:model-value="persistSettings" />
+          </SettingRow>
+        </SettingsSection>
 
         <q-card flat bordered class="settings-card">
           <q-card-section>
@@ -167,9 +170,16 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
+import SettingRow from 'components/SettingRow.vue';
+import SettingsSection from 'components/SettingsSection.vue';
 import SettingsSectionHeading from 'components/SettingsSectionHeading.vue';
 import SettingsSelect from 'components/SettingsSelect.vue';
-import { loadAppSettings, saveAppSettings, type AppSettings } from 'src/utils/appSettings';
+import {
+  loadAppSettings,
+  saveAppSettings,
+  type AppSettings,
+  type DictionaryDisplayItem,
+} from 'src/utils/appSettings';
 import {
   applyMotionPreference,
   getStoredMotionPreference,
@@ -221,13 +231,22 @@ const definitionLanguageOptions = computed(() => [
   option('definitionEn', 'EN'),
   option('definitionBilingual', 'BILINGUAL'),
 ]);
-const dictionaryDisplayOptions = computed(() => [
+const definitionModeOptions = computed(() => [
   option('dictBrief', 'BRIEF'),
   option('dictFull', 'FULL'),
+]);
+const displayContentOptions = computed(() => [
   option('dictPhoneticPos', 'PHONETIC_POS'),
   option('dictInflections', 'INFLECTIONS'),
   option('dictLyricContext', 'LYRIC_CONTEXT'),
 ]);
+const definitionMode = computed<'BRIEF' | 'FULL'>(() =>
+  settings.value.dictionaryDisplay.includes('FULL')
+    && !settings.value.dictionaryDisplay.includes('BRIEF') ? 'FULL' : 'BRIEF',
+);
+const displayContent = computed<DictionaryDisplayItem[]>(() => settings.value.dictionaryDisplay.filter((item) =>
+  item === 'PHONETIC_POS' || item === 'INFLECTIONS' || item === 'LYRIC_CONTEXT',
+));
 
 const lowValueExplanationItems = [
   'lowValueFactorFillers',
@@ -252,6 +271,19 @@ function persistSettings() {
 function persistMotion(value: MotionPreference) {
   motionPreference.value = setMotionPreference(value);
   $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.settingsSaved') });
+}
+
+function setDefinitionMode(value: 'BRIEF' | 'FULL') {
+  const content = settings.value.dictionaryDisplay.filter(
+    (item) => item !== 'BRIEF' && item !== 'FULL',
+  );
+  settings.value.dictionaryDisplay = [value, ...content];
+  persistSettings();
+}
+
+function setDisplayContent(value: DictionaryDisplayItem[]) {
+  settings.value.dictionaryDisplay = [definitionMode.value, ...value];
+  persistSettings();
 }
 </script>
 
@@ -283,6 +315,23 @@ function persistMotion(value: MotionPreference) {
   color: var(--lv-ink-soft);
   font-size: 13px;
   line-height: 1.6;
+}
+
+.settings-page :deep(.setting-select) {
+  width: min(300px, 100%);
+}
+
+.settings-page :deep(.definition-mode-options),
+.settings-page :deep(.display-content-options) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 18px;
+}
+
+.settings-page :deep(.definition-mode-options .q-radio),
+.settings-page :deep(.display-content-options .q-checkbox) {
+  margin: 0;
 }
 
 .settings-info {
@@ -339,6 +388,15 @@ function persistMotion(value: MotionPreference) {
 }
 
 @media (max-width: 700px) {
+  .settings-page :deep(.definition-mode-options),
+  .settings-page :deep(.display-content-options) {
+    justify-content: flex-start;
+  }
+
+  .settings-page :deep(.setting-select) {
+    width: 100%;
+  }
+
   .about-grid {
     grid-template-columns: 1fr;
   }
