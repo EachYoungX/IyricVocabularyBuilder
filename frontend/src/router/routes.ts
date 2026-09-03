@@ -27,6 +27,11 @@ const routes: RouteRecordRaw[] = [
         name: 'Settings',
         component: () => import('pages/SettingsPage.vue'),
       },
+      {
+        path: '/data-management',
+        name: 'DataManagement',
+        component: () => import('pages/DataManagementPage.vue'),
+      },
     ],
   },
 

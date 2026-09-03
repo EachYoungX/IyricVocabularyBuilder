@@ -39,13 +39,8 @@
                   @update:model-value="persistSettings" />
               </div>
             </div>
-            <q-expansion-item
-              dense
-              expand-separator
-              class="settings-info q-mt-md"
-              icon="o_help_outline"
-              :label="t('settingsPage.lowValueExplanationTitle')"
-            >
+            <q-expansion-item dense expand-separator class="settings-info q-mt-md" icon="o_help_outline"
+              :label="t('settingsPage.lowValueExplanationTitle')">
               <div class="settings-help q-pa-md">
                 <p>{{ t('settingsPage.lowValueExplanationBody') }}</p>
                 <q-list dense>
@@ -119,51 +114,6 @@
                   @update:model-value="persistSettings" />
               </div>
             </div>
-
-          </q-card-section>
-        </q-card>
-
-        <q-card flat bordered class="settings-card">
-          <q-card-section>
-            <SettingsSectionHeading icon="o_storage" :title="t('settingsPage.dataTitle')"
-              :caption="t('settingsPage.dataCaption')" />
-            <div class="row q-col-gutter-md q-mt-sm">
-              <div v-for="item in dataStats" :key="item.label" class="col-6 col-md-3">
-                <q-card flat bordered class="stat-card">
-                  <div class="stat-value">{{ item.value }}</div>
-                  <div class="stat-label">{{ item.label }}</div>
-                </q-card>
-              </div>
-            </div>
-
-            <div class="row q-col-gutter-md q-mt-md">
-              <div class="col-12 col-md-4">
-                <div class="settings-subhead">{{ t('settingsPage.exportData') }}</div>
-                <q-btn outline no-caps class="settings-action" :loading="exporting"
-                  :label="t('settingsPage.exportCompleteBackup')" @click="exportCompleteBackupJson" />
-                <div class="settings-help q-mt-sm">{{ t('settingsPage.vocabularyToolsMoved') }}</div>
-              </div>
-              <div class="col-12 col-md-4">
-                <div class="settings-subhead">{{ t('settingsPage.importData') }}</div>
-                <q-file v-model="backupFile" outlined dense accept=".json,application/json"
-                  :label="t('settingsPage.chooseBackupFile')" class="q-mb-sm" />
-                <q-banner v-if="backupPreview" rounded class="settings-note q-mb-sm">
-                  {{ backupPreview }}
-                </q-banner>
-                <q-btn outline no-caps class="settings-action" :disable="!backupFile || importing"
-                  :label="t('settingsPage.previewImport')" @click="previewBackupImport" />
-                <q-btn outline no-caps class="settings-action" :disable="!backupFile" :loading="importing"
-                  :label="t('settingsPage.mergeImport')" @click="importBackup('merge')" />
-                <q-btn outline no-caps class="settings-action" :disable="!backupFile" :loading="importing"
-                  :label="t('settingsPage.overwriteImport')" @click="confirmOverwriteSettings" />
-              </div>
-              <div class="col-12 col-md-4">
-                <div class="settings-subhead">{{ t('settingsPage.clearData') }}</div>
-                <q-btn v-for="action in clearActions" :key="action.key" outline no-caps color="negative"
-                  class="settings-action" :label="t(`settingsPage.${action.key}`)"
-                  @click="confirmDanger(action.messageKey, action.action)" />
-              </div>
-            </div>
           </q-card-section>
         </q-card>
 
@@ -214,59 +164,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import SettingsSectionHeading from 'components/SettingsSectionHeading.vue';
 import SettingsSelect from 'components/SettingsSelect.vue';
-import {
-  ImportTaskResult,
-  SongsService,
-  UserVocabularyService,
-  type SongImportRequest,
-  type UserVocabulary,
-  type UserVocabularyStats,
-  type VocabularyStatus,
-} from 'src/services/api';
-import {
-  APP_SETTINGS_STORAGE_KEY,
-  loadAppSettings,
-  normalizeAppSettings,
-  saveAppSettings,
-  type AppSettings,
-} from 'src/utils/appSettings';
+import { loadAppSettings, saveAppSettings, type AppSettings } from 'src/utils/appSettings';
 import {
   applyMotionPreference,
   getStoredMotionPreference,
-  MOTION_STORAGE_KEY,
   setMotionPreference,
   type MotionPreference,
 } from 'src/utils/motionPreference';
-import {
-  backupSongs,
-  backupVocabulary,
-  downloadTextFile,
-  timestampForFilename,
-  type BackupPayload,
-  type BackupVocabularyItem,
-} from 'src/utils/settingsDataTransfer';
 
-type Option<T extends string | boolean = string> = {
-  label: string;
-  value: T;
-};
+type Option<T extends string | boolean = string> = { label: string; value: T };
 
 const { t } = useI18n();
 const $q = useQuasar();
-
 const settings = ref<AppSettings>(loadAppSettings());
 const motionPreference = ref<MotionPreference>(getStoredMotionPreference() ?? applyMotionPreference());
-const songCount = ref<number | null>(null);
-const vocabularyStats = ref<UserVocabularyStats | null>(null);
-const backupFile = ref<File | null>(null);
-const backupPreview = ref('');
-const exporting = ref(false);
-const importing = ref(false);
 
 const option = <T extends string | boolean>(key: string, value: T): Option<T> => ({
   label: t(`settingsPage.${key}`),
@@ -281,10 +197,7 @@ const themeOptions = computed(() => [
   option('themeMidnightDark', 'midnight-sail-dark'),
 ]);
 const motionOptions = computed(() => [option('motionOn', 'on'), option('motionOff', 'off')]);
-const newWordStatusOptions = computed(() => [
-  option('newWordNew', 'NEW'),
-  option('newWordLearning', 'LEARNING'),
-]);
+const newWordStatusOptions = computed(() => [option('newWordNew', 'NEW'), option('newWordLearning', 'LEARNING')]);
 const lowValueOptions = computed(() => [
   option('lowValueQueryOnly', 'QUERY_ONLY'),
   option('lowValueNormal', 'NORMAL'),
@@ -297,10 +210,7 @@ const roleLabelOptions = computed(() => [
   option('roleKeep', 'KEEP_VISIBLE'),
   option('roleConfirm', 'CONFIRM_EACH_IMPORT'),
 ]);
-const repeatedChorusOptions = computed(() => [
-  option('chorusKeep', 'KEEP_ALL'),
-  option('chorusDedupe', 'DEDUP_LEARNING_STATS'),
-]);
+const repeatedChorusOptions = computed(() => [option('chorusKeep', 'KEEP_ALL'), option('chorusDedupe', 'DEDUP_LEARNING_STATS')]);
 const fillerWordOptions = computed(() => [
   option('fillerNotRecommended', 'NOT_RECOMMENDED'),
   option('fillerNormal', 'NORMAL'),
@@ -325,12 +235,6 @@ const lowValueExplanationItems = [
   'lowValueFactorRepeated',
   'lowValueStillSearchable',
 ];
-const clearActions = [
-  { key: 'clearSearchHistory', messageKey: 'clearSearchHistoryImpact', action: clearSearchHistory },
-  { key: 'clearLocalCache', messageKey: 'clearLocalCacheImpact', action: clearLocalCache },
-  { key: 'deleteAllSongs', messageKey: 'deleteAllSongsImpact', action: deleteAllSongs },
-  { key: 'deleteAccountData', messageKey: 'deleteAccountDataImpact', action: deleteAccountAndAllData },
-];
 const privacyItems = [
   'lyricsUserImported',
   'noLyricCrawler',
@@ -339,14 +243,6 @@ const privacyItems = [
   'localStorageNotice',
   'exportDeleteNotice',
 ];
-
-const dataStats = computed(() => [
-  { label: t('settingsPage.importedSongsCount'), value: songCount.value ?? '--' },
-  { label: t('settingsPage.savedWordsCount'), value: vocabularyStats.value?.totalCount ?? '--' },
-  { label: t('settingsPage.learningWordsStat'), value: vocabularyStats.value?.learningCount ?? '--' },
-  { label: t('settingsPage.masteredWordsStat'), value: vocabularyStats.value?.masteredCount ?? '--' },
-  { label: t('settingsPage.localDataSize'), value: estimateLocalStorageSize() },
-]);
 
 function persistSettings() {
   saveAppSettings(settings.value);
@@ -357,259 +253,6 @@ function persistMotion(value: MotionPreference) {
   motionPreference.value = setMotionPreference(value);
   $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.settingsSaved') });
 }
-
-function buildBackupPayload(
-  songs: Awaited<ReturnType<typeof SongsService.getAllSongs>>,
-  vocabulary: Awaited<ReturnType<typeof UserVocabularyService.listUserVocabularyWords>>,
-  stats: UserVocabularyStats | null,
-) {
-  return {
-    schemaVersion: 1,
-    exportedAt: new Date().toISOString(),
-    app: {
-      name: 'Lyric Vocabulary Builder',
-      version: '0.0.1',
-    },
-    settings: settings.value,
-    motionPreference: motionPreference.value,
-    stats,
-    songs,
-    vocabulary,
-  };
-}
-
-async function exportCompleteBackupJson() {
-  exporting.value = true;
-  try {
-    const [songs, vocabulary, stats] = await Promise.all([
-      SongsService.getAllSongs(),
-      UserVocabularyService.listUserVocabularyWords(),
-      UserVocabularyService.getUserVocabularyStats().catch(() => null),
-    ]);
-    downloadTextFile(
-      `lyric-vocabulary-backup-${timestampForFilename()}.json`,
-      JSON.stringify(buildBackupPayload(songs, vocabulary, stats), null, 2),
-      'application/json;charset=utf-8',
-    );
-    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.exportSuccess') });
-  } catch {
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.exportFailed') });
-  } finally {
-    exporting.value = false;
-  }
-}
-
-async function readBackupFile() {
-  if (!backupFile.value) return null;
-  try {
-    const parsed: unknown = JSON.parse(await backupFile.value.text());
-    if (typeof parsed !== 'object' || parsed === null) throw new Error('Invalid backup');
-    return parsed as BackupPayload;
-  } catch {
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.importPreviewFailed') });
-    return null;
-  }
-}
-
-async function previewBackupImport() {
-  const backup = await readBackupFile();
-  if (!backup) return;
-  backupPreview.value = t('settingsPage.importPreviewSummary', {
-    exportedAt: backup.exportedAt ?? t('unknown'),
-    songs: backup.songs?.length ?? 0,
-    vocabulary: backup.vocabulary?.length ?? 0,
-    hasSettings: backup.settings ? t('yes') : t('no'),
-  });
-}
-
-function applyImportedPreferences(backup: BackupPayload, replace = false) {
-  const importedSettings = normalizeAppSettings(backup.settings);
-  if (!importedSettings && !backup.motionPreference) {
-    return false;
-  }
-
-  if (importedSettings) {
-    settings.value = replace ? importedSettings : { ...settings.value, ...importedSettings };
-    saveAppSettings(settings.value);
-  }
-
-  if (backup.motionPreference === 'on' || backup.motionPreference === 'off') {
-    motionPreference.value = setMotionPreference(backup.motionPreference);
-  }
-
-  return true;
-}
-
-async function importBackup(mode: 'merge' | 'overwrite') {
-  const backup = await readBackupFile();
-  if (!backup) return;
-  importing.value = true;
-  try {
-    if (mode === 'overwrite') {
-      await deleteAllSongsData();
-      await UserVocabularyService.clearUserVocabularyWords();
-    }
-
-    const preferencesApplied = applyImportedPreferences(backup, mode === 'overwrite');
-    const songResult = await importSongsFromBackup(backupSongs(backup));
-    const vocabularyCount = await importVocabularyFromBackup(backupVocabulary(backup));
-    resetStatsAfterDataChange();
-
-    $q.notify({
-      type: songResult.failedCount > 0 ? 'warning' : 'positive',
-      position: 'top-right',
-      message: t('settingsPage.importBackupSuccess', {
-        songs: songResult.successCount,
-        failedSongs: songResult.failedCount,
-        vocabulary: vocabularyCount,
-        settings: preferencesApplied ? t('yes') : t('no'),
-      }),
-    });
-  } catch (error) {
-    console.error('Failed to import backup:', error);
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.importBackupFailed') });
-  } finally {
-    importing.value = false;
-  }
-}
-
-async function confirmOverwriteSettings() {
-  const backup = await readBackupFile();
-  if (!backup) return;
-  $q.dialog({
-    title: t('settingsPage.highRiskConfirmTitle'),
-    message: t('settingsPage.overwriteSettingsImpact'),
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    void importBackup('overwrite');
-  });
-}
-
-async function importSongsFromBackup(songs: SongImportRequest[]) {
-  if (songs.length === 0) return { successCount: 0, failedCount: 0 };
-  const task = await SongsService.importSongsAsync(songs);
-  for (let index = 0; index < 30; index += 1) {
-    const result = await SongsService.getImportTaskResult(task.taskId);
-    if (result.status === ImportTaskResult.status.COMPLETED || result.status === ImportTaskResult.status.FAILED) {
-      return {
-        successCount: result.successCount,
-        failedCount: result.failedCount,
-      };
-    }
-    await delay(500);
-  }
-  return { successCount: 0, failedCount: songs.length };
-}
-
-async function importVocabularyFromBackup(vocabulary: BackupVocabularyItem[]) {
-  let imported = 0;
-  for (const word of vocabulary) {
-    const request: { lemma: string; note?: string | null } = { lemma: word.lemma };
-    if (word.note !== undefined) request.note = word.note;
-    const saved = await UserVocabularyService.addUserVocabularyWord(request);
-    await restoreVocabularyState(saved, word);
-    imported += 1;
-  }
-  return imported;
-}
-
-async function restoreVocabularyState(saved: UserVocabulary, item: BackupVocabularyItem) {
-  if (!item.status && item.masteryScore === undefined && item.note === undefined) return;
-  const request: { status?: VocabularyStatus; masteryScore?: number; note?: string | null } = {};
-  if (item.status) request.status = item.status;
-  if (item.masteryScore !== undefined) request.masteryScore = item.masteryScore;
-  if (item.note !== undefined) request.note = item.note;
-  await UserVocabularyService.updateUserVocabularyWord(saved.id, request);
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-function resetStatsAfterDataChange() {
-  void loadSettingsData();
-}
-
-function clearSearchHistory() {
-  window.localStorage.removeItem('lv-search-history');
-  window.sessionStorage.removeItem('lv-search-history');
-  $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
-}
-
-function clearLocalCache() {
-  window.sessionStorage.clear();
-  $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
-}
-
-async function deleteAllSongs() {
-  try {
-    await deleteAllSongsData();
-    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
-    resetStatsAfterDataChange();
-  } catch {
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.clearFailed') });
-  }
-}
-
-async function deleteAllSongsData() {
-  const songs = await SongsService.getAllSongs();
-  if (songs.length > 0) {
-    await SongsService.deleteSongsBatch(songs.map((song) => song.id));
-  }
-}
-
-async function deleteLearningRecordsData() {
-  await UserVocabularyService.clearUserVocabularyWords();
-}
-
-async function deleteAccountAndAllData() {
-  try {
-    await deleteAllSongsData();
-    await deleteLearningRecordsData();
-    window.localStorage.removeItem(APP_SETTINGS_STORAGE_KEY);
-    window.localStorage.removeItem(MOTION_STORAGE_KEY);
-    window.localStorage.removeItem('app-locale');
-    window.sessionStorage.clear();
-    settings.value = loadAppSettings();
-    motionPreference.value = applyMotionPreference();
-    $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
-    resetStatsAfterDataChange();
-  } catch {
-    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.clearFailed') });
-  }
-}
-
-function confirmDanger(messageKey: string, action: () => void | Promise<void>) {
-  $q.dialog({
-    title: t('settingsPage.highRiskConfirmTitle'),
-    message: `${t(`settingsPage.${messageKey}`)}\n\n${t('settingsPage.highRiskConfirmFootnote')}`,
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    void action();
-  });
-}
-
-function estimateLocalStorageSize() {
-  const bytes = Object.entries(window.localStorage).reduce((total, [key, value]) => total + key.length + value.length, 0) * 2;
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-async function loadSettingsData() {
-  const [songs, stats] = await Promise.all([
-      SongsService.getAllSongs().catch(() => null),
-      UserVocabularyService.getUserVocabularyStats().catch(() => null),
-  ]);
-  songCount.value = songs?.length ?? null;
-  vocabularyStats.value = stats;
-}
-
-onMounted(() => {
-  void loadSettingsData();
-});
 </script>
 
 <style scoped lang="scss">
@@ -618,8 +261,8 @@ onMounted(() => {
 }
 
 .settings-title {
-  color: var(--lv-ink);
   margin: 0;
+  color: var(--lv-ink);
   font-size: clamp(34px, 6vw, 58px);
   line-height: 1;
 }
@@ -630,7 +273,6 @@ onMounted(() => {
 }
 
 .settings-card,
-.stat-card,
 .settings-list {
   background: var(--lv-surface-solid);
   border-color: var(--lv-line);
@@ -643,12 +285,6 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-.settings-note {
-  color: var(--lv-ink-soft);
-  background: var(--lv-accent-soft);
-  border: 1px solid var(--lv-line);
-}
-
 .settings-info {
   background: var(--lv-surface);
   border: 1px solid var(--lv-line);
@@ -657,34 +293,6 @@ onMounted(() => {
 
 .settings-info p {
   margin: 0 0 8px;
-}
-
-.settings-subhead {
-  color: var(--lv-ink);
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.stat-card {
-  padding: 16px;
-}
-
-.stat-value {
-  color: var(--lv-ink);
-  font-family: var(--lv-font-serif);
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.stat-label {
-  color: var(--lv-ink-soft);
-  font-size: 12px;
-}
-
-.settings-action {
-  width: 100%;
-  justify-content: flex-start;
-  margin-bottom: 8px;
 }
 
 .about-grid {
@@ -722,8 +330,8 @@ onMounted(() => {
 }
 
 .about-value {
-  color: var(--lv-ink);
   margin-top: 10px;
+  color: var(--lv-ink);
   font-size: clamp(18px, 2.4vw, 23px);
   font-weight: 600;
   line-height: 1.35;
