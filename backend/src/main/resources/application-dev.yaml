@@ -27,11 +27,11 @@ spring:
 # CUSTOM APPLICATION CONFIGURATION
 # ===============================================
 app:
-  # --- 外部词典 (第二) 数据源；词典始终由运行环境单独提供 ---
+  # --- 开发环境使用外部词典；词典文件不打包进应用 ---
   dictionary:
-    enabled: ${APP_DICTIONARY_ENABLED:false}
+    enabled: ${APP_DICTIONARY_ENABLED:true}
     datasource:
-      url: "${APP_DICTIONARY_DB_URL:jdbc:sqlite::memory:}"
+      url: "${APP_DICTIONARY_DB_URL:jdbc:sqlite:/home/each/Workspace/Development/Projects/FullStackProjects/LyricVocabularyDictionary/release/lyric-dictionary.sqlite}"
       driver-class-name: org.sqlite.JDBC
 
 # --- 自定义配置 ---

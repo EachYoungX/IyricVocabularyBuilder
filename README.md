@@ -73,7 +73,7 @@ The development profile uses a local SQLite database:
 backend/data/app_data.db
 ```
 
-If the database does not exist, the backend initializes it from `schema.sql` and applies the required lightweight migrations. The default runtime is no-dictionary mode. Provide a dictionary separately through environment configuration when needed.
+If the database does not exist, the backend initializes it from `schema.sql` and applies the required lightweight migrations. The development profile points to the external dictionary database used by this workspace; the dictionary file remains outside this repository and is not bundled into the application package. Provide `APP_DICTIONARY_DB_URL` to override the path or `APP_DICTIONARY_ENABLED=false` to disable lookup.
 
 Optional dictionary override:
 

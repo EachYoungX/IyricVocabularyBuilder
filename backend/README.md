@@ -31,7 +31,7 @@ src/main/resources/schema.sql
 
 The backend does not bundle dictionary data. Phrase source data and dictionary releases are maintained in the independent `LyricVocabularyDictionary` repository and supplied to a runtime separately.
 
-The default runtime has dictionary lookup disabled. Set `APP_DICTIONARY_ENABLED=true` and provide `APP_DICTIONARY_DB_URL` with an external SQLite JDBC URL to enable it. Set the `no-dictionary` Spring profile for an explicit runtime without dictionary data.
+The development profile points to the external dictionary database used by this workspace. The dictionary file remains outside this repository and is not bundled into the application package. Set `APP_DICTIONARY_DB_URL` to override the path, or set `APP_DICTIONARY_ENABLED=false` to disable lookup. Set the `no-dictionary` Spring profile for an explicit runtime without dictionary data.
 
 ## Main Domains
 
