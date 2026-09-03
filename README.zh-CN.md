@@ -18,7 +18,7 @@ Lyric Vocabulary Builder 是一个面向中文母语者的英文歌词词汇学�
 - **可恢复的清洗结果**：保留原始歌词、标准化歌词、行分类和用户修正，不做不可逆静默删除。
 - **跨歌曲 lemma 搜索**：`running`、`ran`、`runs` 等词形可归并到 `run`。
 - **歌词语境学习**：单词不是孤立背诵，而是在真实歌词行中出现。
-- **离线词典整合**：开发环境保留本地 ECDICT SQLite 副本，短语词库由附属项目单独维护，也支持无词库运行。
+- **可选外部词典整合**：词典由运行环境单独提供，主项目不随包携带任何词库，也支持无词库运行。
 - **个人词库闭环**：支持加入单词、更新学习状态、记录熟悉度、查看统计和待复习词。
 - **中文学习者友好**：产品文案、边缘处理和公开说明都围绕“中文用户用英文歌学英文”的定位。
 
@@ -39,7 +39,7 @@ Lyric Vocabulary Builder 是一个面向中文母语者的英文歌词词汇学�
 |---|---|
 | 前端 | Vue 3, Quasar 2, TypeScript, Pinia, Vue Router, Axios |
 | 后端 | Java 25, Spring Boot 3.5, Spring Web, Spring Data JPA |
-| 数据库 | SQLite 用户数据库 + 本地 ECDICT SQLite 词典 |
+| 数据库 | SQLite 用户数据库 + 可选外部 SQLite 词典 |
 | API 契约 | OpenAPI 3.1, generated TypeScript client |
 | 工具链 | Maven Wrapper, pnpm, ESLint, Vite |
 
@@ -50,7 +50,7 @@ Lyric Vocabulary Builder 是一个面向中文母语者的英文歌词词汇学�
 - 学习者通过 Vue 和 Quasar 前端导入歌曲、浏览词汇、管理歌词并维护个人词库状态。
 - 前端通过 OpenAPI 生成的 TypeScript 客户端调用 Spring Boot API。
 - 后端把歌曲、结构化歌词行、词汇 token 和个人学习记录保存在本地 SQLite 用户数据库中。
-- 开发环境的词典查询直接读取本地 ECDICT SQLite，词汇索引构建器则从用户导入的歌词中生成可搜索的 lemma 词条；发布版或外部 SQLite 可通过配置覆盖默认路径。
+- 词汇索引构建器从用户导入的歌词中生成可搜索的 lemma 词条；词典查询仅在运行环境通过外部 SQLite 配置后启用，主项目不打包词典数据。
 
 ## 本地运行
 
@@ -75,7 +75,7 @@ backend/data/app_data.db
 
 如果数据库不存在，后端会按 `schema.sql` 初始化，并执行必要的轻量迁移。
 
-开发环境默认读取 `backend/src/main/resources/dictionary.sqlite`，该文件被 Git 忽略，可从附属词库项目的发布结果刷新。需要覆盖词典路径时设置：
+默认以无词库模式运行。需要使用外部词典时，在运行环境设置：
 
 ```text
 APP_DICTIONARY_ENABLED=true
@@ -157,15 +157,15 @@ pnpm build
 
 3. 将 `frontend/dist/spa` 作为静态站点部署，并把 API 请求转发到后端。
 
-公开部署前建议明确配置前端 API base URL 或反向代理规则，保持 `backend/data/app_data.db` 不进入仓库，不发布用户导入的歌词或学习数据；如果发布带词库版本，应同时保留词典来源和许可证说明。
+公开部署前建议明确配置前端 API base URL 或反向代理规则，保持 `backend/data/app_data.db` 不进入仓库，不发布用户导入的歌词或学习数据；词典文件应由部署环境单独管理，不应被重新打包进本项目发布物。
 
 ## 数据与版权边界
 
 - 本仓库不包含、不分发歌词库。
 - 用户仅应导入自己拥有使用权或有权处理的歌词文本。
 - 应用会把用户导入的歌词、清洗结果、词汇索引和个人学习状态保存到本地数据库。
-- 词典源数据和发布包由附属项目 `LyricVocabularyDictionary` 维护；主项目保留本地 ECDICT 运行副本，其中 ECDICT 来源为 [ECDICT](https://github.com/skywind3000/ECDICT)，许可证为 MIT License。
-- 应用内提供词典来源页面，便于未来公开展示时保持数据来源透明。
+- 词典源数据和发布包由独立的 `LyricVocabularyDictionary` 项目维护；本项目不包含、不分发词典文件。用户自行配置外部词典时，应自行核实其来源、许可证和使用权限。
+- 本项目不对外部词典数据的准确性、完整性、授权状态或适用性作任何保证。
 
 ## 项目结构
 
@@ -173,7 +173,7 @@ pnpm build
 .
 ├── backend/                 # Spring Boot API
 │   ├── src/main/java/       # domain code
-│   ├── src/main/resources/  # schema, OpenAPI, runtime configuration
+│   ├── src/main/resources/  # schema, OpenAPI, runtime configuration（不含词典）
 │   └── data/                # local runtime database, ignored by git
 ├── frontend/                # Quasar Vue app
 │   ├── src/components/
@@ -185,7 +185,7 @@ pnpm build
 └── README.md                # 默认英文 README
 ```
 
-2ndLA 原始词库、初步整理 JSON、翻译批次和短语发布版 SQLite 均不在本仓库维护；本地 ECDICT SQLite 仅作为被 Git 忽略的开发运行文件保留。
+2ndLA 原始词库、初步整理 JSON、翻译批次和短语发布版 SQLite 均不在本仓库维护。词典项目与本项目独立发布；本项目只通过 `APP_DICTIONARY_DB_URL` 接入运行环境提供的外部 SQLite 文件。
 
 ## 当前状态
 

@@ -576,21 +576,6 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /api/dictionary/source:
-    get:
-      tags: [Dictionary]
-      summary: 获取词典来源与授权信息 / Get dictionary source and license metadata
-      operationId: getDictionarySource
-      responses:
-        '200':
-          description: 词典来源与授权信息 / Dictionary source and license metadata
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DictionarySource'
-
   /api/dictionary/{word}:
     get:
       tags: [Dictionary]
@@ -1506,33 +1491,6 @@ components:
         canonicalPhrase: {type: string}
         definition: {type: string}
         createdAt: {type: string}
-
-    DictionarySource:
-      type: object
-      properties:
-        sourceName:
-          type: string
-          example: ECDICT
-        sourceUrl:
-          type: string
-          format: uri
-          example: https://github.com/skywind3000/ECDICT
-        dictionaryVersion:
-          type: string
-        importedAt:
-          type: string
-        licenseName:
-          type: string
-          example: MIT License
-        requiresAttribution:
-          type: boolean
-        commercialUseAllowed:
-          type: boolean
-        redistributionAllowed:
-          type: boolean
-        attributionText:
-          type: string
-      required: [sourceName, licenseName, attributionText]
 
     TaskCreationResponse:
       type: object

@@ -29,9 +29,9 @@ This runtime database is ignored by git. If the database does not exist, the bac
 src/main/resources/schema.sql
 ```
 
-Development keeps a local, Git-ignored ECDICT SQLite copy at `src/main/resources/dictionary.sqlite`. Phrase source data and refreshed phrase releases are maintained in the companion `LyricVocabularyDictionary` repository.
+The backend does not bundle dictionary data. Phrase source data and dictionary releases are maintained in the independent `LyricVocabularyDictionary` repository and supplied to a runtime separately.
 
-Set `APP_DICTIONARY_DB_URL` to override the local dictionary with another SQLite JDBC URL. Set the `no-dictionary` Spring profile for a runtime without dictionary data.
+The default runtime has dictionary lookup disabled. Set `APP_DICTIONARY_ENABLED=true` and provide `APP_DICTIONARY_DB_URL` with an external SQLite JDBC URL to enable it. Set the `no-dictionary` Spring profile for an explicit runtime without dictionary data.
 
 ## Main Domains
 
@@ -39,7 +39,7 @@ Set `APP_DICTIONARY_DB_URL` to override the local dictionary with another SQLite
 song/          songs and async import tasks
 lyric/         normalization, lyric lines, tokens, line corrections
 vocabulary/    lemma index, word occurrences, personal vocabulary, review queue
-dictionary/    offline dictionary lookup and source metadata
+dictionary/    optional offline dictionary lookup
 common/        response envelope, errors, shared infrastructure
 config/        SQLite datasources and migrations
 ```
@@ -87,7 +87,6 @@ GET    /api/user-vocabulary/stats
 GET    /api/user-vocabulary/review
 
 GET    /api/dictionary/{word}
-GET    /api/dictionary/source
 ```
 
 ## Local Development
@@ -109,14 +108,6 @@ http://localhost:8080
 .\mvnw.cmd clean package
 ```
 
-## Dictionary Source
-
-Phrase releases are maintained outside this repository. Word data comes from [ECDICT](https://github.com/skywind3000/ECDICT) under the MIT License, and phrase data comes from [2ndLA/english-phrases](https://github.com/2ndLA/english-phrases) under CC BY-SA 4.0. Both sources are returned separately by:
-
-```text
-GET /api/dictionary/source
-```
-
 ## Copyright Boundary
 
-This backend does not ship a lyric corpus. It stores only lyrics imported by the user and should be used with lyrics the user has the right to process.
+This backend does not ship a lyric corpus or dictionary data. It stores only lyrics imported by the user and should be used with lyrics the user has the right to process. Externally supplied dictionary files remain the responsibility of the runtime operator.

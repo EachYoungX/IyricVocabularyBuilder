@@ -2,8 +2,6 @@ package com.each17.backend.dictionary.service;
 
 import com.each17.backend.common.exception.DictionaryNotFoundException;
 import com.each17.backend.dto.DictionaryEntryDto;
-import com.each17.backend.dto.DictionarySourceDto;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -14,7 +12,6 @@ import org.springframework.stereotype.Service;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,23 +20,13 @@ public class DictionaryServiceImpl implements DictionaryService {
     private static final int MAX_CACHE_SIZE = 2_000;
 
     private final JdbcTemplate jdbcTemplate;
-    private final DictionaryMetadataRepository metadataRepository;
     private final Map<String, DictionaryEntryDto> lookupCache = new ConcurrentHashMap<>();
 
-    @Value("${app.dictionary.enabled:true}")
+    @Value("${app.dictionary.enabled:false}")
     private boolean enabled = true;
 
     public DictionaryServiceImpl(@Qualifier("dictionaryJdbcTemplate") JdbcTemplate jdbcTemplate) {
-        this(jdbcTemplate, null);
-    }
-
-    @Autowired
-    public DictionaryServiceImpl(
-            @Qualifier("dictionaryJdbcTemplate") JdbcTemplate jdbcTemplate,
-            DictionaryMetadataRepository metadataRepository
-    ) {
         this.jdbcTemplate = jdbcTemplate;
-        this.metadataRepository = metadataRepository;
     }
 
     private static final RowMapper<DictionaryEntryDto> ROW_MAPPER = new DictionaryEntryRowMapper();
@@ -105,46 +92,6 @@ public class DictionaryServiceImpl implements DictionaryService {
         String normalized = word.trim().toLowerCase();
         if (normalized.isBlank()) throw new DictionaryNotFoundException(word);
         return normalized;
-    }
-
-    @Override
-    public List<DictionarySourceDto> getSourceInfo() {
-        if (!enabled) {
-            return List.of(DictionarySourceDto.builder()
-                    .sourceName("NONE")
-                    .dictionaryVersion("disabled")
-                    .requiresAttribution(false)
-                    .commercialUseAllowed(false)
-                    .redistributionAllowed(false)
-                    .attributionText("No dictionary is configured for this runtime.")
-                    .build());
-        }
-        Map<String, String> meta = metadataRepository == null ? Map.of() : metadataRepository.findAll();
-        String importedAt = meta.getOrDefault("build.time", "unknown");
-        return List.of(
-                DictionarySourceDto.builder()
-                        .sourceName("ECDICT")
-                        .sourceUrl("https://github.com/skywind3000/ECDICT")
-                        .dictionaryVersion(meta.getOrDefault("ecdict.commit", "unknown"))
-                        .importedAt(importedAt)
-                        .licenseName("MIT License")
-                        .requiresAttribution(true)
-                        .commercialUseAllowed(true)
-                        .redistributionAllowed(true)
-                        .attributionText("Word dictionary source used for word lookup.")
-                        .build(),
-                DictionarySourceDto.builder()
-                        .sourceName("2ndLA/english-phrases")
-                        .sourceUrl("https://github.com/2ndLA/english-phrases")
-                        .dictionaryVersion(meta.getOrDefault("2ndla.commit", "unknown"))
-                        .importedAt(importedAt)
-                        .licenseName("CC BY-SA 4.0")
-                        .requiresAttribution(true)
-                        .commercialUseAllowed(true)
-                        .redistributionAllowed(true)
-                        .attributionText("Phrase dictionary source used for phrase matching.")
-                        .build()
-        );
     }
 
     private static final class DictionaryEntryRowMapper implements RowMapper<DictionaryEntryDto> {

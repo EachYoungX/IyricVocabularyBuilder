@@ -61,7 +61,7 @@ spring:
 # --- 自定义配置 ---
 app:
   dictionary:
-    # 词典数据库由附属词库项目发布，通过环境变量注入 JDBC URL
+    # 词典数据库由独立项目发布，通过环境变量注入 JDBC URL；主项目不携带词典文件
     enabled: false
     datasource:
       url: "jdbc:sqlite:/absolute/path/lyric-dictionary.sqlite"

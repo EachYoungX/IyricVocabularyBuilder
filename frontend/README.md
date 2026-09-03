@@ -19,7 +19,7 @@ This frontend is the browser UI for importing English lyrics, exploring vocabula
 
 - `IndexPage.vue`: vocabulary workspace, occurrence list, dictionary panel, personal vocabulary stats, review queue.
 - `SongsManagerPage.vue`: songs library, edit form, batch delete, structured lyric dialog.
-- `DictionarySourcePage.vue`: separate word/phrase dictionary source and license transparency page.
+- Dictionary data is supplied externally by the runtime; the frontend does not expose or package dictionary source metadata.
 - `SongImportDialog.vue`: JSON/TXT/LRC/SRT import, import preview, lyric summary, async import progress.
 - `LyricStructureDialog.vue`: raw/normalized lyric comparison and per-line correction.
 

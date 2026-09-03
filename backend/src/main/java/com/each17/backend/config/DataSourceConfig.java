@@ -187,7 +187,7 @@ public class DataSourceConfig {
     }
 
     /**
-     * 手动配置第二数据源 (dictionary.sqlite)。
+     * 手动配置由运行环境单独提供的只读词典数据源。
      */
     @Bean(name = "dictionaryDataSource")
     public DataSource dictionaryDataSource(

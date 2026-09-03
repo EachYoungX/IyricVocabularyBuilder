@@ -27,11 +27,11 @@ spring:
 # CUSTOM APPLICATION CONFIGURATION
 # ===============================================
 app:
-  # --- 外部词典 (第二) 数据源 ---
+  # --- 外部词典 (第二) 数据源；词典始终由运行环境单独提供 ---
   dictionary:
-    enabled: ${APP_DICTIONARY_ENABLED:true}
+    enabled: ${APP_DICTIONARY_ENABLED:false}
     datasource:
-      url: "${APP_DICTIONARY_DB_URL:jdbc:sqlite::resource:dictionary.sqlite}"
+      url: "${APP_DICTIONARY_DB_URL:jdbc:sqlite::memory:}"
       driver-class-name: org.sqlite.JDBC
 
 # --- 自定义配置 ---

@@ -27,10 +27,6 @@ const routes: RouteRecordRaw[] = [
         name: 'Settings',
         component: () => import('pages/SettingsPage.vue'),
       },
-      {
-        path: '/dictionary-source',
-        redirect: '/settings',
-      },
     ],
   },
 

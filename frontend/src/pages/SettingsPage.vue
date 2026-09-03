@@ -120,29 +120,6 @@
               </div>
             </div>
 
-            <div class="dictionary-source-block">
-              <div class="settings-subhead">{{ t('dictionarySourceTitle') }}</div>
-              <div v-if="dictionaryLoading" class="text-center q-py-md">
-                <q-spinner color="primary" size="28px" />
-              </div>
-              <div v-else-if="dictionarySources.length" class="dictionary-source-grid">
-                <div v-for="source in dictionarySources" :key="source.sourceName" class="dictionary-source-item">
-                  <div class="source-row">
-                    <span>{{ t('dictionarySourceName') }}</span>
-                    <strong>{{ source.sourceName }}</strong>
-                  </div>
-                  <a v-if="source.sourceUrl" class="source-link" :href="source.sourceUrl" target="_blank" rel="noopener noreferrer">
-                    {{ source.sourceUrl }}
-                  </a>
-                  <div class="source-row">
-                    <span>{{ t('dictionaryLicenseName') }}</span>
-                    <strong>{{ source.licenseName }}</strong>
-                  </div>
-                  <p class="settings-help q-mt-sm">{{ source.attributionText }}</p>
-                </div>
-              </div>
-              <div v-else class="text-negative">{{ t('dictionarySourceLoadFailed') }}</div>
-            </div>
           </q-card-section>
         </q-card>
 
@@ -243,11 +220,9 @@ import { useQuasar } from 'quasar';
 import SettingsSectionHeading from 'components/SettingsSectionHeading.vue';
 import SettingsSelect from 'components/SettingsSelect.vue';
 import {
-  DictionaryService,
   ImportTaskResult,
   SongsService,
   UserVocabularyService,
-  type DictionarySource,
   type SongImportRequest,
   type UserVocabulary,
   type UserVocabularyStats,
@@ -286,8 +261,6 @@ const $q = useQuasar();
 
 const settings = ref<AppSettings>(loadAppSettings());
 const motionPreference = ref<MotionPreference>(getStoredMotionPreference() ?? applyMotionPreference());
-const dictionaryLoading = ref(false);
-const dictionarySources = ref<DictionarySource[]>([]);
 const songCount = ref<number | null>(null);
 const vocabularyStats = ref<UserVocabularyStats | null>(null);
 const backupFile = ref<File | null>(null);
@@ -362,7 +335,7 @@ const privacyItems = [
   'lyricsUserImported',
   'noLyricCrawler',
   'legalUseNotice',
-  'dictionaryLicenseNotice',
+  'dictionaryDisclaimer',
   'localStorageNotice',
   'exportDeleteNotice',
 ];
@@ -399,7 +372,6 @@ function buildBackupPayload(
     },
     settings: settings.value,
     motionPreference: motionPreference.value,
-    dictionarySources: dictionarySources.value,
     stats,
     songs,
     vocabulary,
@@ -627,19 +599,12 @@ function estimateLocalStorageSize() {
 }
 
 async function loadSettingsData() {
-  dictionaryLoading.value = true;
-  try {
-    const [source, songs, stats] = await Promise.all([
-      DictionaryService.getDictionarySource().catch(() => null),
+  const [songs, stats] = await Promise.all([
       SongsService.getAllSongs().catch(() => null),
       UserVocabularyService.getUserVocabularyStats().catch(() => null),
-    ]);
-    dictionarySources.value = source ?? [];
-    songCount.value = songs?.length ?? null;
-    vocabularyStats.value = stats;
-  } finally {
-    dictionaryLoading.value = false;
-  }
+  ]);
+  songCount.value = songs?.length ?? null;
+  vocabularyStats.value = stats;
 }
 
 onMounted(() => {
@@ -698,54 +663,6 @@ onMounted(() => {
   color: var(--lv-ink);
   font-weight: 700;
   margin-bottom: 8px;
-}
-
-.dictionary-source-block {
-  margin-top: 22px;
-  padding: 16px;
-  background: var(--lv-accent-soft);
-  border: 1px solid var(--lv-line);
-  border-radius: var(--lv-radius-md);
-}
-
-.dictionary-source-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.dictionary-source-item {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-  padding: 14px;
-  background: var(--lv-paper);
-  border: 1px solid var(--lv-line);
-  border-radius: var(--lv-radius-sm);
-}
-
-.source-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  color: var(--lv-ink-soft);
-}
-
-.source-row strong {
-  color: var(--lv-ink);
-  text-align: right;
-}
-
-.source-link {
-  display: inline-block;
-  color: var(--lv-blue);
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: 700px) {
-  .dictionary-source-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .stat-card {
