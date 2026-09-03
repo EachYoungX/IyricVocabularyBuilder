@@ -321,6 +321,7 @@ export default {
   importVersion: '导入版本 {version}',
   hiddenLineCount: '默认隐藏 {count} 行',
   rawLyrics: '原始歌词',
+  songCredits: '歌曲署名',
   hidden: '隐藏',
   emptyLine: '空行',
   loadLyricsForEditingFailed: '加载歌词编辑内容失败',

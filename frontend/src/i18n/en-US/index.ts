@@ -323,6 +323,7 @@ export default {
   importVersion: 'Import version {version}',
   hiddenLineCount: '{count} hidden by default',
   rawLyrics: 'Raw Lyrics',
+  songCredits: 'Song Credits',
   hidden: 'Hidden',
   emptyLine: 'Empty line',
   loadLyricsForEditingFailed: 'Failed to load lyrics for editing',

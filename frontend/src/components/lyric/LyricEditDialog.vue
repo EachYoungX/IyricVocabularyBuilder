@@ -49,6 +49,14 @@
                 </div>
               </div>
 
+              <div v-if="document?.credits?.length" class="credit-list q-mt-md">
+                <div class="text-caption text-grey-7">{{ t('songCredits') }}</div>
+                <div v-for="credit in document.credits" :key="`${credit.id}-${credit.creditType}-${credit.creditValue}`" class="credit-row">
+                  <span class="credit-label">{{ credit.creditLabel || credit.creditType }}</span>
+                  <span>{{ credit.creditValue }}</span>
+                </div>
+              </div>
+
               <pre class="lyrics-preview">{{ rawLyricsForDisplay }}</pre>
             </section>
           </div>
@@ -277,6 +285,25 @@ async function saveSong() {
   color: var(--lv-ink);
   font-family: var(--lv-font-serif);
   line-height: 1.7;
+}
+
+.credit-list {
+  border: 1px solid var(--lv-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.credit-row {
+  display: flex;
+  gap: 10px;
+  padding-top: 5px;
+  color: var(--lv-text);
+  overflow-wrap: anywhere;
+}
+
+.credit-label {
+  min-width: 9em;
+  color: var(--lv-muted);
 }
 
 .lyrics-input {
