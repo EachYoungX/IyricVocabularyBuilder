@@ -130,7 +130,7 @@
                           </q-item-label>
                           <q-item-label>
                             {{ occurrence.lyricLine }}
-                            <span v-if="contentMode === 'phrases' && occurrence.surfacePhrase" class="phrase-hit"> · {{ occurrence.surfacePhrase }}</span>
+                            <span v-if="contentMode === 'phrases' && occurrence.surfacePhrase" class="phrase-hit">{{ occurrence.surfacePhrase }}</span>
                           </q-item-label>
                         </q-item-section>
                       </q-item>
@@ -574,8 +574,8 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 }
 
 .phrase-hit {
-  color: var(--lv-blue);
-  font-weight: 600;
+  color: inherit;
+  font-weight: 700;
 }
 
 /* 响应式内边距 */
