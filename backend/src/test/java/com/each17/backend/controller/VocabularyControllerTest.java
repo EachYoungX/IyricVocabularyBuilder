@@ -47,7 +47,7 @@ class VocabularyControllerTest {
                 .size(2)
                 .build();
         
-        when(vocabularyService.getWordList(anyString(), anyInt(), anyInt(), anyBoolean(), anyBoolean(), anyBoolean())).thenReturn(wordPageDto);
+        when(vocabularyService.getWordList(anyString(), anyInt(), anyInt(), anyBoolean(), anyBoolean())).thenReturn(wordPageDto);
 
         // When & Then
         mockMvc.perform(get("/api/vocabulary/words")
@@ -55,8 +55,7 @@ class VocabularyControllerTest {
                 .param("page", "0")
                 .param("size", "10")
                 .param("recommendedOnly", "false")
-                .param("lemmaSearch", "false")
-                .param("includePhrases", "false"))
+                .param("lemmaSearch", "false"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.content").isArray())

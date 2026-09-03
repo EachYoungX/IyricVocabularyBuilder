@@ -43,7 +43,6 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
         size,
         recommendedOnly,
         settings.lemmaSearch,
-        settings.phraseDetection,
       );
       if (page === 0) {
         words.value = wordPage.content ?? [];

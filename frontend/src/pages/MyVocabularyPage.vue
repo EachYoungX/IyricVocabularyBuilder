@@ -179,17 +179,14 @@
 
     <div class="toolbar row items-center q-col-gutter-sm q-mt-md" style="order: 4">
       <div class="col-12 col-md-4">
-        <q-input v-model="searchText" dense outlined clearable debounce="150" :placeholder="t('searchPersonalVocabulary')">
+        <q-input v-model="searchText" dense outlined clearable debounce="150" class="vocabulary-input" :placeholder="t('searchPersonalVocabulary')">
           <template #prepend>
             <q-icon name="search" />
           </template>
         </q-input>
-        <div class="text-caption text-grey-7 q-mt-xs">
-          {{ t('filteredVocabularyCount', { count: filteredRows.length }) }}
-        </div>
       </div>
       <div class="col-12 col-md-3">
-        <q-select
+        <SettingsSelect
           v-model="statusFilter"
           dense
           outlined
@@ -197,11 +194,13 @@
           map-options
           :options="filterOptions"
           :label="t('statusFilter')"
+          class="vocabulary-select"
+          popup-content-class="lv-select-popup"
         />
       </div>
       <div class="col-12 col-md">
         <div class="row justify-end q-gutter-sm">
-          <q-select
+          <SettingsSelect
             v-model="batchStatus"
             dense
             outlined
@@ -210,7 +209,8 @@
             :disable="selected.length === 0"
             :options="statusOptions"
             :label="t('batchStatus')"
-            class="batch-select"
+            class="batch-select vocabulary-select"
+            popup-content-class="lv-select-popup"
           />
           <q-btn
             color="primary"
@@ -261,13 +261,16 @@
 
           <template #body-cell-status="props">
             <q-td :props="props">
-              <q-select
+              <SettingsSelect
                 dense
                 borderless
                 emit-value
                 map-options
                 :model-value="props.row.status"
                 :options="statusOptions"
+                options-dense
+                class="status-select"
+                popup-content-class="lv-select-popup"
                 @update:model-value="(value: VocabularyStatus) => updateStatus(props.row.id, value)"
               />
             </q-td>
@@ -338,6 +341,7 @@ import {
   type WordOccurrence,
 } from 'src/services/api';
 import SemanticChip from 'src/components/SemanticChip.vue';
+import SettingsSelect from 'src/components/SettingsSelect.vue';
 import { useRouter } from 'vue-router';
 
 const { t } = useI18n();
@@ -1019,7 +1023,65 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 }
 
 .batch-select {
-  min-width: 160px;
+  width: 170px;
+  min-width: 170px;
+  flex: 0 0 170px;
+}
+
+.toolbar.items-center {
+  align-items: flex-start;
+}
+
+.toolbar > [class*='col-'] {
+  align-self: flex-start;
+}
+
+.vocabulary-input,
+.vocabulary-select {
+  width: 100%;
+}
+
+.vocabulary-input :deep(.q-field__control),
+.vocabulary-select :deep(.q-field__control) {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 10px;
+}
+
+.vocabulary-input :deep(.q-field__native),
+.vocabulary-select :deep(.q-field__native) {
+  min-height: 48px;
+  font-weight: 600;
+}
+
+.vocabulary-select.batch-select {
+  width: 170px;
+  min-width: 170px;
+  flex: 0 0 170px;
+}
+
+.toolbar .q-btn {
+  min-height: 48px;
+}
+
+.status-select {
+  min-width: 126px;
+}
+
+.status-select :deep(.q-field__control) {
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--lv-surface-muted);
+}
+
+.status-select :deep(.q-field__native) {
+  min-height: 36px;
+  font-weight: 600;
+}
+
+.status-select :deep(.q-field__append) {
+  padding-left: 4px;
 }
 
 .data-actions {
@@ -1059,6 +1121,10 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 
 .content-splitter {
   min-height: 620px;
+}
+
+.content-splitter :deep(.q-table tbody tr.q-table__selected td) {
+  background: var(--lv-accent-soft);
 }
 
 .detail-pane {

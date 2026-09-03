@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface VocabularyService {
-    WordPageDto getWordList(String prefix, int page, int size, boolean recommendedOnly, boolean lemmaSearch, boolean includePhrases);
+    WordPageDto getWordList(String prefix, int page, int size, boolean recommendedOnly, boolean lemmaSearch);
     List<WordOccurrenceDto> getWordOccurrences(String word);
     List<VocabularyQualityCandidateDto> getQualityCandidates(int limit);
     int deleteWords(List<String> words);

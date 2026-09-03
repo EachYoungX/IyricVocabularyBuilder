@@ -1,12 +1,14 @@
 package com.each17.backend.lyric.service;
 
 import com.each17.backend.dictionary.service.DictionaryService;
+import com.each17.backend.dto.DictionaryEntryDto;
 import com.each17.backend.lyric.entity.LyricLemmaStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -55,6 +57,16 @@ public class EnglishLemmaService {
             return new LemmaResolution("", LyricLemmaStatus.UNKNOWN);
         }
         String word = normalizedForm.toLowerCase();
+
+        Optional<DictionaryEntryDto> exactEntry = findDictionaryEntry(word);
+        if (exactEntry.isPresent()) {
+            Optional<String> morphologyLemma = morphologyLemma(exactEntry.get().getForms(), word);
+            if (morphologyLemma.isPresent() && isTrustedLemma(morphologyLemma.get())) {
+                return new LemmaResolution(morphologyLemma.get(), LyricLemmaStatus.VERIFIED);
+            }
+            return new LemmaResolution(word, LyricLemmaStatus.VERIFIED);
+        }
+
         if (IRREGULARS.containsKey(word)) {
             String candidate = IRREGULARS.get(word);
             return isTrustedLemma(candidate)
@@ -119,12 +131,26 @@ public class EnglishLemmaService {
 
     private boolean lookupTrustedLemma(String candidate) {
         if (dictionaryService == null) return BUILT_IN_LEMMAS.contains(candidate);
-        try {
-            dictionaryService.lookupWord(candidate);
-            return true;
-        } catch (RuntimeException exception) {
-            return false;
+        return dictionaryService.findWord(candidate).isPresent();
+    }
+
+    private Optional<DictionaryEntryDto> findDictionaryEntry(String word) {
+        if (dictionaryService == null) return Optional.empty();
+        return dictionaryService.findWord(word);
+    }
+
+    private Optional<String> morphologyLemma(String morphology, String word) {
+        if (morphology == null || morphology.isBlank()) return Optional.empty();
+        for (String relation : morphology.split("/")) {
+            int separator = relation.indexOf(':');
+            if (separator <= 0 || separator == relation.length() - 1) continue;
+            if (!"0".equals(relation.substring(0, separator))) continue;
+            String candidate = relation.substring(separator + 1)
+                    .replaceFirst("^'+", "")
+                    .toLowerCase();
+            if (!candidate.isBlank() && !candidate.equals(word)) return Optional.of(candidate);
         }
+        return Optional.empty();
     }
 
     private boolean hasDoubledFinalConsonant(String value) {

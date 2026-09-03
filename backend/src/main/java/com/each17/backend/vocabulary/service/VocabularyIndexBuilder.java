@@ -30,32 +30,24 @@ public class VocabularyIndexBuilder {
 
     public List<Vocabulary> rebuildFromSongs(List<Song> songs) {
         Map<String, LemmaIndex> index = new HashMap<>();
-        lyricTokenRepository.deleteAllInBatch();
 
         Map<Long, List<LyricLine>> linesBySongId = loadLinesBySongId(songs);
-        List<LyricToken> persistentTokens = new ArrayList<>();
 
         for (Song song : songs) {
             List<LyricLine> lines = linesBySongId.getOrDefault(song.getId(), fallbackLines(song));
-            List<LyricToken> songTokens = new ArrayList<>();
             for (LyricLine line : lines.stream().filter(this::shouldIndexLine).toList()) {
-                List<LyricToken> lineTokens = tokenizationService.tokenize(line);
-                songTokens.addAll(lineTokens);
+                List<LyricToken> lineTokens = line.getId() == null
+                        ? List.of()
+                        : lyricTokenRepository.findByLyricLineIdOrderByTokenPositionAsc(line.getId());
+                if (lineTokens.isEmpty()) {
+                    lineTokens = tokenizationService.tokenize(line);
+                    if (line.getId() != null && !lineTokens.isEmpty()) lyricTokenRepository.saveAll(lineTokens);
+                }
+                for (LyricToken token : lineTokens) {
+                    index.computeIfAbsent(token.getLemma(), ignored -> new LemmaIndex())
+                            .add(token, line, song);
+                }
             }
-
-            songTokens.stream()
-                    .filter(token -> token.getLyricLine().getId() != null)
-                    .forEach(persistentTokens::add);
-
-            for (LyricToken token : songTokens) {
-                LyricLine line = token.getLyricLine();
-                index.computeIfAbsent(token.getLemma(), ignored -> new LemmaIndex())
-                        .add(token, line, song);
-            }
-        }
-
-        if (!persistentTokens.isEmpty()) {
-            lyricTokenRepository.saveAll(persistentTokens);
         }
 
         return index.entrySet().stream()

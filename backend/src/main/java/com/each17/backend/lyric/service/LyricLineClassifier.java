@@ -14,7 +14,10 @@ public class LyricLineClassifier {
             Pattern.CASE_INSENSITIVE
     );
     private static final Pattern SPEAKER = Pattern.compile("^[A-Z][A-Za-z'-]+(?:\\s+[A-Z][A-Za-z'-]+){0,3}:$");
-    private static final Pattern META = Pattern.compile("^(produced|written|lyrics|music|composed|performed)\\s+by\\b.*", Pattern.CASE_INSENSITIVE);
+    private static final Pattern META = Pattern.compile(
+            "^(produced|written|lyrics|music|composed|performed|composer|arranged|arranger|lyricist)\\s*(by\\b|[:：]).*"
+                    + "|^(词|曲|作词|作曲|编曲|制作人|监制|作曲家|演唱|歌手)\\s*[:：].*",
+            Pattern.CASE_INSENSITIVE);
     private static final Set<String> PERFORMANCE_TERMS = Set.of(
             "guitar solo", "piano solo", "instrumental", "crowd cheering", "spoken", "applause"
     );

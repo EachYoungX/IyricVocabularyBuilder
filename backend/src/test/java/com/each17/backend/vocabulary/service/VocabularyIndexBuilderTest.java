@@ -48,7 +48,7 @@ class VocabularyIndexBuilderTest {
                 && vocabulary.getOccurrenceCount() == 2
                 && vocabulary.getRecommended()));
         verify(lyricLineRepository, times(1)).findBySongIdsOrderBySongAndLineIndex(List.of(1L));
-        verify(lyricTokenRepository, times(1)).deleteAllInBatch();
+        verify(lyricTokenRepository, never()).deleteAllInBatch();
         verify(lyricTokenRepository, times(1)).saveAll(argThat(tokens -> tokens.iterator().hasNext()));
     }
 

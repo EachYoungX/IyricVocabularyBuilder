@@ -1,77 +1,109 @@
 package com.each17.backend.dictionary.service;
 
+import com.each17.backend.common.exception.DictionaryNotFoundException;
 import com.each17.backend.dto.DictionaryEntryDto;
 import com.each17.backend.dto.DictionarySourceDto;
-import com.each17.backend.common.exception.DictionaryNotFoundException;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.jdbc.core.RowMapper; // 导入 RowMapper
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@RequiredArgsConstructor // 使用 Lombok 进行构造函数注入
 public class DictionaryServiceImpl implements DictionaryService {
     private static final int MAX_CACHE_SIZE = 2_000;
 
-    // [核心修复] 不再注入配置字符串，而是直接注入为 dictionaryDataSource 配置的 JdbcTemplate
-    @Qualifier("dictionaryJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
-    @Value("${app.dictionary.enabled:true}")
-    private boolean enabled = true;
+    private final DictionaryMetadataRepository metadataRepository;
     private final Map<String, DictionaryEntryDto> lookupCache = new ConcurrentHashMap<>();
 
-    // 定义一个可复用的 RowMapper，用于将数据库查询结果映射到 DTO
-    private static final class DictionaryEntryRowMapper implements RowMapper<DictionaryEntryDto> {
-        @Override
-        public DictionaryEntryDto mapRow(ResultSet rs, int rowNum) throws SQLException {
-            return DictionaryEntryDto.builder()
-                    .word(rs.getString("word"))
-                    .phonetic(rs.getString("phonetic"))
-                    .definition(rs.getString("definition"))
-                    .translation(rs.getString("translation"))
-                    .pos(rs.getString("pos"))
-                    .collins(rs.getInt("collins_star"))
-                    .bnc(rs.getInt("bnc_rank"))
-                    .frq(rs.getInt("frq_rank"))
-                    .forms(rs.getString("forms"))
-                    .build();
-        }
+    @Value("${app.dictionary.enabled:true}")
+    private boolean enabled = true;
+
+    public DictionaryServiceImpl(@Qualifier("dictionaryJdbcTemplate") JdbcTemplate jdbcTemplate) {
+        this(jdbcTemplate, null);
     }
+
+    @Autowired
+    public DictionaryServiceImpl(
+            @Qualifier("dictionaryJdbcTemplate") JdbcTemplate jdbcTemplate,
+            DictionaryMetadataRepository metadataRepository
+    ) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.metadataRepository = metadataRepository;
+    }
+
+    private static final RowMapper<DictionaryEntryDto> ROW_MAPPER = new DictionaryEntryRowMapper();
 
     @Override
     public DictionaryEntryDto lookupWord(String word) {
-        if (!enabled) {
-            throw new DictionaryNotFoundException(word);
-        }
-        String normalizedWord = word.toLowerCase();
+        if (!enabled) throw new DictionaryNotFoundException(word);
+        String normalizedWord = normalizeWord(word);
         DictionaryEntryDto cached = lookupCache.get(normalizedWord);
         if (cached != null) return cached;
-
         DictionaryEntryDto entry = queryDictionary(normalizedWord);
-        if (lookupCache.size() >= MAX_CACHE_SIZE) {
-            lookupCache.clear();
-        }
-        lookupCache.put(normalizedWord, entry);
+        cache(normalizedWord, entry);
         return entry;
     }
 
-    private DictionaryEntryDto queryDictionary(String normalizedWord) {
-        // 使用参数化查询，防止 SQL 注入
-        String sql = "SELECT * FROM dictionary WHERE word = ?";
-
-        // queryForObject 在找不到记录时会抛出 EmptyResultDataAccessException，我们需要处理它
+    @Override
+    public Optional<DictionaryEntryDto> findWord(String word) {
+        if (!enabled || word == null || word.isBlank()) return Optional.empty();
+        String normalizedWord = normalizeWord(word);
+        DictionaryEntryDto cached = lookupCache.get(normalizedWord);
+        if (cached != null) return Optional.of(cached);
         try {
-            return jdbcTemplate.queryForObject(sql, new DictionaryEntryRowMapper(), normalizedWord);
-        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+            DictionaryEntryDto entry = queryDictionary(normalizedWord);
+            cache(normalizedWord, entry);
+            return Optional.of(entry);
+        } catch (DictionaryNotFoundException exception) {
+            return Optional.empty();
+        }
+    }
+
+    private DictionaryEntryDto queryDictionary(String normalizedWord) {
+        String sql = """
+                SELECT word, phonetic,
+                       definition_en AS definition,
+                       translation_zh AS translation,
+                       pos_profile AS pos,
+                       collins_star,
+                       oxford_core,
+                       tags,
+                       bnc_rank AS bnc,
+                       bnc_rank AS bnc_rank,
+                       coca_rank,
+                       coca_rank AS frq,
+                       coca_rank AS frq_rank,
+                       morphology AS forms
+                FROM word_entry
+                WHERE word = ? COLLATE NOCASE
+                """;
+        try {
+            return jdbcTemplate.queryForObject(sql, ROW_MAPPER, normalizedWord);
+        } catch (EmptyResultDataAccessException exception) {
             throw new DictionaryNotFoundException(normalizedWord);
         }
+    }
+
+    private void cache(String word, DictionaryEntryDto entry) {
+        if (lookupCache.size() >= MAX_CACHE_SIZE) lookupCache.clear();
+        lookupCache.put(word, entry);
+    }
+
+    private String normalizeWord(String word) {
+        if (word == null) throw new DictionaryNotFoundException("");
+        String normalized = word.trim().toLowerCase();
+        if (normalized.isBlank()) throw new DictionaryNotFoundException(word);
+        return normalized;
     }
 
     @Override
@@ -86,16 +118,41 @@ public class DictionaryServiceImpl implements DictionaryService {
                     .attributionText("No dictionary is configured for this runtime.")
                     .build();
         }
+        Map<String, String> meta = metadataRepository == null ? Map.of() : metadataRepository.findAll();
         return DictionarySourceDto.builder()
-                .sourceName("ECDICT")
+                .sourceName("ECDICT + 2ndLA")
                 .sourceUrl("https://github.com/skywind3000/ECDICT")
-                .dictionaryVersion("Bundled SQLite snapshot")
-                .importedAt("Local build resource")
-                .licenseName("MIT License")
+                .dictionaryVersion(meta.getOrDefault("package.version", "unknown"))
+                .importedAt(meta.getOrDefault("build.time", "unknown"))
+                .licenseName("MIT License; phrase data CC BY-SA 4.0")
                 .requiresAttribution(true)
                 .commercialUseAllowed(true)
                 .redistributionAllowed(true)
-                .attributionText("Dictionary data is derived from the ECDICT open-source project.")
+                .attributionText("Word data is derived from ECDICT; phrase data is derived from 2ndLA/english-phrases.")
                 .build();
+    }
+
+    private static final class DictionaryEntryRowMapper implements RowMapper<DictionaryEntryDto> {
+        @Override
+        public DictionaryEntryDto mapRow(ResultSet rs, int rowNum) throws SQLException {
+            int bnc = rs.getInt("bnc");
+            if (bnc == 0 || rs.wasNull()) bnc = rs.getInt("bnc_rank");
+            int frq = rs.getInt("frq");
+            if (frq == 0 || rs.wasNull()) frq = rs.getInt("frq_rank");
+            return DictionaryEntryDto.builder()
+                    .word(rs.getString("word"))
+                    .phonetic(rs.getString("phonetic"))
+                    .definition(rs.getString("definition"))
+                    .translation(rs.getString("translation"))
+                    .pos(rs.getString("pos"))
+                    .collins(rs.getInt("collins_star"))
+                    .oxford(rs.getInt("oxford_core"))
+                    .tags(rs.getString("tags"))
+                    .bnc(bnc)
+                    .coca(rs.getInt("coca_rank"))
+                    .frq(frq)
+                    .forms(rs.getString("forms"))
+                    .build();
+        }
     }
 }

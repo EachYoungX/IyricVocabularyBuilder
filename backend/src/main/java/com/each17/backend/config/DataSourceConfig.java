@@ -12,6 +12,8 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -160,15 +162,31 @@ public class DataSourceConfig {
         System.out.println("      URL: " + url);
         System.out.println("====================================================");
 
-        final DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        final DriverManagerDataSource dataSource = new ReadOnlySqliteDataSource();
         dataSource.setUrl(url);
         dataSource.setDriverClassName(driverClassName);
         return dataSource;
+    }
+
+    @Bean(name = "appJdbcTemplate")
+    public JdbcTemplate appJdbcTemplate(@Qualifier("appDataSource") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
     }
 
     // 为词典数据源创建 JdbcTemplate
     @Bean(name = "dictionaryJdbcTemplate")
     public JdbcTemplate dictionaryJdbcTemplate(@Qualifier("dictionaryDataSource") DataSource dataSource) {
         return new JdbcTemplate(dataSource);
+    }
+
+    private static final class ReadOnlySqliteDataSource extends DriverManagerDataSource {
+        @Override
+        public Connection getConnection() throws SQLException {
+            Connection connection = super.getConnection();
+            try (var statement = connection.createStatement()) {
+                statement.execute("PRAGMA query_only = ON");
+            }
+            return connection;
+        }
     }
 }

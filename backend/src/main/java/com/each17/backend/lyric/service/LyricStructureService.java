@@ -10,7 +10,8 @@ import com.each17.backend.lyric.repository.LyricTokenRepository;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.repository.SongRepository;
 import com.each17.backend.vocabulary.service.VocabularyService;
-import lombok.RequiredArgsConstructor;
+import com.each17.backend.vocabulary.service.PhraseOccurrenceService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +20,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class LyricStructureService {
     private final SongRepository songRepository;
@@ -29,6 +29,44 @@ public class LyricStructureService {
     private final LyricsHashService lyricsHashService;
     private final VocabularyService vocabularyService;
     private final LyricTokenRepository lyricTokenRepository;
+    private final LyricTokenizationService tokenizationService;
+    private final PhraseOccurrenceService phraseOccurrenceService;
+
+    public LyricStructureService(
+            SongRepository songRepository,
+            LyricLineRepository lyricLineRepository,
+            LyricNormalizer lyricNormalizer,
+            LyricLineClassifier lyricLineClassifier,
+            LyricsHashService lyricsHashService,
+            VocabularyService vocabularyService,
+            LyricTokenRepository lyricTokenRepository
+    ) {
+        this(songRepository, lyricLineRepository, lyricNormalizer, lyricLineClassifier, lyricsHashService,
+                vocabularyService, lyricTokenRepository, null, null);
+    }
+
+    @Autowired
+    public LyricStructureService(
+            SongRepository songRepository,
+            LyricLineRepository lyricLineRepository,
+            LyricNormalizer lyricNormalizer,
+            LyricLineClassifier lyricLineClassifier,
+            LyricsHashService lyricsHashService,
+            VocabularyService vocabularyService,
+            LyricTokenRepository lyricTokenRepository,
+            LyricTokenizationService tokenizationService,
+            PhraseOccurrenceService phraseOccurrenceService
+    ) {
+        this.songRepository = songRepository;
+        this.lyricLineRepository = lyricLineRepository;
+        this.lyricNormalizer = lyricNormalizer;
+        this.lyricLineClassifier = lyricLineClassifier;
+        this.lyricsHashService = lyricsHashService;
+        this.vocabularyService = vocabularyService;
+        this.lyricTokenRepository = lyricTokenRepository;
+        this.tokenizationService = tokenizationService;
+        this.phraseOccurrenceService = phraseOccurrenceService;
+    }
 
     public LyricDocumentDto getDocument(Long songId) {
         Song song = getSong(songId);
@@ -124,7 +162,9 @@ public class LyricStructureService {
             lines.add(line);
         }
 
-        return toDocument(savedSong, lyricLineRepository.saveAll(lines));
+        List<LyricLine> savedLines = lyricLineRepository.saveAll(lines);
+        rebuildSongTokens(savedSong, savedLines);
+        return toDocument(savedSong, savedLines);
     }
 
     public LyricLineDto updateLine(Long songId, Long lineId, LyricLineUpdateRequestDto request) {
@@ -135,12 +175,28 @@ public class LyricStructureService {
         if (request.hidden() != null) line.setHidden(request.hidden());
         line.setConfidence(1.0);
         line.setUserOverride(true);
-        return toLineDto(lyricLineRepository.save(line));
+        LyricLine savedLine = lyricLineRepository.save(line);
+        if (tokenizationService != null) {
+            lyricTokenRepository.deleteByLyricLineId(savedLine.getId());
+            if (isTokenizable(savedLine)) lyricTokenRepository.saveAll(tokenizationService.tokenize(savedLine));
+            if (phraseOccurrenceService != null) phraseOccurrenceService.invalidateSong(songId);
+        }
+        return toLineDto(savedLine);
     }
 
     public void deleteLinesForSong(Long songId) {
         lyricTokenRepository.deleteBySongId(songId);
         lyricLineRepository.deleteBySongId(songId);
+    }
+
+    public void rebuildTokensForSong(Long songId) {
+        Song song = getSong(songId);
+        List<LyricLine> lines = lyricLineRepository.findBySongIdOrderByLineIndexAsc(songId);
+        if (lines.isEmpty()) {
+            structureSong(song, resolveRawLyrics(song), true);
+            return;
+        }
+        rebuildSongTokens(song, lines);
     }
 
     private Song getSong(Long songId) {
@@ -150,6 +206,22 @@ public class LyricStructureService {
 
     private String resolveRawLyrics(Song song) {
         return song.getRawLyrics() != null ? song.getRawLyrics() : song.getLyrics();
+    }
+
+    private void rebuildSongTokens(Song song, List<LyricLine> lines) {
+        if (tokenizationService == null) return;
+        lyricTokenRepository.deleteBySongId(song.getId());
+        List<com.each17.backend.lyric.entity.LyricToken> tokens = lines.stream()
+                .filter(this::isTokenizable)
+                .flatMap(line -> tokenizationService.tokenize(line).stream())
+                .toList();
+        if (!tokens.isEmpty()) lyricTokenRepository.saveAll(tokens);
+        if (phraseOccurrenceService != null) phraseOccurrenceService.invalidateSong(song.getId());
+    }
+
+    private boolean isTokenizable(LyricLine line) {
+        return line.getLineType() == com.each17.backend.lyric.entity.LyricLineType.LYRIC
+                || line.getLineType() == com.each17.backend.lyric.entity.LyricLineType.UNKNOWN;
     }
 
     private LyricDocumentDto toDocument(Song song, List<LyricLine> lines) {

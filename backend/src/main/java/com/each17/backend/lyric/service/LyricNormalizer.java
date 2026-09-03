@@ -10,6 +10,8 @@ import java.util.regex.Pattern;
 @Component
 public class LyricNormalizer {
     private static final Pattern LRC_TIMESTAMP = Pattern.compile("^(?:\\[\\d{1,2}:\\d{2}(?:[.:]\\d{1,3})?])+\\s*");
+    private static final Pattern LRC_METADATA = Pattern.compile("^\\[[A-Za-z][A-Za-z0-9_-]*:.*\\]\\s*$");
+    private static final Pattern LRC_TITLE_CREDIT = Pattern.compile("^.+\\s+-\\s+.+$");
     private static final Pattern HORIZONTAL_WHITESPACE = Pattern.compile("[\\t \\x0B\\f]+" );
 
     public NormalizedLyrics normalize(String rawLyrics) {
@@ -19,7 +21,9 @@ public class LyricNormalizer {
         boolean previousEmpty = false;
 
         for (String rawLine : rawLines) {
+            if (LRC_METADATA.matcher(rawLine).matches()) continue;
             String normalized = normalizeLine(rawLine);
+            if (LRC_TIMESTAMP.matcher(rawLine).find() && LRC_TITLE_CREDIT.matcher(normalized).matches()) continue;
             boolean empty = normalized.isEmpty();
             if (empty && previousEmpty) continue;
             lines.add(new NormalizedLine(rawLine, normalized));

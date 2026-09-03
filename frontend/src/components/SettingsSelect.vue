@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onUnmounted, ref } from 'vue';
 import type { QSelect } from 'quasar';
 
 defineOptions({
@@ -17,7 +17,9 @@ defineOptions({
 
 const selectRef = ref<QSelect | null>(null);
 
-function closePopupOnScroll() {
+function closePopupOnScroll(event: Event) {
+  const target = event.target;
+  if (target instanceof HTMLElement && target.closest('.q-menu')) return;
   selectRef.value?.hidePopup();
 }
 
@@ -28,5 +30,7 @@ function handlePopupShow() {
 function handlePopupHide() {
   window.removeEventListener('scroll', closePopupOnScroll, true);
 }
+
+onUnmounted(handlePopupHide);
 
 </script>

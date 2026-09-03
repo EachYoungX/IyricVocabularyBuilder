@@ -63,10 +63,8 @@ public class LyricTokenizationService {
 
     public String normalizeToLemmaPhrase(String value) {
         String normalizedPhrase = normalizePhrase(value);
-        if (normalizedPhrase.contains(" ")) {
-            return normalizedPhrase;
-        }
-        return lemmaService.lemma(normalizedPhrase);
+        String[] parts = normalizedPhrase.isBlank() ? new String[0] : normalizedPhrase.split("\\s+");
+        return parts.length == 1 ? lemmaService.lemma(parts[0]) : normalizedPhrase;
     }
 
     /**

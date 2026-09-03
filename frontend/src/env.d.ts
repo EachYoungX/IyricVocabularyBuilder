@@ -15,6 +15,7 @@ declare module 'vue' {
   export function computed<T>(getter: () => T): Ref<T>;
   export function watch<T>(source: T | (() => T), callback: (newValue: T, oldValue: T) => void, options?: { immediate?: boolean; deep?: boolean }): void;
   export function onMounted(callback: () => void): void;
+  export function onUnmounted(callback: () => void): void;
   export function getCurrentInstance(): { appContext: { config: { globalProperties: Record<string, unknown> } } } | null;
 }
 

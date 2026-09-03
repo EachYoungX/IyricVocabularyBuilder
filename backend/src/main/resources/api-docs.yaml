@@ -28,6 +28,8 @@ tags:
     description: 英英词典查询（仅英文） / English dictionary lookup
   - name: Lyrics
     description: 歌词标准化、结构化与用户修正 / Lyric normalization, structuring, and correction
+  - name: Phrases
+    description: 正式词典短语与上下文命中 / Dictionary phrases and contextual matches
   - name: UserVocabulary
     description: 个人词库、统计与复习 / Personal vocabulary, stats, and review
 
@@ -75,12 +77,6 @@ paths:
             type: boolean
             default: true
           description: 是否使用词形归一搜索 / Whether to use lemmatized search
-        - name: includePhrases
-          in: query
-          schema:
-            type: boolean
-            default: true
-          description: 是否包含短语词条 / Whether to include phrase entries
       responses:
         '200':
           description: 分页单词列表
@@ -695,6 +691,165 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/lyrics/lines/{lineId}/tokens/{position}:
+    get:
+      tags: [Phrases]
+      summary: 查询歌词 token 及关联短语 / Get token context and phrase matches
+      operationId: getLyricTokenContext
+      parameters:
+        - name: lineId
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+        - name: position
+          in: path
+          required: true
+          schema: {type: integer, minimum: 0}
+      responses:
+        '200':
+          description: token、词典条目与上下文短语
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LyricTokenContext'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/vocabulary/phrases:
+    get:
+      tags: [Phrases]
+      summary: 分页查询歌曲中实际命中的正式短语 / Get paginated phrases matched in songs
+      operationId: listPhrases
+      parameters:
+        - name: q
+          in: query
+          schema: {type: string}
+          description: 在歌曲实际命中的短语中进行包含匹配 / Contains search among phrases matched in songs
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 0, default: 0}
+        - name: size
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200, default: 50}
+      responses:
+        '200':
+          description: 分页短语列表
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PhrasePage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+
+  /api/vocabulary/phrases/search:
+    get:
+      tags: [Phrases]
+      summary: 搜索歌曲中实际命中的正式短语 / Search dictionary phrases matched in songs
+      operationId: searchPhrases
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: {type: string}
+          description: 在歌曲实际命中的短语中进行包含匹配 / Contains search among phrases matched in songs
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200, default: 50}
+      responses:
+        '200':
+          description: 短语列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/DictionaryPhrase'}
+
+  /api/songs/{songId}/phrases:
+    get:
+      tags: [Phrases]
+      summary: 查询歌曲中的正式短语 / Get phrases in a song
+      operationId: getSongPhrases
+      parameters: [{ $ref: '#/components/parameters/SongId' }]
+      responses:
+        '200':
+          description: 歌曲短语命中
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/PhraseMatch'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/vocabulary/phrases/{phraseId}/occurrences:
+    get:
+      tags: [Phrases]
+      summary: 查询短语出现位置 / Get phrase occurrences
+      operationId: getPhraseOccurrences
+      parameters:
+        - name: phraseId
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+      responses:
+        '200':
+          description: 短语出现位置列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/PhraseOccurrence'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/songs/{songId}/phrases/refresh:
+    post:
+      tags: [Phrases]
+      summary: 重建歌曲短语缓存 / Refresh song phrase cache
+      operationId: refreshSongPhrases
+      parameters: [{ $ref: '#/components/parameters/SongId' }]
+      responses:
+        '200': {description: 缓存已刷新}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/vocabulary/user-phrases:
+    get:
+      tags: [Phrases]
+      summary: 查询用户短语 / List user phrases
+      operationId: listUserPhrases
+      responses:
+        '200':
+          description: 用户自定义短语
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/UserPhrase'}
+    post:
+      tags: [Phrases]
+      summary: 添加用户短语 / Add a user phrase
+      operationId: addUserPhrase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/UserPhraseRequest'}
+      responses:
+        '200':
+          description: 已保存的用户短语
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UserPhrase'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+
+  /api/vocabulary/user-phrases/{id}:
+    delete:
+      tags: [Phrases]
+      summary: 删除用户短语 / Delete a user phrase
+      operationId: deleteUserPhrase
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+      responses:
+        '200': {description: 已删除}
+        '404': {$ref: '#/components/responses/NotFound'}
+
 # ===============================================================
 # Components
 # ===============================================================
@@ -898,6 +1053,18 @@ components:
           type: number
           format: double
       required: [songTitle, lyricLine]
+
+    PhrasePage:
+      type: object
+      properties:
+        content:
+          type: array
+          items: {$ref: '#/components/schemas/DictionaryPhrase'}
+        totalElements: {type: integer}
+        totalPages: {type: integer}
+        number: {type: integer}
+        size: {type: integer}
+      required: [content, totalElements, totalPages, number, size]
 
     VocabularyQualityCandidate:
       type: object
@@ -1188,11 +1355,96 @@ components:
           example: "noun, verb"
         collins:
           type: integer
+        oxford:
+          type: integer
+        tags:
+          type: string
         bnc:
+          type: integer
+        coca:
           type: integer
         frq:
           type: integer
       required: [word, definition]
+
+    DictionaryPhrase:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        sourcePattern: {type: string}
+        canonicalPattern: {type: string}
+        definitionEn: {type: string}
+        definitionZh: {type: string}
+        usageNoteZh: {type: string}
+        phraseType: {type: string}
+        source: {type: string}
+        tokenCountMin: {type: integer}
+        tokenCountMax: {type: integer}
+        matchPriority: {type: integer}
+
+    PhraseMatch:
+      type: object
+      properties:
+        phraseId: {type: integer, format: int64}
+        sourcePattern: {type: string}
+        canonicalPattern: {type: string}
+        definitionEn: {type: string}
+        definitionZh: {type: string}
+        usageNoteZh: {type: string}
+        phraseType: {type: string}
+        source: {type: string}
+        startTokenPosition: {type: integer}
+        endTokenPosition: {type: integer}
+        surfacePhrase: {type: string}
+        matchPriority: {type: integer}
+
+    PhraseOccurrence:
+      type: object
+      properties:
+        phraseId: {type: integer, format: int64}
+        songId: {type: integer, format: int64}
+        songTitle: {type: string}
+        songArtist: {type: string}
+        lyricLineId: {type: integer, format: int64}
+        lineIndex: {type: integer}
+        lyricLine: {type: string}
+        startTokenPosition: {type: integer}
+        endTokenPosition: {type: integer}
+        surfacePhrase: {type: string}
+      required: [songTitle, lyricLine, surfacePhrase]
+
+    LyricTokenContext:
+      type: object
+      properties:
+        lyricLineId: {type: integer, format: int64}
+        tokenPosition: {type: integer}
+        surfaceForm: {type: string}
+        normalizedForm: {type: string}
+        lemma: {type: string}
+        lemmaStatus: {type: string}
+        tokenType: {type: string}
+        startOffset: {type: integer}
+        endOffset: {type: integer}
+        wordEntry: {$ref: '#/components/schemas/DictionaryEntry'}
+        phraseMatches:
+          type: array
+          items: {$ref: '#/components/schemas/PhraseMatch'}
+
+    UserPhraseRequest:
+      type: object
+      properties:
+        canonicalPhrase: {type: string}
+        definition: {type: string}
+      required: [canonicalPhrase]
+
+    UserPhrase:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        userId: {type: string}
+        canonicalPhrase: {type: string}
+        definition: {type: string}
+        createdAt: {type: string}
 
     DictionarySource:
       type: object

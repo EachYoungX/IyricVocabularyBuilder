@@ -21,7 +21,6 @@ export class VocabularyService {
      * @param size 每页条数 / Page size
      * @param recommendedOnly 是否只返回推荐学习词 / Whether to return recommended words only
      * @param lemmaSearch 是否使用词形归一搜索 / Whether to use lemmatized search
-     * @param includePhrases 是否包含短语词条 / Whether to include phrase entries
      * @returns WordPage 分页单词列表
      * @throws ApiError
      */
@@ -31,7 +30,6 @@ export class VocabularyService {
         size: number = 50,
         recommendedOnly: boolean = true,
         lemmaSearch: boolean = true,
-        includePhrases: boolean = true,
     ): CancelablePromise<WordPage> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -42,7 +40,6 @@ export class VocabularyService {
                 'size': size,
                 'recommendedOnly': recommendedOnly,
                 'lemmaSearch': lemmaSearch,
-                'includePhrases': includePhrases,
             },
             errors: {
                 400: `请求参数错误 / Invalid request parameters`,

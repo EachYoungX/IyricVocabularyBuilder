@@ -50,8 +50,7 @@ public class VocabularyServiceImpl implements VocabularyService {
             int page,
             int size,
             boolean recommendedOnly,
-            boolean lemmaSearch,
-            boolean includePhrases
+            boolean lemmaSearch
     ) {
         if (page < 0 || size < 1 || size > 200) {
             throw new ValidationException("Page must be >= 0 and size must be between 1 and 200");
@@ -62,28 +61,16 @@ public class VocabularyServiceImpl implements VocabularyService {
 
         String normalizedPrefix = normalizeSearchPrefix(prefix, lemmaSearch);
         if (normalizedPrefix != null) {
-            if (recommendedOnly && includePhrases) {
+            if (recommendedOnly) {
                 vocabularyPage = vocabularyRepository.findByRecommendedTrueAndWordStartingWithOrderByWordAsc(normalizedPrefix, pageable);
-            } else if (recommendedOnly) {
-                vocabularyPage = vocabularyRepository.findByRecommendedTrueAndWordStartingWithAndWordNotContainingOrderByWordAsc(
-                        normalizedPrefix, " ", pageable
-                );
-            } else if (includePhrases) {
-                vocabularyPage = vocabularyRepository.findByWordStartingWithOrderByWordAsc(normalizedPrefix, pageable);
             } else {
-                vocabularyPage = vocabularyRepository.findByWordStartingWithAndWordNotContainingOrderByWordAsc(
-                        normalizedPrefix, " ", pageable
-                );
+                vocabularyPage = vocabularyRepository.findByWordStartingWithOrderByWordAsc(normalizedPrefix, pageable);
             }
         } else {
-            if (recommendedOnly && includePhrases) {
+            if (recommendedOnly) {
                 vocabularyPage = vocabularyRepository.findByRecommendedTrueOrderByWordAsc(pageable);
-            } else if (recommendedOnly) {
-                vocabularyPage = vocabularyRepository.findByRecommendedTrueAndWordNotContainingOrderByWordAsc(" ", pageable);
-            } else if (includePhrases) {
-                vocabularyPage = vocabularyRepository.findAllByOrderByWordAsc(pageable);
             } else {
-                vocabularyPage = vocabularyRepository.findByWordNotContainingOrderByWordAsc(" ", pageable);
+                vocabularyPage = vocabularyRepository.findAllByOrderByWordAsc(pageable);
             }
         }
 

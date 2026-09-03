@@ -23,10 +23,9 @@ public class VocabularyController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(defaultValue = "true") boolean recommendedOnly,
-            @RequestParam(defaultValue = "true") boolean lemmaSearch,
-            @RequestParam(defaultValue = "true") boolean includePhrases) {
+            @RequestParam(defaultValue = "true") boolean lemmaSearch) {
         return ResponseEntity.ok(ApiResponse.success(vocabularyService.getWordList(
-                prefix, page, size, recommendedOnly, lemmaSearch, includePhrases
+                prefix, page, size, recommendedOnly, lemmaSearch
         )));
     }
 

@@ -9,7 +9,10 @@ export type DictionaryEntry = {
     translation?: string;
     pos?: string;
     collins?: number;
+    oxford?: number;
+    tags?: string;
     bnc?: number;
+    coca?: number;
     frq?: number;
+    forms?: string;
 };
-

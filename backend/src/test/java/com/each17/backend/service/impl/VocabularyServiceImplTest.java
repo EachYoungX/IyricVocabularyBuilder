@@ -85,7 +85,7 @@ class VocabularyServiceImplTest {
         when(vocabularyRepository.findByRecommendedTrueOrderByWordAsc(pageable)).thenReturn(vocabPage);
 
         // When
-        WordPageDto result = vocabularyService.getWordList(null, page, size, true, true, true);
+        WordPageDto result = vocabularyService.getWordList(null, page, size, true, true);
 
         // Then
         assertEquals(expectedWords, result.getContent());
@@ -115,7 +115,7 @@ class VocabularyServiceImplTest {
         when(vocabularyRepository.findByRecommendedTrueAndWordStartingWithOrderByWordAsc(prefix.toLowerCase(), pageable)).thenReturn(vocabPage);
 
         // When
-        WordPageDto result = vocabularyService.getWordList(prefix, page, size, true, true, true);
+        WordPageDto result = vocabularyService.getWordList(prefix, page, size, true, true);
 
         // Then
         assertEquals(expectedWords, result.getContent());
@@ -138,7 +138,7 @@ class VocabularyServiceImplTest {
 
         when(vocabularyRepository.findAllByOrderByWordAsc(pageable)).thenReturn(vocabPage);
 
-        WordPageDto result = vocabularyService.getWordList(null, page, size, false, true, true);
+        WordPageDto result = vocabularyService.getWordList(null, page, size, false, true);
 
         assertEquals(List.of("ah", "love"), result.getContent());
         verify(vocabularyRepository).findAllByOrderByWordAsc(pageable);
@@ -154,7 +154,7 @@ class VocabularyServiceImplTest {
 
         when(vocabularyRepository.findByWordStartingWithOrderByWordAsc(prefix, pageable)).thenReturn(vocabPage);
 
-        WordPageDto result = vocabularyService.getWordList(prefix, page, size, false, false, true);
+        WordPageDto result = vocabularyService.getWordList(prefix, page, size, false, false);
 
         assertEquals(List.of("running"), result.getContent());
         verify(vocabularyRepository).findByWordStartingWithOrderByWordAsc(prefix, pageable);

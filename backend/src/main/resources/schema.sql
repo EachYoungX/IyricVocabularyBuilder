@@ -103,3 +103,39 @@ CREATE INDEX IF NOT EXISTS idx_vocabulary_occurrences_song
 
 CREATE INDEX IF NOT EXISTS idx_vocabulary_occurrences_user_vocab
     ON vocabulary_occurrences(user_vocabulary_id);
+
+-- Rebuildable phrase-match cache. Dictionary and user data remain separate.
+CREATE TABLE IF NOT EXISTS phrase_occurrence (
+                                                    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                    phrase_id           INTEGER NOT NULL,
+                                                    song_id             INTEGER NOT NULL,
+                                                    lyric_line_id       INTEGER NOT NULL,
+                                                    start_token_position INTEGER NOT NULL,
+                                                    end_token_position   INTEGER NOT NULL,
+                                                    surface_phrase      TEXT NOT NULL,
+                                                    dictionary_version  TEXT NOT NULL,
+                                                    tokenizer_version   TEXT NOT NULL,
+                                                    lemma_version       TEXT NOT NULL,
+                                                    UNIQUE(phrase_id, lyric_line_id, start_token_position, end_token_position),
+                                                    FOREIGN KEY(song_id) REFERENCES songs(id) ON DELETE CASCADE,
+                                                    FOREIGN KEY(lyric_line_id) REFERENCES lyric_lines(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_phrase_occurrence_song
+    ON phrase_occurrence(song_id, lyric_line_id, start_token_position);
+CREATE INDEX IF NOT EXISTS idx_phrase_occurrence_phrase
+    ON phrase_occurrence(phrase_id);
+
+CREATE TABLE IF NOT EXISTS user_phrase (
+                                         id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                                         user_id         TEXT NOT NULL DEFAULT 'local',
+                                         canonical_phrase TEXT NOT NULL,
+                                         definition      TEXT,
+                                         created_at      TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                         UNIQUE(user_id, canonical_phrase)
+);
+
+CREATE TABLE IF NOT EXISTS app_meta (
+                                     key   TEXT PRIMARY KEY,
+                                     value TEXT NOT NULL
+);

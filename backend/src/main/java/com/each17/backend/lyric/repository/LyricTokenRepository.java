@@ -12,9 +12,15 @@ import java.util.List;
 public interface LyricTokenRepository extends JpaRepository<LyricToken, Long> {
     List<LyricToken> findByLemma(String lemma);
 
+    List<LyricToken> findByLyricLineIdOrderByTokenPositionAsc(Long lyricLineId);
+
     List<LyricToken> findDistinctByLyricLineSongIdAndLearningScoreGreaterThan(Long songId, Double score);
 
     @Modifying
     @Query("delete from LyricToken token where token.lyricLine.song.id = :songId")
     void deleteBySongId(Long songId);
+
+    @Modifying
+    @Query("delete from LyricToken token where token.lyricLine.id = :lyricLineId")
+    void deleteByLyricLineId(Long lyricLineId);
 }

@@ -13,7 +13,10 @@ public class DictionaryEntryDto {
     private String translation;
     private String pos;
     private Integer collins;
+    private Integer oxford;
+    private String tags;
     private Integer bnc;
+    private Integer coca;
     private Integer frq;
     private String forms;
 }

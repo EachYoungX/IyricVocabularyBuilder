@@ -27,6 +27,7 @@ spring:
 # --- 自定义配置 ---
 app:
   dictionary:
+    enabled: false
     datasource:
       # 测试只需验证上下文可启动，不依赖 392 MB 的生产词典文件。
       url: jdbc:sqlite:file:test-dictionary?mode=memory&cache=shared
