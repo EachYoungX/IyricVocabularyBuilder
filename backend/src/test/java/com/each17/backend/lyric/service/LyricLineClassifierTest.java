@@ -70,4 +70,17 @@ class LyricLineClassifierTest {
         assertEquals(LyricClassificationSource.FORMAT, metadata.source());
         assertEquals(LyricLineType.SECTION_LABEL, section.lineType());
     }
+
+    @Test
+    void classifiesTimedTitleArtistLineAsMetadataOnlyWhenItMatchesSongMetadata() {
+        var result = classifier.classifyLines(List.of(
+                new LyricNormalizer.NormalizedLine(
+                        "[00:00.00]The Other Side Of Paradise (Explicit) - Glass Animals",
+                        "The Other Side Of Paradise (Explicit) - Glass Animals", false),
+                new LyricNormalizer.NormalizedLine("[00:03.00]The other side", "The other side", false)
+        ), "The Other Side Of Paradise", "Glass Animals");
+
+        assertEquals(LyricLineType.METADATA, result.getFirst().lineType());
+        assertEquals(LyricLineType.LYRIC, result.get(1).lineType());
+    }
 }

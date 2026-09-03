@@ -20,11 +20,18 @@ public class Song {
     @Column(nullable = false)
     private String artist;
 
+    @Column(name = "album")
+    private String album;
+
     @Column(name = "raw_title")
     private String rawTitle;
 
     @Column(name = "raw_artist")
     private String rawArtist;
+
+    @Lob
+    @Column(name = "raw_source_content", columnDefinition = "TEXT")
+    private String rawSourceContent;
     
     @Lob // 表示这是一个大的文本字段
     @Column(nullable = false, columnDefinition = "TEXT")

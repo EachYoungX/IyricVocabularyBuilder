@@ -5,6 +5,7 @@
 export type SongUpdateRequest = {
     title?: string;
     artist?: string;
+    album?: string | null;
     lyrics?: string;
 };
 

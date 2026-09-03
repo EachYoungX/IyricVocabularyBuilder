@@ -937,6 +937,13 @@ components:
         songId:
           type: integer
           format: int64
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+          nullable: true
         rawLyrics:
           type: string
         normalizedLyrics:
@@ -952,7 +959,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LyricLine'
-      required: [songId, rawLyrics, normalizedLyrics, lyricsHash, importVersion, updatedAt, lines]
+        credits:
+          type: array
+          items:
+            $ref: '#/components/schemas/SongCredit'
+      required: [songId, title, artist, rawLyrics, normalizedLyrics, lyricsHash, importVersion, updatedAt, lines, credits]
 
     LyricImportRequest:
       type: object
@@ -1243,16 +1254,48 @@ components:
         artist:
           type: string
           example: "The Beatles"
+        album:
+          type: string
+          nullable: true
         rawTitle:
           type: string
           nullable: true
         rawArtist:
           type: string
           nullable: true
+        rawSourceContent:
+          type: string
+          nullable: true
         lyrics:
           type: string
           example: "Yesterday, all my troubles seemed so far away\n..."
+        credits:
+          type: array
+          items:
+            $ref: '#/components/schemas/SongCredit'
       required: [id, title, artist, lyrics]
+
+    SongCredit:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        creditType:
+          type: string
+          enum: [LYRICIST, COMPOSER, PRODUCER, CO_PRODUCER, EXECUTIVE_PRODUCER, MIXING_ENGINEER, MASTERING_ENGINEER, ARRANGER, PERFORMER, VOCALS, GUITAR, BASS, DRUMS, PIANO, KEYBOARD, VIOLIN, FEATURING, OTHER]
+        creditLabel:
+          type: string
+          nullable: true
+        creditValue:
+          type: string
+        sourceLineId:
+          type: integer
+          format: int64
+          nullable: true
+        sortOrder:
+          type: integer
+      required: [creditType, creditValue]
 
     SongImportRequest:
       type: object
@@ -1263,6 +1306,13 @@ components:
         artist:
           type: string
           example: "Queen"
+        album:
+          type: string
+          nullable: true
+        rawSourceContent:
+          type: string
+          nullable: true
+          description: 完整原始导入内容（可包含 LRC 元数据和时间戳）
         lyrics:
           type: string
       required: [title, artist, lyrics]
@@ -1338,6 +1388,9 @@ components:
           type: string
         artist:
           type: string
+        album:
+          type: string
+          nullable: true
         lyrics:
           type: string
 

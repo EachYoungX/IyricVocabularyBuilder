@@ -10,6 +10,7 @@ import com.each17.backend.lyric.repository.LyricLineRepository;
 import com.each17.backend.lyric.repository.LyricTokenRepository;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.repository.SongRepository;
+import com.each17.backend.song.service.SongCreditService;
 import com.each17.backend.vocabulary.service.VocabularyService;
 import com.each17.backend.vocabulary.service.PhraseOccurrenceService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,7 @@ public class LyricStructureService {
     private final LyricTokenRepository lyricTokenRepository;
     private final LyricTokenizationService tokenizationService;
     private final PhraseOccurrenceService phraseOccurrenceService;
+    private final SongCreditService songCreditService;
 
     public LyricStructureService(
             SongRepository songRepository,
@@ -43,7 +45,7 @@ public class LyricStructureService {
             LyricTokenRepository lyricTokenRepository
     ) {
         this(songRepository, lyricLineRepository, lyricNormalizer, lyricLineClassifier, lyricsHashService,
-                vocabularyService, lyricTokenRepository, null, null);
+                vocabularyService, lyricTokenRepository, null, null, null);
     }
 
     @Autowired
@@ -56,7 +58,8 @@ public class LyricStructureService {
             VocabularyService vocabularyService,
             LyricTokenRepository lyricTokenRepository,
             LyricTokenizationService tokenizationService,
-            PhraseOccurrenceService phraseOccurrenceService
+            PhraseOccurrenceService phraseOccurrenceService,
+            SongCreditService songCreditService
     ) {
         this.songRepository = songRepository;
         this.lyricLineRepository = lyricLineRepository;
@@ -67,6 +70,7 @@ public class LyricStructureService {
         this.lyricTokenRepository = lyricTokenRepository;
         this.tokenizationService = tokenizationService;
         this.phraseOccurrenceService = phraseOccurrenceService;
+        this.songCreditService = songCreditService;
     }
 
     public LyricDocumentDto getDocument(Long songId) {
@@ -91,10 +95,15 @@ public class LyricStructureService {
     }
 
     public LyricDocumentDto structureSong(Song song, String rawLyrics, boolean overwrite) {
-        return structureSong(song, rawLyrics, overwrite, false);
+        return structureSong(song, rawLyrics, overwrite, false, false);
     }
 
     public LyricDocumentDto structureSong(Song song, String rawLyrics, boolean overwrite, boolean preserveOriginalLyrics) {
+        return structureSong(song, rawLyrics, overwrite, preserveOriginalLyrics, false);
+    }
+
+    public LyricDocumentDto structureSong(Song song, String rawLyrics, boolean overwrite,
+                                          boolean preserveOriginalLyrics, boolean forceReparse) {
         if (rawLyrics == null || rawLyrics.isBlank()) {
             throw new ValidationException("Lyrics cannot be empty");
         }
@@ -104,7 +113,7 @@ public class LyricStructureService {
         String oldHash = song.getLyricsHash();
         boolean sameContent = newHash.equals(oldHash);
 
-        if (sameContent && lyricLineRepository.existsBySongId(song.getId())) {
+        if (sameContent && lyricLineRepository.existsBySongId(song.getId()) && !forceReparse) {
             return toDocument(song, lyricLineRepository.findBySongIdOrderByLineIndexAsc(song.getId()));
         }
         if (oldHash != null && !sameContent && !overwrite) {
@@ -118,15 +127,30 @@ public class LyricStructureService {
                         Collectors.toCollection(ArrayDeque::new)
                 ));
 
+        if (songCreditService != null) songCreditService.deleteForSong(song.getId());
         lyricTokenRepository.deleteBySongId(song.getId());
         lyricLineRepository.deleteBySongId(song.getId());
         lyricLineRepository.flush();
 
-        song.setLyrics(rawLyrics);
+        String title = firstNonBlank(normalized.metadata().get("ti"), song.getTitle());
+        String artist = firstNonBlank(normalized.metadata().get("ar"), song.getArtist());
+        String album = firstNonBlank(normalized.metadata().get("al"), song.getAlbum());
+        if (song.getRawTitle() == null || song.getRawTitle().isBlank()) song.setRawTitle(song.getTitle());
+        if (song.getRawArtist() == null || song.getRawArtist().isBlank()) song.setRawArtist(song.getArtist());
+        song.setTitle(title);
+        song.setArtist(artist);
+        song.setAlbum(album);
         if (!preserveOriginalLyrics || song.getRawLyrics() == null || song.getRawLyrics().isBlank()) {
             song.setRawLyrics(rawLyrics);
         }
-        song.setNormalizedLyrics(normalized.text());
+        if (!preserveOriginalLyrics || song.getRawSourceContent() == null || song.getRawSourceContent().isBlank()) {
+            song.setRawSourceContent(rawLyrics);
+        }
+        List<LyricLineClassifier.Classification> classifications = lyricLineClassifier.classifyLines(
+                normalized.lines(), title, artist);
+        String learningLyrics = buildLearningLyrics(normalized.lines(), classifications);
+        song.setLyrics(learningLyrics);
+        song.setNormalizedLyrics(learningLyrics);
         song.setLyricsHash(newHash);
         if (oldHash != null && !sameContent) {
             song.setImportVersion(Math.max(1, Objects.requireNonNullElse(song.getImportVersion(), 1)) + 1);
@@ -137,7 +161,6 @@ public class LyricStructureService {
         Song savedSong = songRepository.save(song);
 
         List<LyricLine> lines = new ArrayList<>();
-        List<LyricLineClassifier.Classification> classifications = lyricLineClassifier.classifyLines(normalized.lines());
         for (int index = 0; index < normalized.lines().size(); index++) {
             LyricNormalizer.NormalizedLine normalizedLine = normalized.lines().get(index);
             LyricLineClassifier.Classification classification = classifications.get(index);
@@ -167,6 +190,7 @@ public class LyricStructureService {
         }
 
         List<LyricLine> savedLines = lyricLineRepository.saveAll(lines);
+        if (songCreditService != null) songCreditService.replaceCredits(savedSong, savedLines);
         rebuildSongTokens(savedSong, savedLines);
         return toDocument(savedSong, savedLines);
     }
@@ -190,6 +214,8 @@ public class LyricStructureService {
     }
 
     public void deleteLinesForSong(Long songId) {
+        if (songCreditService != null) songCreditService.deleteForSong(songId);
+        if (phraseOccurrenceService != null) phraseOccurrenceService.invalidateSong(songId);
         lyricTokenRepository.deleteBySongId(songId);
         lyricLineRepository.deleteBySongId(songId);
     }
@@ -206,34 +232,7 @@ public class LyricStructureService {
 
     public void reclassifySong(Long songId) {
         Song song = getSong(songId);
-        List<LyricLine> lines = lyricLineRepository.findBySongIdOrderByLineIndexAsc(songId);
-        if (lines.isEmpty()) {
-            structureSong(song, resolveRawLyrics(song), true);
-            return;
-        }
-
-        List<LyricNormalizer.NormalizedLine> normalizedLines = lines.stream()
-                .map(line -> new LyricNormalizer.NormalizedLine(
-                        line.getOriginalText(),
-                        lyricNormalizer.normalizeLineForStorage(line.getOriginalText()),
-                        LyricNormalizer.isFormatMetadata(line.getOriginalText())))
-                .toList();
-        List<LyricLineClassifier.Classification> classifications = lyricLineClassifier.classifyLines(normalizedLines);
-        for (int index = 0; index < lines.size(); index++) {
-            LyricLine line = lines.get(index);
-            if (line.getClassificationSource() == LyricClassificationSource.MANUAL
-                    || Boolean.TRUE.equals(line.getUserOverride())) {
-                continue;
-            }
-            LyricLineClassifier.Classification classification = classifications.get(index);
-            line.setNormalizedText(normalizedLines.get(index).normalizedText());
-            line.setLineType(classification.lineType());
-            line.setClassificationSource(classification.source());
-            line.setHidden(classification.hidden());
-            line.setConfidence(classification.confidence());
-        }
-        lyricLineRepository.saveAll(lines);
-        rebuildSongTokens(song, lines);
+        structureSong(song, resolveRawSource(song), true, true, true);
     }
 
     private Song getSong(Long songId) {
@@ -242,7 +241,26 @@ public class LyricStructureService {
     }
 
     private String resolveRawLyrics(Song song) {
+        return resolveRawSource(song);
+    }
+
+    private String resolveRawSource(Song song) {
+        if (song.getRawSourceContent() != null && !song.getRawSourceContent().isBlank()) {
+            return song.getRawSourceContent();
+        }
         return song.getRawLyrics() != null ? song.getRawLyrics() : song.getLyrics();
+    }
+
+    private String firstNonBlank(String preferred, String fallback) {
+        return preferred != null && !preferred.isBlank() ? preferred.trim() : fallback;
+    }
+
+    private String buildLearningLyrics(List<LyricNormalizer.NormalizedLine> lines,
+                                       List<LyricLineClassifier.Classification> classifications) {
+        return String.join("\n", java.util.stream.IntStream.range(0, lines.size())
+                .filter(index -> classifications.get(index).lineType() == com.each17.backend.lyric.entity.LyricLineType.LYRIC)
+                .mapToObj(index -> lines.get(index).normalizedText())
+                .toList());
     }
 
     private void rebuildSongTokens(Song song, List<LyricLine> lines) {
@@ -262,8 +280,10 @@ public class LyricStructureService {
 
     private LyricDocumentDto toDocument(Song song, List<LyricLine> lines) {
         return new LyricDocumentDto(
-                song.getId(), resolveRawLyrics(song), song.getNormalizedLyrics(), song.getLyricsHash(),
-                song.getImportVersion(), song.getUpdatedAt(), lines.stream().map(this::toLineDto).toList()
+                song.getId(), song.getTitle(), song.getArtist(), song.getAlbum(), resolveRawLyrics(song),
+                song.getNormalizedLyrics(), song.getLyricsHash(), song.getImportVersion(), song.getUpdatedAt(),
+                lines.stream().map(this::toLineDto).toList(),
+                songCreditService == null ? List.of() : songCreditService.findDtos(song.getId())
         );
     }
 

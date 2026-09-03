@@ -5,7 +5,7 @@
 export type WordOccurrence = {
     songId?: number;
     songTitle: string;
-    songArtist?: string | null;
+    songArtist?: string;
     lyricLineId?: number | null;
     lineIndex?: number;
     lyricLine: string;
@@ -15,3 +15,4 @@ export type WordOccurrence = {
     endOffset?: number;
     learningScore?: number;
 };
+

@@ -9,5 +9,7 @@ import lombok.*;
 public class SongImportRequestDto {
     private String title;
     private String artist;
+    private String album;
     private String lyrics;
+    private String rawSourceContent;
 }

@@ -3,8 +3,10 @@ CREATE TABLE IF NOT EXISTS songs (
                                      id     INTEGER PRIMARY KEY AUTOINCREMENT,
                                      title  TEXT NOT NULL,
                                      artist TEXT NOT NULL,
+                                     album  TEXT,
                                      raw_title TEXT,
                                      raw_artist TEXT,
+                                     raw_source_content TEXT,
                                      lyrics TEXT NOT NULL,
                                      raw_lyrics TEXT,
                                      normalized_lyrics TEXT,
@@ -31,6 +33,21 @@ CREATE TABLE IF NOT EXISTS lyric_lines (
 
 CREATE INDEX IF NOT EXISTS idx_lyric_lines_song
     ON lyric_lines(song_id, line_index);
+
+CREATE TABLE IF NOT EXISTS song_credit (
+                                         id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                                         song_id         INTEGER NOT NULL,
+                                         credit_type     TEXT NOT NULL,
+                                         credit_label    TEXT,
+                                         credit_value    TEXT NOT NULL,
+                                         source_line_id  INTEGER,
+                                         sort_order      INTEGER NOT NULL DEFAULT 0,
+                                         FOREIGN KEY(song_id) REFERENCES songs(id) ON DELETE CASCADE,
+                                         FOREIGN KEY(source_line_id) REFERENCES lyric_lines(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_song_credit_song
+    ON song_credit(song_id, sort_order, id);
 
 CREATE TABLE IF NOT EXISTS lyric_tokens (
                                             id              INTEGER PRIMARY KEY AUTOINCREMENT,

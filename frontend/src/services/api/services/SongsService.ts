@@ -47,6 +47,7 @@ export class SongsService {
     /**
      * 异步批量导入歌曲（推荐方式）
      * @param requestBody
+     * @param autoAddToPersonalVocabulary 导入后将常规英文词加入个人词库 / Add regular English words to personal vocabulary after import
      * @returns SongImportTaskResponse 导入任务已接受，正在后台处理
      * @throws ApiError
      */
@@ -57,11 +58,11 @@ export class SongsService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/songs/import',
-            body: requestBody,
-            mediaType: 'application/json',
             query: {
                 'autoAddToPersonalVocabulary': autoAddToPersonalVocabulary,
             },
+            body: requestBody,
+            mediaType: 'application/json',
         });
     }
     /**

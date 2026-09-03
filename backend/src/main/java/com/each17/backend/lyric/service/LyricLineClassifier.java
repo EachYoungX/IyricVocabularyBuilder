@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 
 @Component
 public class LyricLineClassifier {
+    private static final int MAX_HEADER_CANDIDATE_LINES = 20;
     private static final Pattern SPEAKER = Pattern.compile("^[A-Z][A-Za-z'-]+(?:\\s+[A-Z][A-Za-z'-]+){0,3}:$");
     private static final Set<String> PERFORMANCE_TERMS = Set.of(
             "guitar solo", "piano solo", "instrumental", "crowd cheering", "spoken", "applause"
@@ -61,12 +62,21 @@ public class LyricLineClassifier {
     }
 
     public List<Classification> classifyLines(List<LyricNormalizer.NormalizedLine> lines) {
+        return classifyLines(lines, null, null);
+    }
+
+    public List<Classification> classifyLines(List<LyricNormalizer.NormalizedLine> lines, String title, String artist) {
         List<Classification> classifications = new ArrayList<>();
         boolean headerMode = true;
         int ordinaryLyricLines = 0;
+        int nonEmptyCandidateLines = 0;
         for (LyricNormalizer.NormalizedLine line : lines) {
-            Classification classification = classify(line.normalizedText(), line.formatMetadata(), headerMode);
+            Classification classification = classify(line.normalizedText(), line.formatMetadata(), headerMode, title, artist);
             classifications.add(classification);
+            if (classification.lineType() != LyricLineType.EMPTY) {
+                nonEmptyCandidateLines++;
+                if (nonEmptyCandidateLines >= MAX_HEADER_CANDIDATE_LINES) headerMode = false;
+            }
             if (classification.lineType() == LyricLineType.LYRIC && hasOrdinaryLyricStructure(line.normalizedText())) {
                 ordinaryLyricLines++;
                 if (ordinaryLyricLines >= 2) headerMode = false;
@@ -77,12 +87,35 @@ public class LyricLineClassifier {
         return List.copyOf(classifications);
     }
 
+    private Classification classify(String normalizedText, boolean formatMetadata, boolean headerMode,
+                                    String title, String artist) {
+        Classification base = classify(normalizedText, formatMetadata, headerMode);
+        if (base.lineType() == LyricLineType.LYRIC && headerMode && isTimedTitleCredit(normalizedText, title, artist)) {
+            return new Classification(LyricLineType.METADATA, LyricClassificationSource.RULE, true, 0.97);
+        }
+        return base;
+    }
+
     public static boolean isIndexableLine(LyricLine line) {
         return line != null && line.getLineType() == LyricLineType.LYRIC;
     }
 
     private boolean hasOrdinaryLyricStructure(String text) {
         return text != null && text.matches(".*[A-Za-z].*");
+    }
+
+    private boolean isTimedTitleCredit(String text, String title, String artist) {
+        if (title == null || artist == null || title.isBlank() || artist.isBlank()
+                || text == null || !text.matches(".*\\s+-\\s+.*")) return false;
+        String[] parts = text.split("\\s+-\\s+", 2);
+        if (parts.length != 2) return false;
+        String lineTitle = parts[0].replaceFirst("\\s*\\([^)]*\\)\\s*$", "");
+        return normalizeForComparison(lineTitle).equals(normalizeForComparison(title))
+                && normalizeForComparison(parts[1]).equals(normalizeForComparison(artist));
+    }
+
+    private String normalizeForComparison(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
     }
 
     private String stripBrackets(String text) {

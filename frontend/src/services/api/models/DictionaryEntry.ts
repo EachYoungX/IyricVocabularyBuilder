@@ -14,5 +14,5 @@ export type DictionaryEntry = {
     bnc?: number;
     coca?: number;
     frq?: number;
-    forms?: string;
 };
+

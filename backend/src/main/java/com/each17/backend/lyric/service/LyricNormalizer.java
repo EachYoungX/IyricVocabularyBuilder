@@ -4,31 +4,33 @@ import org.springframework.stereotype.Component;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 @Component
 public class LyricNormalizer {
     private static final Pattern LRC_TIMESTAMP = Pattern.compile("^(?:\\[\\d{1,2}:\\d{2}(?:[.:]\\d{1,3})?])+\\s*");
-    private static final Pattern LRC_METADATA = Pattern.compile("^\\[[A-Za-z][A-Za-z0-9_-]*:.*\\]\\s*$");
-    private static final Pattern LRC_TITLE_CREDIT = Pattern.compile("^.+\\s+-\\s+.+$");
-    private static final Pattern HORIZONTAL_WHITESPACE = Pattern.compile("[\\t \\x0B\\f]+" );
+    private static final Pattern LRC_METADATA = Pattern.compile("^\\[([A-Za-z][A-Za-z0-9_-]*):(.*)]\\s*$");
+    private static final Pattern HORIZONTAL_WHITESPACE = Pattern.compile("[\\t \\x0B\\f]+");
 
     public NormalizedLyrics normalize(String rawLyrics) {
         String canonical = rawLyrics == null ? "" : rawLyrics.replace("\r\n", "\n").replace('\r', '\n');
-        String[] rawLines = canonical.split("\n", -1);
+        String[] rawLines = canonical.split("\\n", -1);
         List<NormalizedLine> lines = new ArrayList<>();
+        Map<String, String> metadata = new LinkedHashMap<>();
         boolean previousEmpty = false;
 
         for (String rawLine : rawLines) {
-            boolean formatMetadata = LRC_METADATA.matcher(rawLine).matches();
-            if (formatMetadata) {
-                lines.add(new NormalizedLine(rawLine, rawLine.trim(), true));
+            var metadataMatcher = LRC_METADATA.matcher(rawLine);
+            if (metadataMatcher.matches()) {
+                metadata.put(metadataMatcher.group(1).toLowerCase(Locale.ROOT), metadataMatcher.group(2).trim());
                 previousEmpty = false;
                 continue;
             }
             String normalized = normalizeLine(rawLine);
-            if (LRC_TIMESTAMP.matcher(rawLine).find() && LRC_TITLE_CREDIT.matcher(normalized).matches()) continue;
             boolean empty = normalized.isEmpty();
             if (empty && previousEmpty) continue;
             lines.add(new NormalizedLine(rawLine, normalized, false));
@@ -42,7 +44,7 @@ public class LyricNormalizer {
         String normalizedText = String.join("\n", lines.stream()
                 .filter(line -> !line.formatMetadata())
                 .map(NormalizedLine::normalizedText).toList());
-        return new NormalizedLyrics(normalizedText, List.copyOf(lines));
+        return new NormalizedLyrics(normalizedText, List.copyOf(lines), Map.copyOf(metadata));
     }
 
     public static String removeTimestamps(String line) {
@@ -60,7 +62,12 @@ public class LyricNormalizer {
         return HORIZONTAL_WHITESPACE.matcher(unicodeNormalized).replaceAll(" ").trim();
     }
 
-    public record NormalizedLyrics(String text, List<NormalizedLine> lines) {}
+    public record NormalizedLyrics(String text, List<NormalizedLine> lines, Map<String, String> metadata) {
+        public NormalizedLyrics(String text, List<NormalizedLine> lines) {
+            this(text, lines, Map.of());
+        }
+    }
+
     public static boolean isFormatMetadata(String line) {
         return line != null && LRC_METADATA.matcher(line).matches();
     }

@@ -49,6 +49,7 @@ public class DataSourceConfig {
             ResourceDatabasePopulator populator = new ResourceDatabasePopulator(schema);
             populator.execute(dataSource);
             migrateSongColumns(dataSource);
+            migrateSongCreditTable(dataSource);
             migrateVocabularyColumns(dataSource);
             migrateLyricLineColumns(dataSource);
             migrateLyricTokenColumns(dataSource);
@@ -70,12 +71,15 @@ public class DataSourceConfig {
         addColumnIfMissing(jdbcTemplate, columns, "raw_lyrics", "TEXT");
         addColumnIfMissing(jdbcTemplate, columns, "raw_title", "TEXT");
         addColumnIfMissing(jdbcTemplate, columns, "raw_artist", "TEXT");
+        addColumnIfMissing(jdbcTemplate, columns, "album", "TEXT");
+        addColumnIfMissing(jdbcTemplate, columns, "raw_source_content", "TEXT");
         addColumnIfMissing(jdbcTemplate, columns, "normalized_lyrics", "TEXT");
         addColumnIfMissing(jdbcTemplate, columns, "lyrics_hash", "TEXT");
         addColumnIfMissing(jdbcTemplate, columns, "import_version", "INTEGER NOT NULL DEFAULT 1");
         addColumnIfMissing(jdbcTemplate, columns, "updated_at", "TEXT");
 
         jdbcTemplate.update("UPDATE songs SET raw_lyrics = lyrics WHERE raw_lyrics IS NULL");
+        jdbcTemplate.update("UPDATE songs SET raw_source_content = COALESCE(raw_lyrics, lyrics) WHERE raw_source_content IS NULL");
         jdbcTemplate.update("UPDATE songs SET raw_title = title WHERE raw_title IS NULL");
         jdbcTemplate.update("UPDATE songs SET raw_artist = artist WHERE raw_artist IS NULL");
         jdbcTemplate.update("UPDATE songs SET normalized_lyrics = raw_lyrics WHERE normalized_lyrics IS NULL");
@@ -109,6 +113,24 @@ public class DataSourceConfig {
             jdbcTemplate.execute("ALTER TABLE vocabulary ADD COLUMN " + name + " " + definition);
             columns.add(name);
         }
+    }
+
+    private void migrateSongCreditTable(DataSource dataSource) {
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        jdbcTemplate.execute("""
+                CREATE TABLE IF NOT EXISTS song_credit (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    song_id INTEGER NOT NULL,
+                    credit_type TEXT NOT NULL,
+                    credit_label TEXT,
+                    credit_value TEXT NOT NULL,
+                    source_line_id INTEGER,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    FOREIGN KEY(song_id) REFERENCES songs(id) ON DELETE CASCADE,
+                    FOREIGN KEY(source_line_id) REFERENCES lyric_lines(id) ON DELETE SET NULL
+                )
+                """);
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_song_credit_song ON song_credit(song_id, sort_order, id)");
     }
 
     private void migrateLyricTokenColumns(DataSource dataSource) {

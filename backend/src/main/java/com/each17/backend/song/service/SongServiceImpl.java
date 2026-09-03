@@ -112,10 +112,11 @@ public class SongServiceImpl implements SongService {
                 validateSong(songDto.getTitle(), songDto.getArtist(), songDto.getLyrics());
 
                 Song song = songMapper.toEntity(songDto);
+                String sourceContent = resolveSourceContent(songDto);
                 var existing = songRepository.findByTitleAndArtist(song.getTitle(), song.getArtist());
                 if (existing.isPresent()) {
-                    if (lyricStructureService.isSameContent(existing.get(), songDto.getLyrics())) {
-                        lyricStructureService.structureSong(existing.get(), songDto.getLyrics(), false);
+                    if (lyricStructureService.isSameContent(existing.get(), sourceContent)) {
+                        lyricStructureService.structureSong(existing.get(), sourceContent, false);
                         if (autoAddToPersonalVocabulary) {
                             userVocabularyService.addDefaultWordsForSong(existing.get().getId());
                         }
@@ -126,7 +127,7 @@ public class SongServiceImpl implements SongService {
                 }
 
                 Song savedSong = songRepository.save(song);
-                lyricStructureService.structureSong(savedSong, songDto.getLyrics(), true);
+                lyricStructureService.structureSong(savedSong, sourceContent, true);
                 if (autoAddToPersonalVocabulary) {
                     userVocabularyService.addDefaultWordsForSong(savedSong.getId());
                 }
@@ -188,13 +189,18 @@ public class SongServiceImpl implements SongService {
         
         Song song = songMapper.toEntity(songDto);
         Song savedSong = songRepository.save(song);
-        lyricStructureService.structureSong(savedSong, songDto.getLyrics(), true);
+        lyricStructureService.structureSong(savedSong, resolveSourceContent(songDto), true);
         
         // 创建歌曲后自动刷新词汇索引
         log.info("Song created, triggering vocabulary index refresh...");
         vocabularyService.refreshVocabularyIndexAsync();
         
         return songMapper.toDto(savedSong);
+    }
+
+    private String resolveSourceContent(SongImportRequestDto request) {
+        return request.getRawSourceContent() != null && !request.getRawSourceContent().isBlank()
+                ? request.getRawSourceContent() : request.getLyrics();
     }
     
     @Override

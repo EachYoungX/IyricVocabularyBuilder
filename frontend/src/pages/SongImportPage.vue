@@ -96,6 +96,9 @@
               <div class="col-12 col-md-6">
                 <q-input v-model="activeDraft.artist" outlined :label="t('artist')" />
               </div>
+              <div class="col-12">
+                <q-input v-model="activeDraft.album" outlined :label="t('album')" />
+              </div>
             </div>
 
             <q-input
@@ -318,7 +321,9 @@ async function importSongs() {
   const basicSongs: SongImportRequest[] = drafts.value.map((draft) => ({
     title: draft.title,
     artist: draft.artist,
+    album: draft.album ?? null,
     lyrics: draft.lyrics,
+    rawSourceContent: draft.rawSourceContent ?? null,
   }));
 
   try {

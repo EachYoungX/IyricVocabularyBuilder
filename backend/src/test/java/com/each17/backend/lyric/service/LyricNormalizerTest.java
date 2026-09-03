@@ -12,19 +12,19 @@ class LyricNormalizerTest {
         var result = normalizer.normalize("[ti:Demo]\r\n[ar:Artist]\r\n[00:12.50]  Ｈｅｌｌｏ   world  \r\n\r\n\r\n[00:15]Again\r\n");
 
         assertEquals("Hello world\n\nAgain", result.text());
-        assertEquals(5, result.lines().size());
-        assertEquals("[ti:Demo]", result.lines().getFirst().originalText());
-        assertEquals("Hello world", result.lines().get(2).normalizedText());
-        assertEquals("[ar:Artist]", result.lines().get(1).originalText());
+        assertEquals(3, result.lines().size());
+        assertEquals("Demo", result.metadata().get("ti"));
+        assertEquals("Artist", result.metadata().get("ar"));
+        assertEquals("Hello world", result.lines().getFirst().normalizedText());
     }
 
     @Test
     void removesLrcMetadataAndTitleCreditLines() {
         var result = normalizer.normalize("[ti:Demo]\n[ar:Artist]\n[00:00]Demo - Artist\n[00:01]Hello world");
 
-        assertEquals("Hello world", result.text());
-        assertEquals(3, result.lines().size());
-        assertEquals("[ti:Demo]", result.lines().getFirst().originalText());
+        assertEquals("Demo - Artist\nHello world", result.text());
+        assertEquals(2, result.lines().size());
+        assertEquals("Demo", result.metadata().get("ti"));
         assertEquals("Hello world", result.lines().getLast().normalizedText());
     }
 

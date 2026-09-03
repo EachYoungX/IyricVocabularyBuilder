@@ -14,9 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Order(1)
 public class LyricTokenMigrationRunner implements ApplicationRunner {
-    private static final String VERSION = "lyric-index-v4";
-    private static final String LINE_CLASSIFIER_VERSION = "4";
-    private static final String PHRASE_MATCHER_VERSION = "3";
+    private static final String VERSION = "lyric-structure-v5";
+    private static final String LINE_CLASSIFIER_VERSION = "5";
+    private static final String PHRASE_MATCHER_VERSION = "4";
 
     @Qualifier("appJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;

@@ -43,6 +43,10 @@
                   <div class="text-caption text-grey-7">{{ t('artist') }}</div>
                   <div class="text-body1">{{ readonlyArtist }}</div>
                 </div>
+                <div v-if="document?.album">
+                  <div class="text-caption text-grey-7">{{ t('album') }}</div>
+                  <div class="text-body1">{{ document.album }}</div>
+                </div>
               </div>
 
               <pre class="lyrics-preview">{{ rawLyricsForDisplay }}</pre>
@@ -60,6 +64,7 @@
 
               <q-input v-model="editableSong.title" :label="t('title') + ' *'" outlined />
               <q-input v-model="editableSong.artist" :label="t('artist') + ' *'" outlined />
+              <q-input v-model="editableSong.album" :label="t('album')" outlined />
               <q-input
                 v-model="editableSong.lyrics"
                 :label="t('lyrics') + ' *'"
@@ -126,6 +131,7 @@ const originalSongJson = ref('');
 const editableSong = ref({
   title: '',
   artist: '',
+  album: '',
   lyrics: '',
 });
 
@@ -164,6 +170,7 @@ async function loadEditorData(songId: number) {
     editableSong.value = {
       title: song.title ?? '',
       artist: song.artist ?? '',
+      album: song.album ?? lyricDocument.album ?? '',
       lyrics: song.lyrics ?? lyricDocument.normalizedLyrics ?? lyricDocument.rawLyrics ?? '',
     };
     originalSongJson.value = JSON.stringify(editableSong.value);
@@ -175,11 +182,12 @@ async function loadEditorData(songId: number) {
 }
 
 function restoreOriginalLyrics() {
-  if (!document.value?.rawLyrics) return;
+  if (!document.value?.normalizedLyrics) return;
   editableSong.value = {
     title: readonlyTitle.value,
     artist: readonlyArtist.value,
-    lyrics: document.value.rawLyrics,
+    album: songSnapshot.value?.album ?? document.value.album ?? '',
+    lyrics: document.value.normalizedLyrics,
   };
 }
 
@@ -190,6 +198,7 @@ async function saveSong() {
     const saved = await SongsService.updateSong(props.songId, {
       title: editableSong.value.title.trim(),
       artist: editableSong.value.artist.trim(),
+      album: editableSong.value.album.trim() || null,
       lyrics: editableSong.value.lyrics,
     });
     originalSongJson.value = JSON.stringify(editableSong.value);

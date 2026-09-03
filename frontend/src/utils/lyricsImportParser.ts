@@ -83,10 +83,11 @@ function parseJson(content: string, t: Translate): ExtendedSongImportRequest[] {
   return data
     .map((item): ExtendedSongImportRequest | null => {
       if (!item || typeof item !== 'object') return null;
-      const record = item as { title?: string; artist?: string; lyrics?: string };
+      const record = item as { title?: string; artist?: string; album?: string; lyrics?: string };
       const song: ExtendedSongImportRequest = {
         title: record.title || '',
         artist: record.artist || '',
+        album: record.album || '',
         lyrics: record.lyrics || '',
         sourceFormat: 'JSON',
       };
@@ -121,15 +122,28 @@ function parseTimedText(
 ): ExtendedSongImportRequest {
   const titleArtist = inferTitleArtist(fileName, '', format === 'LRC' ? '.lrc' : '.srt');
   const lyrics = format === 'LRC' ? parseLrcLyrics(content) : parseSrtLyrics(content);
-  if (!titleArtist.title) throw new Error(t('couldNotDetermineSongTitle'));
+  const metadata = format === 'LRC' ? parseLrcMetadata(content) : {};
+  const title = metadata.ti || titleArtist.title;
+  const artist = metadata.ar || titleArtist.artist;
+  if (!title) throw new Error(t('couldNotDetermineSongTitle'));
   if (!lyrics) throw new Error(t('noValidLyricContentFound'));
 
   return withSummary({
-    title: titleArtist.title,
-    artist: titleArtist.artist,
+    title,
+    artist,
+    album: metadata.al || '',
     lyrics,
     sourceFormat: format,
   });
+}
+
+function parseLrcMetadata(content: string): Record<string, string> {
+  const metadata: Record<string, string> = {};
+  for (const line of content.split(/\r?\n/)) {
+    const match = line.match(/^\s*\[([A-Za-z][A-Za-z0-9_-]*):(.*)]\s*$/);
+    if (match?.[1] && match[2] !== undefined) metadata[match[1].toLowerCase()] = match[2].trim();
+  }
+  return metadata;
 }
 
 function parseLrcLyrics(content: string): string {

@@ -466,6 +466,7 @@ function handlePageChange(page: number) {
 }
 
 function selectPhrase(phrase: DictionaryPhrase) {
+  if (phrase.id == null) return;
   selectedPhrase.value = phrase;
   phraseOccurrences.value = [];
   phraseOccurrenceError.value = '';

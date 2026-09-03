@@ -2,8 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { LyricLineType } from './LyricLineType';
 import type { LyricClassificationSource } from './LyricClassificationSource';
+import type { LyricLineType } from './LyricLineType';
 export type LyricLine = {
     id: number;
     lineIndex: number;
@@ -15,3 +15,4 @@ export type LyricLine = {
     confidence: number;
     userOverride: boolean;
 };
+
