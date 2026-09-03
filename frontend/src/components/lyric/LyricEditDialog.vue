@@ -332,7 +332,7 @@ async function saveSong() {
 .credit-list {
   max-height: 84px;
   overflow: auto;
-  border: 1px solid var(--lv-border);
+  border: 1px solid var(--lv-line);
   border-radius: 10px;
   padding: 10px 12px;
 }
@@ -341,7 +341,7 @@ async function saveSong() {
   display: flex;
   gap: 10px;
   padding-top: 5px;
-  color: var(--lv-text);
+  color: var(--lv-ink);
   overflow-wrap: anywhere;
 }
 
