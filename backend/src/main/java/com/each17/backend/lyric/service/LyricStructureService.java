@@ -81,6 +81,47 @@ public class LyricStructureService {
         return toDocument(song, lyricLineRepository.findBySongIdOrderByLineIndexAsc(songId));
     }
 
+    /**
+     * Rebuilds the editor's parsed view from the immutable raw source without changing persisted data.
+     */
+    @Transactional(readOnly = true)
+    public LyricDocumentDto previewRawSource(Long songId) {
+        Song song = getSong(songId);
+        String rawSource = resolveRawSource(song);
+        if (rawSource == null || rawSource.isBlank()) {
+            throw new ValidationException("Original lyrics are unavailable");
+        }
+
+        LyricNormalizer.NormalizedLyrics normalized = lyricNormalizer.normalize(rawSource);
+        String title = firstNonBlank(normalized.metadata().get("ti"), song.getTitle());
+        String artist = firstNonBlank(normalized.metadata().get("ar"), song.getArtist());
+        String album = firstNonBlank(normalized.metadata().get("al"), song.getAlbum());
+        List<LyricLineClassifier.Classification> classifications = lyricLineClassifier.classifyLines(
+                normalized.lines(), title, artist);
+        List<LyricLine> previewLines = new ArrayList<>();
+        for (int index = 0; index < normalized.lines().size(); index++) {
+            LyricNormalizer.NormalizedLine normalizedLine = normalized.lines().get(index);
+            LyricLineClassifier.Classification classification = classifications.get(index);
+            previewLines.add(LyricLine.builder()
+                    .lineIndex(index)
+                    .originalText(normalizedLine.originalText())
+                    .normalizedText(normalizedLine.normalizedText())
+                    .lineType(classification.lineType())
+                    .classificationSource(classification.source())
+                    .hidden(classification.hidden())
+                    .confidence(classification.confidence())
+                    .userOverride(false)
+                    .build());
+        }
+        String learningLyrics = buildLearningLyrics(normalized.lines(), classifications);
+        return new LyricDocumentDto(
+                song.getId(), title, artist, album, rawSource, learningLyrics,
+                lyricsHashService.hash(normalized.text()), song.getImportVersion(), song.getUpdatedAt(),
+                previewLines.stream().map(this::toLineDto).toList(),
+                songCreditService == null ? List.of() : songCreditService.parseCredits(previewLines)
+        );
+    }
+
     public LyricDocumentDto importLyrics(Long songId, LyricImportRequestDto request) {
         Song song = getSong(songId);
         LyricDocumentDto result = structureSong(song, request.lyrics(), request.overwrite());

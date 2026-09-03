@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -87,6 +88,31 @@ class LyricStructureServiceTest {
 
         assertEquals("Original lyrics", song.getRawLyrics());
         assertEquals("Edited learning lyrics", song.getLyrics());
+    }
+
+    @Test
+    void previewsParsedResultFromRawSourceAfterLearningTextWasEdited() {
+        String rawSource = "[ti:There For You]\n"
+                + "[ar:Martin Garrix/Troye Sivan]\n"
+                + "[al:There For You]\n"
+                + "[00:00.00]There For You (为你在此) - Martin Garrix (马丁·盖瑞斯)/Troye Sivan (特洛耶·希文)\n"
+                + "[00:00.50]I woke up pissed off today\n"
+                + "[00:01.00]And lately everyone feels fake";
+        Song song = song("Edited learning text", hashService.hash("edited"));
+        song.setRawSourceContent(rawSource);
+        song.setRawLyrics(rawSource);
+        when(songRepository.findById(1L)).thenReturn(Optional.of(song));
+
+        var document = service.previewRawSource(1L);
+
+        assertEquals("There For You", document.title());
+        assertEquals("Martin Garrix/Troye Sivan", document.artist());
+        assertEquals(LyricLineType.METADATA, document.lines().getFirst().lineType());
+        assertEquals(LyricLineType.LYRIC, document.lines().get(1).lineType());
+        assertEquals("I woke up pissed off today\nAnd lately everyone feels fake", document.normalizedLyrics());
+        verify(lyricLineRepository, never()).deleteBySongId(anyLong());
+        verify(lyricTokenRepository, never()).deleteBySongId(anyLong());
+        verify(songRepository, never()).save(any());
     }
 
     private Song song(String lyrics, String hash) {

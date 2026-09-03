@@ -23,14 +23,27 @@ public class SongCreditService {
 
     public void replaceCredits(Song song, List<LyricLine> lines) {
         repository.deleteBySongId(song.getId());
-        List<SongCredit> credits = new ArrayList<>();
+        List<SongCredit> credits = parseCredits(lines).stream()
+                .map(credit -> SongCredit.builder()
+                    .song(song)
+                    .creditType(credit.getCreditType())
+                    .creditLabel(credit.getCreditLabel())
+                    .creditValue(credit.getCreditValue())
+                    .sourceLineId(credit.getSourceLineId())
+                    .sortOrder(credit.getSortOrder())
+                    .build())
+                .toList();
+        if (!credits.isEmpty()) repository.saveAll(credits);
+    }
+
+    public List<SongCreditDto> parseCredits(List<LyricLine> lines) {
+        List<SongCreditDto> credits = new ArrayList<>();
         int sortOrder = 0;
         for (LyricLine line : lines) {
             if (line.getLineType() != LyricLineType.CREDIT) continue;
             var parsed = classifier.parse(line.getNormalizedText());
             if (parsed.isEmpty()) continue;
-            credits.add(SongCredit.builder()
-                    .song(song)
+            credits.add(SongCreditDto.builder()
                     .creditType(parsed.get().creditType())
                     .creditLabel(parsed.get().creditLabel())
                     .creditValue(parsed.get().creditValue())
@@ -38,7 +51,7 @@ public class SongCreditService {
                     .sortOrder(sortOrder++)
                     .build());
         }
-        if (!credits.isEmpty()) repository.saveAll(credits);
+        return List.copyOf(credits);
     }
 
     @Transactional(readOnly = true)

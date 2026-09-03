@@ -91,8 +91,9 @@
             flat
             color="secondary"
             :label="t('restoreParsedResult')"
-            :disable="!document?.normalizedLyrics"
-            @click="restoreOriginalLyrics"
+            :loading="restoring"
+            :disable="restoring || !document?.rawLyrics"
+            @click="restoreParsedResult"
           />
           <q-btn flat :label="t('cancel')" v-close-popup />
           <q-btn
@@ -135,6 +136,7 @@ const document = ref<LyricDocument | null>(null);
 const songSnapshot = ref<Song | null>(null);
 const loading = ref(false);
 const saving = ref(false);
+const restoring = ref(false);
 const error = ref('');
 const originalSongJson = ref('');
 const editableSong = ref({
@@ -145,8 +147,6 @@ const editableSong = ref({
 });
 
 const rawLyricsForDisplay = computed(() => document.value?.rawLyrics || t('emptyLyrics'));
-const readonlyTitle = computed(() => songSnapshot.value?.rawTitle || songSnapshot.value?.title || props.songTitle || t('untitledSong'));
-const readonlyArtist = computed(() => songSnapshot.value?.rawArtist || songSnapshot.value?.artist || t('unknown'));
 const isDirty = computed(() => JSON.stringify(editableSong.value) !== originalSongJson.value);
 const isFormValid = computed(() =>
   editableSong.value.title.trim().length > 0
@@ -190,14 +190,27 @@ async function loadEditorData(songId: number) {
   }
 }
 
-function restoreOriginalLyrics() {
-  if (!document.value?.normalizedLyrics) return;
-  editableSong.value = {
-    title: readonlyTitle.value,
-    artist: readonlyArtist.value,
-    album: songSnapshot.value?.album ?? document.value.album ?? '',
-    lyrics: document.value.normalizedLyrics,
-  };
+async function restoreParsedResult() {
+  if (!props.songId || !document.value?.rawLyrics || restoring.value) return;
+  restoring.value = true;
+  try {
+    const parsed = await LyricsService.getRawSourcePreview(props.songId);
+    document.value = parsed;
+    editableSong.value = {
+      title: parsed.title ?? '',
+      artist: parsed.artist ?? '',
+      album: parsed.album ?? '',
+      lyrics: parsed.normalizedLyrics ?? '',
+    };
+  } catch (reason) {
+    Notify.create({
+      type: 'negative',
+      position: 'top-right',
+      message: reason instanceof Error ? reason.message : t('loadLyricsForEditingFailed'),
+    });
+  } finally {
+    restoring.value = false;
+  }
 }
 
 async function saveSong() {

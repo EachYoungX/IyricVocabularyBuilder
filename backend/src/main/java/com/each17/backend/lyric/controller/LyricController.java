@@ -18,6 +18,11 @@ public class LyricController {
         return ResponseEntity.ok(ApiResponse.success(lyricStructureService.getDocument(songId)));
     }
 
+    @GetMapping("/raw-preview")
+    public ResponseEntity<ApiResponse<LyricDocumentDto>> previewRawSource(@PathVariable Long songId) {
+        return ResponseEntity.ok(ApiResponse.success(lyricStructureService.previewRawSource(songId)));
+    }
+
     @PostMapping("/import")
     public ResponseEntity<ApiResponse<LyricDocumentDto>> importLyrics(
             @PathVariable Long songId,
