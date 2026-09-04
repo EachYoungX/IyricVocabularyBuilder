@@ -8,4 +8,3 @@ export type UserVocabularyImportItem = {
     status?: VocabularyStatus;
     note?: string | null;
 };
-

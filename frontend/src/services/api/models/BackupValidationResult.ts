@@ -9,4 +9,3 @@ export type BackupValidationResult = {
     userVocabularyCount: number;
     userPhraseCount: number;
 };
-

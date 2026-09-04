@@ -8,4 +8,3 @@ export type BackupRestoreResult = {
     restoredUserPhrases: number;
     vocabularyRebuildTaskId: string;
 };
-

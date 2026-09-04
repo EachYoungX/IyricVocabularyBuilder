@@ -41,3 +41,20 @@ if (!openApi.includes(generatedBase)) {
   throw new Error('Generated OpenAPI.ts base URL changed; environment patch was not applied.');
 }
 await writeFile(openApiPath, openApi.replace(generatedBase, environmentBase), 'utf8');
+
+const normalizedModelFiles = [
+  'BackupPayload.ts',
+  'BackupRestoreResult.ts',
+  'BackupValidationResult.ts',
+  'SongSummary.ts',
+  'UserVocabularyBatchUpdate.ts',
+  'UserVocabularyImportItem.ts',
+];
+
+for (const filename of normalizedModelFiles) {
+  const modelPath = fileURLToPath(
+    new URL(`../src/services/api/models/${filename}`, import.meta.url),
+  );
+  const model = await readFile(modelPath, 'utf8');
+  await writeFile(modelPath, model.replace(/\n{2,}$/u, '\n'), 'utf8');
+}

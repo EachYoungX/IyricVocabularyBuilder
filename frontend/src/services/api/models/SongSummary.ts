@@ -8,4 +8,3 @@ export type SongSummary = {
     artist: string;
     album?: string | null;
 };
-

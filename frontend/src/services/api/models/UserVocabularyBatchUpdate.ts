@@ -8,4 +8,3 @@ export type UserVocabularyBatchUpdate = {
     status?: VocabularyStatus;
     note?: string | null;
 };
-
