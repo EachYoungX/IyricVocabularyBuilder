@@ -84,6 +84,14 @@ CREATE TABLE IF NOT EXISTS vocabulary (
 CREATE INDEX IF NOT EXISTS idx_vocabulary_recommended_word
     ON vocabulary(recommended, word);
 
+-- User decisions are source data and survive every derived-index rebuild.
+CREATE TABLE IF NOT EXISTS vocabulary_override (
+                                                    lemma                TEXT PRIMARY KEY,
+                                                    excluded             INTEGER NOT NULL DEFAULT 0,
+                                                    recommended_override INTEGER,
+                                                    updated_at           TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS user_vocabulary (
                                                id            INTEGER PRIMARY KEY AUTOINCREMENT,
                                                user_id       TEXT NOT NULL DEFAULT 'local',
@@ -102,6 +110,9 @@ CREATE INDEX IF NOT EXISTS idx_user_vocabulary_user_status
 
 CREATE INDEX IF NOT EXISTS idx_user_vocabulary_user_lemma
     ON user_vocabulary(user_id, lemma);
+
+CREATE INDEX IF NOT EXISTS idx_user_vocabulary_user_review_due
+    ON user_vocabulary(user_id, review_due_at);
 
 CREATE TABLE IF NOT EXISTS vocabulary_occurrences (
                                                      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,6 +154,15 @@ CREATE INDEX IF NOT EXISTS idx_phrase_occurrence_song
     ON phrase_occurrence(song_id, lyric_line_id, start_token_position);
 CREATE INDEX IF NOT EXISTS idx_phrase_occurrence_phrase
     ON phrase_occurrence(phrase_id);
+
+CREATE TABLE IF NOT EXISTS phrase_cache_state (
+                                                  song_id            INTEGER PRIMARY KEY,
+                                                  dictionary_version TEXT NOT NULL,
+                                                  tokenizer_version  TEXT NOT NULL,
+                                                  lemma_version      TEXT NOT NULL,
+                                                  built_at           TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                                  FOREIGN KEY(song_id) REFERENCES songs(id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS user_phrase (
                                          id              INTEGER PRIMARY KEY AUTOINCREMENT,

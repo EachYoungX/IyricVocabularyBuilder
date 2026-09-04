@@ -13,14 +13,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 
 @Service
 public class DictionaryServiceImpl implements DictionaryService {
     private static final int MAX_CACHE_SIZE = 2_000;
 
     private final JdbcTemplate jdbcTemplate;
-    private final Map<String, DictionaryEntryDto> lookupCache = new ConcurrentHashMap<>();
+    private final Map<String, DictionaryEntryDto> lookupCache = boundedLru();
+    private final Map<String, Boolean> negativeCache = boundedLru();
 
     @Value("${app.dictionary.enabled:false}")
     private boolean enabled = true;
@@ -37,9 +39,15 @@ public class DictionaryServiceImpl implements DictionaryService {
         String normalizedWord = normalizeWord(word);
         DictionaryEntryDto cached = lookupCache.get(normalizedWord);
         if (cached != null) return cached;
-        DictionaryEntryDto entry = queryDictionary(normalizedWord);
-        cache(normalizedWord, entry);
-        return entry;
+        if (negativeCache.containsKey(normalizedWord)) throw new DictionaryNotFoundException(normalizedWord);
+        try {
+            DictionaryEntryDto entry = queryDictionary(normalizedWord);
+            lookupCache.put(normalizedWord, entry);
+            return entry;
+        } catch (DictionaryNotFoundException exception) {
+            negativeCache.put(normalizedWord, Boolean.TRUE);
+            throw exception;
+        }
     }
 
     @Override
@@ -48,11 +56,13 @@ public class DictionaryServiceImpl implements DictionaryService {
         String normalizedWord = normalizeWord(word);
         DictionaryEntryDto cached = lookupCache.get(normalizedWord);
         if (cached != null) return Optional.of(cached);
+        if (negativeCache.containsKey(normalizedWord)) return Optional.empty();
         try {
             DictionaryEntryDto entry = queryDictionary(normalizedWord);
-            cache(normalizedWord, entry);
+            lookupCache.put(normalizedWord, entry);
             return Optional.of(entry);
         } catch (DictionaryNotFoundException exception) {
+            negativeCache.put(normalizedWord, Boolean.TRUE);
             return Optional.empty();
         }
     }
@@ -82,9 +92,13 @@ public class DictionaryServiceImpl implements DictionaryService {
         }
     }
 
-    private void cache(String word, DictionaryEntryDto entry) {
-        if (lookupCache.size() >= MAX_CACHE_SIZE) lookupCache.clear();
-        lookupCache.put(word, entry);
+    private static <V> Map<String, V> boundedLru() {
+        return Collections.synchronizedMap(new LinkedHashMap<>(256, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, V> eldest) {
+                return size() > MAX_CACHE_SIZE;
+            }
+        });
     }
 
     private String normalizeWord(String word) {

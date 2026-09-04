@@ -7,12 +7,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Collection;
 
 @Repository
 public interface LyricTokenRepository extends JpaRepository<LyricToken, Long> {
     List<LyricToken> findByLemma(String lemma);
 
     List<LyricToken> findByLyricLineIdOrderByTokenPositionAsc(Long lyricLineId);
+
+    @Query("""
+            select token from LyricToken token
+            join fetch token.lyricLine line
+            where line.id in :lineIds
+            order by line.id asc, token.tokenPosition asc
+            """)
+    List<LyricToken> findByLyricLineIdsOrderByLineAndPosition(Collection<Long> lineIds);
 
     List<LyricToken> findDistinctByLyricLineSongIdAndLearningScoreGreaterThan(Long songId, Double score);
 

@@ -2,6 +2,7 @@ package com.each17.backend.song.mapper;
 
 import com.each17.backend.dto.SongDto;
 import com.each17.backend.dto.SongImportRequestDto;
+import com.each17.backend.dto.SongSummaryDto;
 import com.each17.backend.dto.SongUpdateRequestDto;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.service.SongCreditService;
@@ -56,5 +57,14 @@ public class SongMapper {
         entity.setArtist(dto.getArtist());
         entity.setAlbum(dto.getAlbum());
         entity.setLyrics(dto.getLyrics());
+    }
+
+    public SongSummaryDto toSummaryDto(Song song) {
+        return SongSummaryDto.builder()
+                .id(song.getId())
+                .title(song.getTitle())
+                .artist(song.getArtist())
+                .album(song.getAlbum())
+                .build();
     }
 }

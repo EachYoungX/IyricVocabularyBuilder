@@ -113,19 +113,15 @@ class UserVocabularyServiceImplTest {
                 .build());
 
         assertEquals(VocabularyStatus.LEARNING, result.getStatus());
-        assertEquals(0.4, result.getMasteryScore());
+        assertEquals(0.25, result.getMasteryScore());
         assertEquals("needs review", result.getNote());
         assertNotNull(result.getReviewDueAt());
     }
 
     @Test
     void reviewQueueSkipsMasteredBookmarkOnlyAndIgnoredWords() {
-        when(userVocabularyRepository.findByUserIdOrderByLastSeenAtDesc("local")).thenReturn(List.of(
-                item(1L, "run", VocabularyStatus.NEW, "2026-01-01T00:00:00"),
-                item(2L, "sing", VocabularyStatus.MASTERED, "2026-01-01T00:00:00"),
-                item(3L, "keep", VocabularyStatus.BOOKMARK_ONLY, "2026-01-01T00:00:00"),
-                item(4L, "hide", VocabularyStatus.IGNORED, "2026-01-01T00:00:00")
-        ));
+        when(userVocabularyRepository.findDueReviews(eq("local"), anyCollection(), anyString(), any()))
+                .thenReturn(List.of(item(1L, "run", VocabularyStatus.NEW, "2026-01-01T00:00:00")));
 
         var result = userVocabularyService.getReviewQueue(10);
 

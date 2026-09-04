@@ -5,6 +5,7 @@ import com.each17.backend.dto.SongDto;
 import com.each17.backend.dto.SongImportRequestDto;
 import com.each17.backend.dto.SongImportResponseDto;
 import com.each17.backend.dto.SongUpdateRequestDto;
+import com.each17.backend.dto.SongSummaryDto;
 import com.each17.backend.song.service.SongService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -38,21 +39,19 @@ class SongControllerTest {
     @Test
     void testGetAllSongs() throws Exception {
         // Given
-        SongDto songDto1 = SongDto.builder()
+        SongSummaryDto songDto1 = SongSummaryDto.builder()
                 .id(1L)
                 .title("Yesterday")
                 .artist("The Beatles")
-                .lyrics("Yesterday, all my troubles seemed so far away")
                 .build();
                 
-        SongDto songDto2 = SongDto.builder()
+        SongSummaryDto songDto2 = SongSummaryDto.builder()
                 .id(2L)
                 .title("Hey Jude")
                 .artist("The Beatles")
-                .lyrics("Hey Jude, don't make it bad")
                 .build();
                 
-        List<SongDto> songs = Arrays.asList(songDto1, songDto2);
+        List<SongSummaryDto> songs = Arrays.asList(songDto1, songDto2);
         
         when(songService.getAllSongs()).thenReturn(songs);
 

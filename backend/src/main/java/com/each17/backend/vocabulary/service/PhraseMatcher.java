@@ -9,9 +9,11 @@ import com.each17.backend.dictionary.service.PhraseRepository;
 import com.each17.backend.dto.PhraseMatchDto;
 import com.each17.backend.lyric.entity.LyricToken;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +24,9 @@ public class PhraseMatcher {
     private final PhraseRepository phraseRepository;
     private final PhrasePatternRepository patternRepository;
     private final List<SlotValidator> slotValidators;
+
+    @Value("${app.dictionary.enabled:false}")
+    private boolean dictionaryEnabled = true;
 
     public PhraseMatcher(PhraseAnchorRepository anchorRepository, PhraseRepository phraseRepository,
                           PhrasePatternRepository patternRepository) {
@@ -45,24 +50,29 @@ public class PhraseMatcher {
     }
 
     public List<PhraseMatchDto> findMatches(List<LyricToken> tokens, Integer selectedPosition) {
-        if (tokens == null || tokens.isEmpty()) return List.of();
+        if (!dictionaryEnabled || tokens == null || tokens.isEmpty()) return List.of();
+        Set<String> lookupTokens = tokens.stream()
+                .flatMap(token -> java.util.stream.Stream.of(
+                        safe(token.getNormalizedForm()), safe(token.getLemma()), safe(token.getSurfaceForm())))
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         Map<Long, PhraseAnchor> candidates = new LinkedHashMap<>();
-        Map<String, List<PhraseAnchor>> anchorCache = new HashMap<>();
-        for (int position = 0; position < tokens.size(); position++) {
-            LyricToken token = tokens.get(position);
-            String key = String.join("\u0000", safe(token.getNormalizedForm()), safe(token.getLemma()), safe(token.getSurfaceForm()));
-            List<PhraseAnchor> anchors = anchorCache.computeIfAbsent(key,
-                    ignored -> anchorRepository.findByToken(token.getNormalizedForm(), token.getLemma(), token.getSurfaceForm()));
-            anchors.forEach(anchor -> candidates.putIfAbsent(anchor.phraseId(), anchor));
-        }
+        anchorRepository.findByTokens(lookupTokens)
+                .forEach(anchor -> candidates.putIfAbsent(anchor.phraseId(), anchor));
+        if (candidates.isEmpty()) return List.of();
+
+        List<Long> candidateIds = new ArrayList<>(candidates.keySet());
+        Map<Long, PhraseEntry> phrases = phraseRepository.findByIds(candidateIds).stream()
+                .collect(Collectors.toMap(PhraseEntry::id, Function.identity()));
+        Map<Long, List<PhrasePatternToken>> patterns = patternRepository.findByPhraseIds(candidateIds).stream()
+                .collect(Collectors.groupingBy(PhrasePatternToken::phraseId, LinkedHashMap::new, Collectors.toList()));
 
         List<MatchCandidate> matches = new ArrayList<>();
         for (Map.Entry<Long, PhraseAnchor> candidate : candidates.entrySet()) {
-            Optional<PhraseEntry> phrase = phraseRepository.findById(candidate.getKey());
-            if (phrase.isEmpty()) continue;
-            List<PhrasePatternToken> pattern = patternRepository.findByPhraseId(candidate.getKey());
+            PhraseEntry entry = phrases.get(candidate.getKey());
+            if (entry == null) continue;
+            List<PhrasePatternToken> pattern = patterns.getOrDefault(candidate.getKey(), List.of());
             if (pattern.isEmpty()) continue;
-            PhraseEntry entry = phrase.get();
             int minStart = selectedPosition == null ? 0 : Math.max(0, selectedPosition - entry.tokenCountMax());
             int maxStart = selectedPosition == null ? tokens.size() - 1 : Math.min(selectedPosition, tokens.size() - 1);
             for (int start = minStart; start <= maxStart; start++) {

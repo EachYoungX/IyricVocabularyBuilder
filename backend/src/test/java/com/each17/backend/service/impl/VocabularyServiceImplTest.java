@@ -4,10 +4,13 @@ import com.each17.backend.vocabulary.service.VocabularyServiceImpl;
 import com.each17.backend.lyric.service.EnglishLemmaService;
 import com.each17.backend.lyric.service.LyricTokenizationService;
 import com.each17.backend.vocabulary.service.VocabularyIndexBuilder;
+import com.each17.backend.vocabulary.service.VocabularyRebuildTaskRegistry;
+import com.each17.backend.vocabulary.service.VocabularyRebuildWorker;
 import com.each17.backend.dto.WordOccurrenceDto;
 import com.each17.backend.dto.WordPageDto;
 import com.each17.backend.vocabulary.entity.Vocabulary;
 import com.each17.backend.vocabulary.repository.VocabularyRepository;
+import com.each17.backend.vocabulary.repository.VocabularyOverrideRepository;
 import com.each17.backend.song.repository.SongRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -36,6 +39,9 @@ class VocabularyServiceImplTest {
     private VocabularyRepository vocabularyRepository;
 
     @Mock
+    private VocabularyOverrideRepository overrideRepository;
+
+    @Mock
     private ObjectMapper objectMapper;
 
     private VocabularyServiceImpl vocabularyService;
@@ -45,6 +51,12 @@ class VocabularyServiceImplTest {
 
     @Mock
     private VocabularyIndexBuilder vocabularyIndexBuilder;
+
+    @Mock
+    private VocabularyRebuildTaskRegistry rebuildTaskRegistry;
+
+    @Mock
+    private VocabularyRebuildWorker rebuildWorker;
 
     private EnglishLemmaService lemmaService;
     private LyricTokenizationService tokenizationService;
@@ -63,8 +75,8 @@ class VocabularyServiceImplTest {
                     .orElse("");
         });
         vocabularyService = new VocabularyServiceImpl(
-                vocabularyRepository, songRepository, tokenizationService, lemmaService,
-                vocabularyIndexBuilder, objectMapper
+                vocabularyRepository, overrideRepository, tokenizationService, lemmaService,
+                objectMapper, rebuildTaskRegistry, rebuildWorker
         );
     }
 
@@ -257,6 +269,7 @@ class VocabularyServiceImplTest {
 
         assertEquals(2, result);
         verify(vocabularyRepository).findAllById(List.of("love", "run away"));
+        verify(overrideRepository).saveAll(anyList());
         verify(vocabularyRepository).deleteAllInBatch(List.of(love, runAway));
     }
 

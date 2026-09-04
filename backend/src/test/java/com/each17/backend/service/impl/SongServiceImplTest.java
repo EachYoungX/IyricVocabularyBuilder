@@ -4,6 +4,7 @@ import com.each17.backend.song.service.SongServiceImpl;
 import com.each17.backend.dto.SongDto;
 import com.each17.backend.dto.SongImportRequestDto;
 import com.each17.backend.dto.SongUpdateRequestDto;
+import com.each17.backend.dto.SongSummaryDto;
 import com.each17.backend.song.entity.Song;
 import com.each17.backend.song.mapper.SongMapper;
 import com.each17.backend.song.repository.SongRepository;
@@ -52,21 +53,21 @@ class SongServiceImplTest {
         Song song2 = new Song();
         List<Song> songs = Arrays.asList(song1, song2);
 
-        SongDto songDto1 = new SongDto();
-        SongDto songDto2 = new SongDto();
-        List<SongDto> expectedDtos = Arrays.asList(songDto1, songDto2);
+        SongSummaryDto songDto1 = new SongSummaryDto();
+        SongSummaryDto songDto2 = new SongSummaryDto();
+        List<SongSummaryDto> expectedDtos = Arrays.asList(songDto1, songDto2);
 
         when(songRepository.findAll()).thenReturn(songs);
-        when(songMapper.toDto(song1)).thenReturn(songDto1);
-        when(songMapper.toDto(song2)).thenReturn(songDto2);
+        when(songMapper.toSummaryDto(song1)).thenReturn(songDto1);
+        when(songMapper.toSummaryDto(song2)).thenReturn(songDto2);
 
         // When
-        List<SongDto> result = songService.getAllSongs();
+        List<SongSummaryDto> result = songService.getAllSongs();
 
         // Then
         assertEquals(expectedDtos, result);
         verify(songRepository, times(1)).findAll();
-        verify(songMapper, times(2)).toDto(any(Song.class));
+        verify(songMapper, times(2)).toSummaryDto(any(Song.class));
     }
 
     @Test

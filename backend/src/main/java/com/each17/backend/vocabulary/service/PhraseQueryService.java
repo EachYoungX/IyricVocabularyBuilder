@@ -15,10 +15,14 @@ import com.each17.backend.lyric.repository.LyricTokenRepository;
 import com.each17.backend.lyric.service.LyricLineClassifier;
 import com.each17.backend.common.exception.ValidationException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +34,9 @@ public class PhraseQueryService {
     private final PhraseOccurrenceService occurrenceService;
     private final DictionaryService dictionaryService;
     private final UserPhraseService userPhraseService;
+
+    @Value("${app.dictionary.enabled:false}")
+    private boolean dictionaryEnabled = true;
 
     public LyricTokenContextDto getTokenContext(Long lineId, int position) {
         List<LyricToken> tokens = lyricTokenRepository.findByLyricLineIdOrderByTokenPositionAsc(lineId);
@@ -49,9 +56,15 @@ public class PhraseQueryService {
 
     public List<PhraseMatchDto> getSongPhrases(Long songId) {
         List<PhraseMatchDto> matches = new java.util.ArrayList<>(occurrenceService.findSongMatches(songId));
-        for (LyricLine line : lyricLineRepository.findBySongIdOrderByLineIndexAsc(songId)) {
+        List<LyricLine> lines = lyricLineRepository.findBySongIdOrderByLineIndexAsc(songId);
+        List<Long> lineIds = lines.stream().map(LyricLine::getId).toList();
+        Map<Long, List<LyricToken>> tokensByLine = lineIds.isEmpty() ? Map.of()
+                : lyricTokenRepository.findByLyricLineIdsOrderByLineAndPosition(lineIds).stream()
+                .collect(Collectors.groupingBy(token -> token.getLyricLine().getId(),
+                        LinkedHashMap::new, Collectors.toList()));
+        for (LyricLine line : lines) {
             if (!LyricLineClassifier.isIndexableLine(line)) continue;
-            List<LyricToken> tokens = lyricTokenRepository.findByLyricLineIdOrderByTokenPositionAsc(line.getId());
+            List<LyricToken> tokens = tokensByLine.getOrDefault(line.getId(), List.of());
             matches.addAll(userPhraseMatches(tokens));
         }
         return matches;
@@ -63,6 +76,7 @@ public class PhraseQueryService {
 
     public List<PhraseEntry> searchPhrases(String query, int limit) {
         if (limit < 1 || limit > 200) throw new IllegalArgumentException("limit must be between 1 and 200");
+        if (!dictionaryEnabled) return List.of();
         return matchedPhrases(query).stream().limit(limit).toList();
     }
 
@@ -70,7 +84,7 @@ public class PhraseQueryService {
         if (page < 0 || size < 1 || size > 200) {
             throw new ValidationException("Page must be >= 0 and size must be between 1 and 200");
         }
-        List<PhraseEntry> matchedPhrases = matchedPhrases(query);
+        List<PhraseEntry> matchedPhrases = dictionaryEnabled ? matchedPhrases(query) : List.of();
         long totalElements = matchedPhrases.size();
         int fromIndex = Math.min(page * size, matchedPhrases.size());
         int toIndex = Math.min(fromIndex + size, matchedPhrases.size());
@@ -97,6 +111,7 @@ public class PhraseQueryService {
 
     public List<PhraseOccurrenceDto> getPhraseOccurrences(Long phraseId) {
         if (phraseId == null || phraseId < 1) throw new ValidationException("phraseId must be positive");
+        if (!dictionaryEnabled) return List.of();
         if (phraseRepository.findById(phraseId).isEmpty()) {
             throw new NotFoundException("Phrase not found: " + phraseId);
         }

@@ -1,5 +1,8 @@
 package com.each17.backend.config;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -8,17 +11,17 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
 @Configuration
+@Slf4j
 public class DataSourceConfig {
+
+    private static final int SQLITE_BUSY_TIMEOUT_MS = 5_000;
 
     /**
      * 手动配置主数据源 (app_data.db)。
@@ -32,20 +35,14 @@ public class DataSourceConfig {
             @Value("${spring.datasource.driver-class-name}") String driverClassName,
             ResourceLoader resourceLoader
     ) {
-        System.out.println("====================================================");
-        System.out.println("      MANUALLY CONFIGURING PRIMARY DATASOURCE       ");
-        System.out.println("      URL: " + url);
-        System.out.println("====================================================");
-
-        // 1. 手动创建 DataSource 实例
-        final DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        dataSource.setUrl(url);
-        dataSource.setDriverClassName(driverClassName);
+        log.info("Configuring primary SQLite datasource: {}", url);
+        HikariDataSource dataSource = sqliteDataSource(
+                "app-sqlite-pool", url, driverClassName, 1, true, false);
 
         // 2. 手动执行 schema.sql 初始化
         Resource schema = resourceLoader.getResource("classpath:schema.sql");
         if (schema.exists()) {
-            System.out.println(">>> schema.sql found. Executing initialization script...");
+            log.info("Initializing and migrating the application database");
             ResourceDatabasePopulator populator = new ResourceDatabasePopulator(schema);
             populator.execute(dataSource);
             migrateSongColumns(dataSource);
@@ -53,9 +50,9 @@ public class DataSourceConfig {
             migrateVocabularyColumns(dataSource);
             migrateLyricLineColumns(dataSource);
             migrateLyricTokenColumns(dataSource);
-            System.out.println(">>> schema.sql execution finished.");
+            log.info("Application database initialization finished");
         } else {
-            System.err.println("!!! WARNING: schema.sql not found! Tables will not be created.");
+            log.warn("schema.sql was not found; application tables were not initialized");
         }
 
         return dataSource;
@@ -143,20 +140,28 @@ public class DataSourceConfig {
         addLyricTokenColumnIfMissing(jdbcTemplate, columns, "token_position", "INTEGER NOT NULL DEFAULT 0");
         addLyricTokenColumnIfMissing(jdbcTemplate, columns, "lemma_status", "TEXT NOT NULL DEFAULT 'FALLBACK'");
 
-        jdbcTemplate.execute("""
-                WITH ranked AS (
-                    SELECT id,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY lyric_line_id
-                               ORDER BY start_offset, end_offset, id
-                           ) - 1 AS position
-                    FROM lyric_tokens
-                )
-                UPDATE lyric_tokens
-                SET token_position = (
-                    SELECT position FROM ranked WHERE ranked.id = lyric_tokens.id
-                )
-                """);
+        String migrationKey = "schema.lyric-token-position";
+        String migrated = jdbcTemplate.query(
+                "SELECT value FROM app_meta WHERE key = ?",
+                ps -> ps.setString(1, migrationKey),
+                rs -> rs.next() ? rs.getString(1) : null);
+        if (!"1".equals(migrated)) {
+            jdbcTemplate.execute("""
+                    WITH ranked AS (
+                        SELECT id,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY lyric_line_id
+                                   ORDER BY start_offset, end_offset, id
+                               ) - 1 AS position
+                        FROM lyric_tokens
+                    )
+                    UPDATE lyric_tokens
+                    SET token_position = (
+                        SELECT position FROM ranked WHERE ranked.id = lyric_tokens.id
+                    )
+                    """);
+            jdbcTemplate.update("INSERT OR REPLACE INTO app_meta(key, value) VALUES (?, '1')", migrationKey);
+        }
         jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_lyric_tokens_line_position "
                 + "ON lyric_tokens(lyric_line_id, token_position)");
         jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_lyric_tokens_normalized "
@@ -194,15 +199,8 @@ public class DataSourceConfig {
             @Value("${app.dictionary.datasource.url}") String url,
             @Value("${app.dictionary.datasource.driver-class-name}") String driverClassName
     ) {
-        System.out.println("====================================================");
-        System.out.println("     MANUALLY CONFIGURING DICTIONARY DATASOURCE     ");
-        System.out.println("      URL: " + url);
-        System.out.println("====================================================");
-
-        final DriverManagerDataSource dataSource = new ReadOnlySqliteDataSource();
-        dataSource.setUrl(url);
-        dataSource.setDriverClassName(driverClassName);
-        return dataSource;
+        log.info("Configuring dictionary SQLite datasource: {}", url);
+        return sqliteDataSource("dictionary-sqlite-pool", url, driverClassName, 2, false, true);
     }
 
     @Bean(name = "appJdbcTemplate")
@@ -216,14 +214,24 @@ public class DataSourceConfig {
         return new JdbcTemplate(dataSource);
     }
 
-    private static final class ReadOnlySqliteDataSource extends DriverManagerDataSource {
-        @Override
-        public Connection getConnection() throws SQLException {
-            Connection connection = super.getConnection();
-            try (var statement = connection.createStatement()) {
-                statement.execute("PRAGMA query_only = ON");
-            }
-            return connection;
-        }
+    private HikariDataSource sqliteDataSource(
+            String poolName,
+            String url,
+            String driverClassName,
+            int maximumPoolSize,
+            boolean foreignKeys,
+            boolean queryOnly
+    ) {
+        HikariConfig config = new HikariConfig();
+        config.setPoolName(poolName);
+        config.setJdbcUrl(url);
+        config.setDriverClassName(driverClassName);
+        config.setMaximumPoolSize(maximumPoolSize);
+        config.setMinimumIdle(0);
+        config.setConnectionTimeout(10_000);
+        config.addDataSourceProperty("busy_timeout", Integer.toString(SQLITE_BUSY_TIMEOUT_MS));
+        config.addDataSourceProperty("foreign_keys", Boolean.toString(foreignKeys));
+        config.addDataSourceProperty("query_only", Boolean.toString(queryOnly));
+        return new HikariDataSource(config);
     }
 }

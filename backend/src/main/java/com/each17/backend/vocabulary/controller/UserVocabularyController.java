@@ -45,9 +45,27 @@ public class UserVocabularyController {
         return ResponseEntity.ok(ApiResponse.success(userVocabularyService.getReviewQueue(limit)));
     }
 
+    @PatchMapping("/batch")
+    public ResponseEntity<ApiResponse<List<UserVocabularyDto>>> updateWords(
+            @RequestBody List<UserVocabularyBatchUpdateDto> requests) {
+        return ResponseEntity.ok(ApiResponse.success(userVocabularyService.updateWords(requests)));
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<ApiResponse<List<UserVocabularyDto>>> importWords(
+            @RequestBody List<UserVocabularyImportItemDto> requests) {
+        return ResponseEntity.ok(ApiResponse.success(userVocabularyService.importWords(requests)));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteWord(@PathVariable Long id) {
         userVocabularyService.deleteWord(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/batch")
+    public ResponseEntity<Void> deleteWords(@RequestBody List<Long> ids) {
+        userVocabularyService.deleteWords(ids);
         return ResponseEntity.noContent().build();
     }
 

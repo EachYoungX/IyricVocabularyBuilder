@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Collection;
 
 @Repository
 public class PhraseAnchorRepository {
@@ -26,5 +27,16 @@ public class PhraseAnchorRepository {
                 """, (rs, rowNum) -> new PhraseAnchor(rs.getLong("phrase_id"),
                 rs.getInt("anchor_position"), rs.getString("anchor_type"),
                 rs.getString("anchor_value")), normalized, lemma, normalized, lemma, surface);
+    }
+
+    public List<PhraseAnchor> findByTokens(Collection<String> tokens) {
+        if (tokens == null || tokens.isEmpty()) return List.of();
+        String placeholders = String.join(",", tokens.stream().map(ignored -> "?").toList());
+        return jdbcTemplate.query("""
+                SELECT phrase_id, anchor_position, anchor_type, anchor_value
+                FROM phrase_anchor
+                WHERE anchor_value IN (""" + placeholders + ")", (rs, rowNum) -> new PhraseAnchor(
+                rs.getLong("phrase_id"), rs.getInt("anchor_position"), rs.getString("anchor_type"),
+                rs.getString("anchor_value")), tokens.toArray());
     }
 }

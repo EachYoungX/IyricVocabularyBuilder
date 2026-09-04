@@ -14,7 +14,8 @@ import lombok.*;
         uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "lemma"}),
         indexes = {
                 @Index(name = "idx_user_vocabulary_user_status", columnList = "user_id, status"),
-                @Index(name = "idx_user_vocabulary_user_lemma", columnList = "user_id, lemma")
+                @Index(name = "idx_user_vocabulary_user_lemma", columnList = "user_id, lemma"),
+                @Index(name = "idx_user_vocabulary_user_review_due", columnList = "user_id, review_due_at")
         }
 )
 public class UserVocabulary {

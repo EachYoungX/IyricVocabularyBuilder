@@ -13,7 +13,7 @@ info:
     All responses with a body use the `{ code, message, data }` envelope. Successful
     response schemas below describe the business payload inside `data`; the generated
     frontend transport unwraps this field automatically.
-  version: 1.3.0
+  version: 1.0.0
 
 servers:
   - url: http://localhost:8080
@@ -32,6 +32,8 @@ tags:
     description: 正式词典短语与上下文命中 / Dictionary phrases and contextual matches
   - name: UserVocabulary
     description: 个人词库、统计与复习 / Personal vocabulary, stats, and review
+  - name: Backup
+    description: 完整用户源数据备份、校验与事务恢复 / Full backup validation and transactional restore
 
 paths:
   # ===============================================================
@@ -336,6 +338,70 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/user-vocabulary/batch:
+    patch:
+      tags: [UserVocabulary]
+      summary: 批量更新个人词条 / Update personal vocabulary in one transaction
+      operationId: updateUserVocabularyWordsBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserVocabularyBatchUpdate'
+      responses:
+        '200':
+          description: 更新后的词条
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserVocabulary'
+    delete:
+      tags: [UserVocabulary]
+      summary: 批量删除个人词条 / Delete personal vocabulary in one transaction
+      operationId: deleteUserVocabularyWordsBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: integer
+                format: int64
+      responses:
+        '204':
+          description: 删除成功
+
+  /api/user-vocabulary/import:
+    post:
+      tags: [UserVocabulary]
+      summary: 批量导入个人词条 / Import personal vocabulary in one transaction
+      operationId: importUserVocabularyWords
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserVocabularyImportItem'
+      responses:
+        '200':
+          description: 已导入词条
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserVocabulary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /api/user-vocabulary/stats:
     get:
       tags: [UserVocabulary]
@@ -390,7 +456,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Song'
+                  $ref: '#/components/schemas/SongSummary'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -618,6 +684,23 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/songs/{songId}/lyrics/raw-preview:
+    get:
+      tags: [Lyrics]
+      summary: 从原始来源重新解析歌词预览 / Preview lyrics parsed from the raw source
+      operationId: getRawSourcePreview
+      parameters:
+        - $ref: '#/components/parameters/SongId'
+      responses:
+        '200':
+          description: 重新解析但尚未保存的结构化歌词 / Reparsed structured lyrics without persistence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LyricDocument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/songs/{songId}/lyrics/import:
     post:
       tags: [Lyrics]
@@ -677,6 +760,20 @@ paths:
                 $ref: '#/components/schemas/LyricLine'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/songs/count:
+    get:
+      tags: [Songs]
+      summary: 获取歌曲数量 / Count songs without loading song content
+      operationId: countSongs
+      responses:
+        '200':
+          description: 歌曲数量
+          content:
+            application/json:
+              schema:
+                type: integer
+                format: int64
 
   /api/lyrics/lines/{lineId}/tokens/{position}:
     get:
@@ -836,6 +933,58 @@ paths:
       responses:
         '200': {description: 已删除}
         '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/backup/export:
+    get:
+      tags: [Backup]
+      summary: 导出完整备份 / Export a versioned full backup
+      operationId: exportBackup
+      responses:
+        '200':
+          description: 完整备份
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BackupPayload'}
+
+  /api/backup/validate:
+    post:
+      tags: [Backup]
+      summary: 在修改数据前校验备份 / Validate a backup before any mutation
+      operationId: validateBackup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BackupPayload'}
+      responses:
+        '200':
+          description: 校验结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BackupValidationResult'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+
+  /api/backup/restore:
+    post:
+      tags: [Backup]
+      summary: 事务性覆盖恢复 / Transactional overwrite restore
+      operationId: restoreBackup
+      parameters:
+        - name: mode
+          in: query
+          schema: {type: string, enum: [overwrite], default: overwrite}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BackupPayload'}
+      responses:
+        '200':
+          description: 恢复结果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BackupRestoreResult'}
+        '400': {$ref: '#/components/responses/BadRequest'}
 
 # ===============================================================
 # Components
@@ -1227,6 +1376,88 @@ components:
             - $ref: '#/components/schemas/WordOccurrence'
           nullable: true
       required: [id, lemma, status, masteryScore]
+
+    UserVocabularyBatchUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/VocabularyStatus'
+        note:
+          type: string
+          nullable: true
+      required: [id]
+
+    UserVocabularyImportItem:
+      type: object
+      properties:
+        lemma:
+          type: string
+        status:
+          $ref: '#/components/schemas/VocabularyStatus'
+        note:
+          type: string
+          nullable: true
+      required: [lemma]
+
+    SongSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: string
+          nullable: true
+      required: [id, title, artist]
+
+    BackupPayload:
+      type: object
+      description: Versioned source-data backup. Song items include structured lyric lines, tokens, and credits.
+      properties:
+        schemaVersion: {type: integer, enum: [1]}
+        appVersion: {type: string}
+        exportedAt: {type: string, format: date-time}
+        songs:
+          type: array
+          items: {type: object, additionalProperties: true}
+        userVocabulary:
+          type: array
+          items: {type: object, additionalProperties: true}
+        userPhrases:
+          type: array
+          items: {type: object, additionalProperties: true}
+        vocabularyOverrides:
+          type: array
+          items: {type: object, additionalProperties: true}
+        settings: {type: object, additionalProperties: true}
+        motionPreference: {type: string, enum: [on, off]}
+      required: [schemaVersion, appVersion, exportedAt, songs, userVocabulary, userPhrases, vocabularyOverrides]
+
+    BackupValidationResult:
+      type: object
+      properties:
+        valid: {type: boolean}
+        schemaVersion: {type: integer}
+        songCount: {type: integer}
+        userVocabularyCount: {type: integer}
+        userPhraseCount: {type: integer}
+      required: [valid, schemaVersion, songCount, userVocabularyCount, userPhraseCount]
+
+    BackupRestoreResult:
+      type: object
+      properties:
+        restoredSongs: {type: integer}
+        restoredUserVocabulary: {type: integer}
+        restoredUserPhrases: {type: integer}
+        vocabularyRebuildTaskId: {type: string, format: uuid}
+      required: [restoredSongs, restoredUserVocabulary, restoredUserPhrases, vocabularyRebuildTaskId]
 
     Song:
       type: object

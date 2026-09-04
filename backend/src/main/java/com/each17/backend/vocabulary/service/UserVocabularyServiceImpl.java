@@ -20,17 +20,25 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Slf4j
 public class UserVocabularyServiceImpl implements UserVocabularyService {
     private static final String LOCAL_USER_ID = "local";
+    private static final Set<VocabularyStatus> NON_REVIEWABLE = Set.of(
+            VocabularyStatus.MASTERED, VocabularyStatus.BOOKMARK_ONLY, VocabularyStatus.IGNORED);
 
     private final UserVocabularyRepository userVocabularyRepository;
     private final VocabularyRepository vocabularyRepository;
@@ -94,10 +102,9 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
                 .orElseThrow(() -> new NotFoundException("User vocabulary not found: " + id));
 
         if (request.getStatus() != null) {
-            vocabulary.setStatus(request.getStatus());
-            vocabulary.setReviewDueAt(nextReviewDueAt(request.getStatus()));
+            applyStatus(vocabulary, request.getStatus());
         }
-        if (request.getMasteryScore() != null) {
+        if (request.getStatus() == null && request.getMasteryScore() != null) {
             if (request.getMasteryScore() < 0 || request.getMasteryScore() > 1) {
                 throw new ValidationException("masteryScore must be between 0 and 1");
             }
@@ -111,10 +118,62 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
     }
 
     @Override
+    @Transactional
+    public List<UserVocabularyDto> updateWords(List<UserVocabularyBatchUpdateDto> requests) {
+        if (requests == null || requests.isEmpty() || requests.size() > 500) {
+            throw new ValidationException("batch update must contain between 1 and 500 items");
+        }
+        Map<Long, UserVocabularyBatchUpdateDto> byId = requests.stream()
+                .filter(request -> request != null && request.getId() != null)
+                .collect(Collectors.toMap(UserVocabularyBatchUpdateDto::getId, Function.identity(),
+                        (left, right) -> right, LinkedHashMap::new));
+        if (byId.size() != requests.size()) throw new ValidationException("Every batch update requires a unique id");
+
+        List<UserVocabulary> words = userVocabularyRepository.findAllById(byId.keySet());
+        validateOwnedIds(byId.keySet(), words);
+        String timestamp = now();
+        for (UserVocabulary word : words) {
+            UserVocabularyBatchUpdateDto request = byId.get(word.getId());
+            if (request.getStatus() != null) applyStatus(word, request.getStatus());
+            if (request.getNote() != null) word.setNote(request.getNote());
+            word.setLastSeenAt(timestamp);
+        }
+        return userVocabularyRepository.saveAll(words).stream().map(this::toDto).toList();
+    }
+
+    @Override
+    @Transactional
+    public List<UserVocabularyDto> importWords(List<UserVocabularyImportItemDto> requests) {
+        if (requests == null || requests.isEmpty() || requests.size() > 2_000) {
+            throw new ValidationException("import must contain between 1 and 2000 items");
+        }
+        Map<String, UserVocabularyImportItemDto> byLemma = new LinkedHashMap<>();
+        for (UserVocabularyImportItemDto request : requests) {
+            String lemma = normalizeLemma(request == null ? null : request.getLemma());
+            byLemma.put(lemma, request);
+        }
+        Map<String, UserVocabulary> existing = userVocabularyRepository
+                .findByUserIdAndLemmaIn(LOCAL_USER_ID, byLemma.keySet()).stream()
+                .collect(Collectors.toMap(UserVocabulary::getLemma, Function.identity()));
+        String timestamp = now();
+        List<UserVocabulary> words = byLemma.entrySet().stream().map(entry -> {
+            UserVocabularyImportItemDto request = entry.getValue();
+            UserVocabulary word = existing.getOrDefault(entry.getKey(), UserVocabulary.builder()
+                    .userId(LOCAL_USER_ID).lemma(entry.getKey()).status(VocabularyStatus.NEW)
+                    .masteryScore(0.0).firstSeenAt(timestamp).build());
+            if (request.getStatus() != null) applyStatus(word, request.getStatus());
+            else if (word.getReviewDueAt() == null) word.setReviewDueAt(timestamp);
+            if (request.getNote() != null) word.setNote(request.getNote());
+            word.setLastSeenAt(timestamp);
+            return word;
+        }).toList();
+        return userVocabularyRepository.saveAll(words).stream().map(this::toDto).toList();
+    }
+
+    @Override
     public UserVocabularyStatsDto getStats() {
-        List<UserVocabularyDto> recentWords = userVocabularyRepository.findByUserIdOrderByLastSeenAtDesc(LOCAL_USER_ID)
+        List<UserVocabularyDto> recentWords = userVocabularyRepository.findTop8ByUserIdOrderByLastSeenAtDesc(LOCAL_USER_ID)
                 .stream()
-                .limit(8)
                 .map(this::toDto)
                 .toList();
         return UserVocabularyStatsDto.builder()
@@ -134,13 +193,13 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
         if (limit < 1 || limit > 100) {
             throw new ValidationException("limit must be between 1 and 100");
         }
-        String timestamp = now();
-        return userVocabularyRepository.findByUserIdOrderByLastSeenAtDesc(LOCAL_USER_ID).stream()
-                .filter(this::isReviewable)
-                .filter(item -> item.getReviewDueAt() == null || item.getReviewDueAt().compareTo(timestamp) <= 0)
-                .sorted(Comparator.comparing(item -> item.getReviewDueAt() == null ? "" : item.getReviewDueAt()))
-                .limit(limit)
-                .map(this::toReviewItem)
+        List<UserVocabulary> due = userVocabularyRepository.findDueReviews(
+                LOCAL_USER_ID, NON_REVIEWABLE, now(), PageRequest.of(0, limit));
+        Map<String, Vocabulary> indexed = vocabularyRepository.findAllById(
+                        due.stream().map(UserVocabulary::getLemma).toList()).stream()
+                .collect(Collectors.toMap(Vocabulary::getWord, Function.identity()));
+        return due.stream()
+                .map(word -> toReviewItem(word, indexed.get(word.getLemma())))
                 .toList();
     }
 
@@ -155,6 +214,19 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
 
     @Override
     @Transactional
+    public void deleteWords(List<Long> ids) {
+        if (ids == null || ids.isEmpty() || ids.size() > 500) {
+            throw new ValidationException("batch delete must contain between 1 and 500 ids");
+        }
+        List<Long> uniqueIds = ids.stream().distinct().toList();
+        if (uniqueIds.size() != ids.size()) throw new ValidationException("batch delete ids must be unique");
+        List<UserVocabulary> words = userVocabularyRepository.findAllById(uniqueIds);
+        validateOwnedIds(uniqueIds, words);
+        userVocabularyRepository.deleteAllInBatch(words);
+    }
+
+    @Override
+    @Transactional
     public void clearAllWords() {
         userVocabularyRepository.deleteByUserId(LOCAL_USER_ID);
     }
@@ -162,12 +234,22 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
     @Override
     @Transactional
     public void addDefaultWordsForSong(Long songId) {
-        lyricTokenRepository.findDistinctByLyricLineSongIdAndLearningScoreGreaterThan(songId, 0.5)
+        List<String> lemmas = lyricTokenRepository.findDistinctByLyricLineSongIdAndLearningScoreGreaterThan(songId, 0.5)
                 .stream()
                 .map(LyricToken::getLemma)
                 .filter(lemma -> lemma != null && !lemma.isBlank())
                 .distinct()
-                .forEach(lemma -> addWord(UserVocabularyRequestDto.builder().lemma(lemma).build()));
+                .toList();
+        if (lemmas.isEmpty()) return;
+        Set<String> existing = userVocabularyRepository.findByUserIdAndLemmaIn(LOCAL_USER_ID, lemmas).stream()
+                .map(UserVocabulary::getLemma).collect(Collectors.toSet());
+        String timestamp = now();
+        List<UserVocabulary> missing = lemmas.stream().filter(lemma -> !existing.contains(lemma))
+                .map(lemma -> UserVocabulary.builder().userId(LOCAL_USER_ID).lemma(lemma)
+                        .status(VocabularyStatus.NEW).masteryScore(0.0).firstSeenAt(timestamp)
+                        .lastSeenAt(timestamp).reviewDueAt(timestamp).build())
+                .toList();
+        if (!missing.isEmpty()) userVocabularyRepository.saveAll(missing);
     }
 
     private String normalizeLemma(String rawWord) {
@@ -182,11 +264,7 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
     }
 
     private long countDueReviews() {
-        String timestamp = now();
-        return userVocabularyRepository.findByUserIdOrderByLastSeenAtDesc(LOCAL_USER_ID).stream()
-                .filter(this::isReviewable)
-                .filter(item -> item.getReviewDueAt() == null || item.getReviewDueAt().compareTo(timestamp) <= 0)
-                .count();
+        return userVocabularyRepository.countDueReviews(LOCAL_USER_ID, NON_REVIEWABLE, now());
     }
 
     private UserVocabularyDto toDto(UserVocabulary vocabulary) {
@@ -203,21 +281,15 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
                 .build();
     }
 
-    private UserVocabularyReviewItemDto toReviewItem(UserVocabulary vocabulary) {
+    private UserVocabularyReviewItemDto toReviewItem(UserVocabulary vocabulary, Vocabulary indexedVocabulary) {
         return UserVocabularyReviewItemDto.builder()
                 .id(vocabulary.getId())
                 .lemma(vocabulary.getLemma())
                 .status(vocabulary.getStatus())
                 .masteryScore(vocabulary.getMasteryScore())
                 .reviewDueAt(vocabulary.getReviewDueAt())
-                .example(findFirstOccurrence(vocabulary.getLemma()))
+                .example(indexedVocabulary == null ? null : readFirstOccurrence(indexedVocabulary).orElse(null))
                 .build();
-    }
-
-    private WordOccurrenceDto findFirstOccurrence(String lemma) {
-        return vocabularyRepository.findById(lemma)
-                .flatMap(this::readFirstOccurrence)
-                .orElse(null);
     }
 
     private Optional<WordOccurrenceDto> readFirstOccurrence(Vocabulary vocabulary) {
@@ -240,6 +312,26 @@ public class UserVocabularyServiceImpl implements UserVocabularyService {
             case BOOKMARK_ONLY -> null;
             case IGNORED -> null;
         };
+    }
+
+    private void applyStatus(UserVocabulary vocabulary, VocabularyStatus status) {
+        vocabulary.setStatus(status);
+        vocabulary.setMasteryScore(switch (status) {
+            case NEW, BOOKMARK_ONLY, IGNORED -> 0.0;
+            case LEARNING -> 0.25;
+            case FAMILIAR -> 0.6;
+            case MASTERED -> 1.0;
+        });
+        vocabulary.setReviewDueAt(nextReviewDueAt(status));
+    }
+
+    private void validateOwnedIds(Collection<Long> requestedIds, List<UserVocabulary> words) {
+        Set<Long> found = words.stream()
+                .filter(item -> LOCAL_USER_ID.equals(item.getUserId()))
+                .map(UserVocabulary::getId)
+                .collect(Collectors.toSet());
+        List<Long> missing = requestedIds.stream().filter(id -> !found.contains(id)).toList();
+        if (!missing.isEmpty()) throw new NotFoundException("User vocabulary not found: " + missing);
     }
 
     private boolean isReviewable(UserVocabulary item) {

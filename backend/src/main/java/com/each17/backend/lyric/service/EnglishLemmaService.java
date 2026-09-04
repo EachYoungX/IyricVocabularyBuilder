@@ -7,13 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class EnglishLemmaService {
+    private static final int MAX_VALIDATION_CACHE_SIZE = 4_096;
     private static final Map<String, String> IRREGULARS = Map.ofEntries(
             Map.entry("am", "be"), Map.entry("are", "be"), Map.entry("is", "be"), Map.entry("was", "be"), Map.entry("were", "be"),
             Map.entry("been", "be"), Map.entry("being", "be"),
@@ -37,7 +39,13 @@ public class EnglishLemmaService {
     );
 
     private final DictionaryService dictionaryService;
-    private final Map<String, Boolean> validationCache = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> validationCache = Collections.synchronizedMap(
+            new LinkedHashMap<>(512, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+                    return size() > MAX_VALIDATION_CACHE_SIZE;
+                }
+            });
 
     public EnglishLemmaService() {
         this(null);

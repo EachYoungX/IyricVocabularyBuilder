@@ -5,6 +5,7 @@ import com.each17.backend.dto.SongDto;
 import com.each17.backend.dto.SongImportRequestDto;
 import com.each17.backend.dto.SongImportResponseDto;
 import com.each17.backend.dto.SongUpdateRequestDto;
+import com.each17.backend.dto.SongSummaryDto;
 import com.each17.backend.common.response.ApiResponse;
 import com.each17.backend.song.service.SongService;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +23,13 @@ public class SongController {
     private final SongService songService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SongDto>>> getAllSongs() {
+    public ResponseEntity<ApiResponse<List<SongSummaryDto>>> getAllSongs() {
         return ResponseEntity.ok(ApiResponse.success(songService.getAllSongs()));
+    }
+
+    @GetMapping("/count")
+    public ResponseEntity<ApiResponse<Long>> countSongs() {
+        return ResponseEntity.ok(ApiResponse.success(songService.countSongs()));
     }
     
     @GetMapping("/{id}")

@@ -33,16 +33,23 @@ public class VocabularyIndexBuilder {
         Map<String, LemmaIndex> index = new HashMap<>();
 
         Map<Long, List<LyricLine>> linesBySongId = loadLinesBySongId(songs);
+        List<LyricLine> persistedLines = linesBySongId.values().stream()
+                .flatMap(Collection::stream)
+                .filter(this::shouldIndexLine)
+                .filter(line -> line.getId() != null)
+                .toList();
+        Map<Long, List<LyricToken>> tokensByLineId = loadTokensByLineId(persistedLines);
+        List<LyricToken> generatedTokens = new ArrayList<>();
 
         for (Song song : songs) {
             List<LyricLine> lines = linesBySongId.getOrDefault(song.getId(), fallbackLines(song));
             for (LyricLine line : lines.stream().filter(this::shouldIndexLine).toList()) {
                 List<LyricToken> lineTokens = line.getId() == null
                         ? List.of()
-                        : lyricTokenRepository.findByLyricLineIdOrderByTokenPositionAsc(line.getId());
+                        : tokensByLineId.getOrDefault(line.getId(), List.of());
                 if (lineTokens.isEmpty()) {
                     lineTokens = tokenizationService.tokenize(line);
-                    if (line.getId() != null && !lineTokens.isEmpty()) lyricTokenRepository.saveAll(lineTokens);
+                    if (line.getId() != null && !lineTokens.isEmpty()) generatedTokens.addAll(lineTokens);
                 }
                 for (LyricToken token : lineTokens) {
                     index.computeIfAbsent(token.getLemma(), ignored -> new LemmaIndex())
@@ -50,11 +57,20 @@ public class VocabularyIndexBuilder {
                 }
             }
         }
+        if (!generatedTokens.isEmpty()) lyricTokenRepository.saveAll(generatedTokens);
 
         return index.entrySet().stream()
                 .map(this::toVocabulary)
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    private Map<Long, List<LyricToken>> loadTokensByLineId(List<LyricLine> lines) {
+        List<Long> lineIds = lines.stream().map(LyricLine::getId).toList();
+        if (lineIds.isEmpty()) return Map.of();
+        return lyricTokenRepository.findByLyricLineIdsOrderByLineAndPosition(lineIds).stream()
+                .collect(Collectors.groupingBy(token -> token.getLyricLine().getId(),
+                        LinkedHashMap::new, Collectors.toList()));
     }
 
     private Map<Long, List<LyricLine>> loadLinesBySongId(List<Song> songs) {
