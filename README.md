@@ -54,11 +54,13 @@ At a high level, the app is split into four parts:
 
 ## Local Development
 
+Requirements: Java 25, Node.js 20 or newer, and pnpm 11. The repository includes the Maven Wrapper, so a separate Maven installation is not required.
+
 ### Backend
 
-```powershell
+```bash
 cd backend
-.\mvnw.cmd spring-boot:run
+./mvnw spring-boot:run
 ```
 
 Default API URL:
@@ -67,13 +69,13 @@ Default API URL:
 http://localhost:8080
 ```
 
-The development profile uses a local SQLite database:
+The default configuration uses a local SQLite database:
 
 ```text
 backend/data/app_data.db
 ```
 
-If the database does not exist, the backend initializes it from `schema.sql` and applies the required lightweight migrations. The development profile points to the external dictionary database used by this workspace; the dictionary file remains outside this repository and is not bundled into the application package. Provide `APP_DICTIONARY_DB_URL` to override the path or `APP_DICTIONARY_ENABLED=false` to disable lookup.
+If the database does not exist, the backend initializes it from `schema.sql` and applies the required lightweight migrations. Dictionary integration is disabled by default. In this mode, song import, lyric editing, vocabulary indexing, and personal vocabulary remain available; dictionary definitions and dictionary-backed phrase matching return empty/not-found results without accessing dictionary tables.
 
 Optional dictionary override:
 
@@ -82,17 +84,17 @@ APP_DICTIONARY_ENABLED=true
 APP_DICTIONARY_DB_URL=jdbc:sqlite:/absolute/path/lyric-dictionary.sqlite
 ```
 
-For a no-dictionary build or local run:
+For an explicit no-dictionary local run:
 
-```text
-SPRING_PROFILES_ACTIVE=dev,no-dictionary
+```bash
+APP_DICTIONARY_ENABLED=false ./mvnw spring-boot:run
 ```
 
 ### Frontend
 
-```powershell
+```bash
 cd frontend
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
@@ -119,13 +121,15 @@ pnpm gen-api
 
 The post-generation script adapts the generated client to the backend response envelope.
 
+Development defaults to `http://localhost:8080`. Set `VITE_API_BASE_URL` when the API is on another host. Production builds use same-origin `/api` calls by default, which is suited to a reverse proxy. For LAN development, add the exact frontend origins to the backend, for example `APP_CORS_ALLOWED_ORIGINS=http://192.168.1.20:9000`, and point the frontend at the reachable backend address.
+
 ## Verification
 
 Backend:
 
-```powershell
+```bash
 cd backend
-.\mvnw.cmd clean test
+./mvnw clean test
 ```
 
 Frontend:
@@ -133,6 +137,7 @@ Frontend:
 ```powershell
 cd frontend
 pnpm lint
+pnpm test
 pnpm build
 ```
 
@@ -142,10 +147,10 @@ The current project is best suited for local learning, demos, or a small self-ho
 
 1. Build and run the backend:
 
-```powershell
+```bash
 cd backend
-.\mvnw.cmd clean package
-java -jar target/backend-0.0.1-SNAPSHOT.jar
+./mvnw clean package
+java -jar target/backend-1.0.0.jar
 ```
 
 2. Build the frontend:
@@ -157,7 +162,11 @@ pnpm build
 
 3. Serve `frontend/dist/spa` as a static site and proxy API requests to the backend.
 
-Before making a public deployment, configure the frontend API base URL or reverse proxy, keep `backend/data/app_data.db` out of git, avoid publishing user-imported lyrics, and keep any dictionary file outside the project release artifacts.
+The default deployment target is localhost or a trusted LAN. The backend has no user authentication or authorization, and CORS is not an authentication mechanism, so the API should not be exposed directly to the public internet. Put authentication and TLS in a trusted reverse proxy if broader access is required. Keep `backend/data/app_data.db` out of git, avoid publishing user-imported lyrics, and keep dictionary files outside release artifacts.
+
+## Backup And Restore
+
+The Data Management page exports a versioned full backup containing source songs, structured lyrics and user corrections, credits, personal vocabulary, user phrases, and persistent vocabulary overrides. Restore validates the complete backup before mutation and supports transactional overwrite restore. Derived vocabulary and phrase caches are rebuilt after restore.
 
 ## Data And Copyright Boundary
 

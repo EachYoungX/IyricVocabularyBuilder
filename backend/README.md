@@ -15,6 +15,8 @@ This backend turns user-provided English lyrics into normalized lyric lines, lem
 - Lombok
 - Maven Wrapper
 
+Required runtime: Java 25.
+
 ## Runtime Data
 
 User data is stored locally in:
@@ -31,7 +33,7 @@ src/main/resources/schema.sql
 
 The backend does not bundle dictionary data. Phrase source data and dictionary releases are maintained in the independent `LyricVocabularyDictionary` repository and supplied to a runtime separately.
 
-The development profile points to the external dictionary database used by this workspace. The dictionary file remains outside this repository and is not bundled into the application package. Set `APP_DICTIONARY_DB_URL` to override the path, or set `APP_DICTIONARY_ENABLED=false` to disable lookup. Set the `no-dictionary` Spring profile for an explicit runtime without dictionary data.
+Dictionary integration is disabled by default. Song, lyric, vocabulary-index, and personal-vocabulary APIs remain available without it; dictionary and dictionary-backed phrase results degrade to empty/not-found responses. Enable an external compatible database with `APP_DICTIONARY_ENABLED=true` and `APP_DICTIONARY_DB_URL=jdbc:sqlite:/absolute/path/lyric-dictionary.sqlite`.
 
 ## Main Domains
 
@@ -68,6 +70,7 @@ The frontend generated client unwraps `data` at the transport layer.
 
 ```text
 GET    /api/songs
+GET    /api/songs/count
 POST   /api/songs
 POST   /api/songs/import
 GET    /api/songs/import/tasks/{taskId}
@@ -83,16 +86,23 @@ POST   /api/vocabulary/refresh
 POST   /api/user-vocabulary
 GET    /api/user-vocabulary
 PATCH  /api/user-vocabulary/{id}
+PATCH  /api/user-vocabulary/batch
+DELETE /api/user-vocabulary/batch
+POST   /api/user-vocabulary/import
 GET    /api/user-vocabulary/stats
 GET    /api/user-vocabulary/review
 
 GET    /api/dictionary/{word}
+
+GET    /api/backup/export
+POST   /api/backup/validate
+POST   /api/backup/restore
 ```
 
 ## Local Development
 
-```powershell
-.\mvnw.cmd spring-boot:run
+```bash
+./mvnw spring-boot:run
 ```
 
 Default API base URL:
@@ -103,10 +113,21 @@ http://localhost:8080
 
 ## Build And Test
 
-```powershell
-.\mvnw.cmd clean test
-.\mvnw.cmd clean package
+```bash
+./mvnw clean test
+./mvnw clean package
 ```
+
+Runtime configuration:
+
+```text
+APP_DB_URL=jdbc:sqlite:data/app_data.db
+APP_DICTIONARY_ENABLED=false
+APP_DICTIONARY_DB_URL=jdbc:sqlite:/absolute/path/lyric-dictionary.sqlite
+APP_CORS_ALLOWED_ORIGINS=http://localhost:9000,http://127.0.0.1:9000
+```
+
+The default operating boundary is localhost or a trusted LAN. This API has no user authentication or authorization. Do not expose it directly to the public internet; CORS is not an authentication mechanism.
 
 ## Copyright Boundary
 

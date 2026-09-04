@@ -54,11 +54,13 @@ Lyric Vocabulary Builder 是一个面向中文母语者的英文歌词词汇学�
 
 ## 本地运行
 
+环境要求：Java 25、Node.js 20 或更高版本、pnpm 11。仓库已经包含 Maven Wrapper，无需单独安装 Maven。
+
 ### 后端
 
-```powershell
+```bash
 cd backend
-.\mvnw.cmd spring-boot:run
+./mvnw spring-boot:run
 ```
 
 默认 API 地址：
@@ -82,17 +84,17 @@ APP_DICTIONARY_ENABLED=true
 APP_DICTIONARY_DB_URL=jdbc:sqlite:/absolute/path/lyric-dictionary.sqlite
 ```
 
-无词库运行时使用：
+无词典模式下，歌曲导入、歌词编辑、词汇索引和个人词库可正常使用；词典释义与依赖词典的短语匹配返回空结果或未找到，不会访问词典表。显式以无词典模式运行：
 
-```text
-SPRING_PROFILES_ACTIVE=dev,no-dictionary
+```bash
+APP_DICTIONARY_ENABLED=false ./mvnw spring-boot:run
 ```
 
 ### 前端
 
-```powershell
+```bash
 cd frontend
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
@@ -119,13 +121,15 @@ pnpm gen-api
 
 生成后脚本会自动适配后端 `{ code, message, data }` 响应信封。
 
+开发环境默认连接 `http://localhost:8080`。API 位于其他主机时设置 `VITE_API_BASE_URL`；生产构建默认使用同源 `/api`，适合通过反向代理部署。局域网开发需要把前端的精确来源加入后端，例如 `APP_CORS_ALLOWED_ORIGINS=http://192.168.1.20:9000`，并让前端连接局域网可访问的后端地址。
+
 ## 验证
 
 后端：
 
-```powershell
+```bash
 cd backend
-.\mvnw.cmd clean test
+./mvnw clean test
 ```
 
 前端：
@@ -133,6 +137,7 @@ cd backend
 ```powershell
 cd frontend
 pnpm lint
+pnpm test
 pnpm build
 ```
 
@@ -142,10 +147,10 @@ pnpm build
 
 1. 构建并运行后端：
 
-```powershell
+```bash
 cd backend
-.\mvnw.cmd clean package
-java -jar target/backend-0.0.1-SNAPSHOT.jar
+./mvnw clean package
+java -jar target/backend-1.0.0.jar
 ```
 
 2. 构建前端：
@@ -157,7 +162,11 @@ pnpm build
 
 3. 将 `frontend/dist/spa` 作为静态站点部署，并把 API 请求转发到后端。
 
-公开部署前建议明确配置前端 API base URL 或反向代理规则，保持 `backend/data/app_data.db` 不进入仓库，不发布用户导入的歌词或学习数据；词典文件应由部署环境单独管理，不应被重新打包进本项目发布物。
+默认部署范围是 localhost 或受信任局域网。后端没有用户认证和权限控制，CORS 也不是认证机制，因此不建议把后端 API 直接暴露到公网。需要扩大访问范围时，应由受信任的反向代理提供认证和 TLS。`backend/data/app_data.db` 不应进入仓库，不应公开用户导入的歌词或学习数据；词典文件由部署环境单独管理，不进入本项目发布物。
+
+## 备份与恢复
+
+数据管理页会导出带版本号的完整备份，包括歌曲源数据、结构化歌词与用户修正、创作人员、个人词库、用户短语和持久化词汇覆盖规则。恢复会在修改数据前验证完整备份，并通过事务执行覆盖恢复；恢复完成后重新生成派生词汇与短语缓存。
 
 ## 数据与版权边界
 
