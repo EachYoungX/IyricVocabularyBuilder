@@ -2,9 +2,9 @@
   <q-page padding class="data-management-page">
     <div class="q-mx-auto data-management-content">
       <section class="page-masthead page-intro">
-        <div class="page-kicker">{{ t('settingsPage.dataKicker') }}</div>
+        <div class="lv-kicker">{{ t('settingsPage.dataKicker') }}</div>
         <h1 class="serif-display page-title">{{ t('settingsPage.dataTitle') }}</h1>
-        <p class="page-caption">{{ t('settingsPage.dataCaption') }}</p>
+        <p class="page-caption lv-helper-text">{{ t('settingsPage.dataCaption') }}</p>
       </section>
 
       <div class="management-sections">
@@ -24,7 +24,7 @@
             :caption="t('settingsPage.backupRestoreCaption')" />
           <div class="backup-layout q-mt-md">
             <div class="export-panel">
-              <div class="panel-kicker">{{ t('settingsPage.exportData') }}</div>
+              <div class="lv-kicker">{{ t('settingsPage.exportData') }}</div>
               <h2>{{ t('settingsPage.exportCompleteBackup') }}</h2>
               <p>{{ t('settingsPage.exportCompleteBackupHelp') }}</p>
               <q-btn color="primary" unelevated no-caps icon="download"
@@ -33,7 +33,7 @@
             </div>
 
             <div class="import-panel">
-              <div class="panel-kicker">{{ t('settingsPage.importData') }}</div>
+              <div class="lv-kicker">{{ t('settingsPage.importData') }}</div>
               <h2>{{ t('settingsPage.importBackupTitle') }}</h2>
               <p>{{ t('settingsPage.importBackupHelp') }}</p>
               <div class="import-step">
@@ -54,8 +54,6 @@
                   <div class="import-actions">
                     <q-btn outline no-caps icon="visibility" :disable="!backupFile"
                       :label="t('settingsPage.previewImport')" @click="previewBackupImport" />
-                    <q-btn outline no-caps icon="merge_type" :disable="!backupFile" :loading="importing"
-                      :label="t('settingsPage.mergeImport')" @click="importBackup('merge')" />
                     <q-btn outline no-caps color="warning" icon="file_download"
                       :disable="!backupFile" :loading="importing"
                       :label="t('settingsPage.overwriteImport')" @click="confirmOverwriteSettings" />
@@ -128,14 +126,11 @@ import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import SettingsSectionHeading from 'components/SettingsSectionHeading.vue';
 import {
-  ImportTaskResult,
   SongsService,
   UserVocabularyService,
-  type SongImportRequest,
-  type UserVocabulary,
   type UserVocabularyStats,
-  type VocabularyStatus,
 } from 'src/services/api';
+import { BackupApiService, type BackupPayload } from 'src/services/backupService';
 import {
   APP_SETTINGS_STORAGE_KEY,
   loadAppSettings,
@@ -150,12 +145,8 @@ import {
   type MotionPreference,
 } from 'src/utils/motionPreference';
 import {
-  backupSongs,
-  backupVocabulary,
   downloadTextFile,
   timestampForFilename,
-  type BackupPayload,
-  type BackupVocabularyItem,
 } from 'src/utils/settingsDataTransfer';
 
 const { t } = useI18n();
@@ -183,34 +174,18 @@ const dataStats = computed(() => [
   { label: t('settingsPage.localDataSize'), value: estimateLocalStorageSize() },
 ]);
 
-function buildBackupPayload(
-  songs: Awaited<ReturnType<typeof SongsService.getAllSongs>>,
-  vocabulary: Awaited<ReturnType<typeof UserVocabularyService.listUserVocabularyWords>>,
-  stats: UserVocabularyStats | null,
-) {
-  return {
-    schemaVersion: 1,
-    exportedAt: new Date().toISOString(),
-    app: { name: 'Lyric Vocabulary Builder', version: '0.0.1' },
-    settings: settings.value,
-    motionPreference: motionPreference.value,
-    stats,
-    songs,
-    vocabulary,
-  };
-}
-
 async function exportCompleteBackupJson() {
   exporting.value = true;
   try {
-    const [songs, vocabulary, stats] = await Promise.all([
-      SongsService.getAllSongs(),
-      UserVocabularyService.listUserVocabularyWords(),
-      UserVocabularyService.getUserVocabularyStats().catch(() => null),
-    ]);
+    const backendBackup = await BackupApiService.exportBackup();
+    const backup: BackupPayload = {
+      ...backendBackup,
+      settings: settings.value,
+      motionPreference: motionPreference.value,
+    };
     downloadTextFile(
       `lyric-vocabulary-backup-${timestampForFilename()}.json`,
-      JSON.stringify(buildBackupPayload(songs, vocabulary, stats), null, 2),
+      JSON.stringify(backup, null, 2),
       'application/json;charset=utf-8',
     );
     $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.exportSuccess') });
@@ -236,12 +211,18 @@ async function readBackupFile() {
 async function previewBackupImport() {
   const backup = await readBackupFile();
   if (!backup) return;
-  backupPreview.value = t('settingsPage.importPreviewSummary', {
-    exportedAt: backup.exportedAt ?? t('unknown'),
-    songs: backup.songs?.length ?? 0,
-    vocabulary: backup.vocabulary?.length ?? 0,
-    hasSettings: backup.settings ? t('yes') : t('no'),
-  });
+  try {
+    const validation = await BackupApiService.validateBackup(backup);
+    backupPreview.value = t('settingsPage.importPreviewSummary', {
+      exportedAt: backup.exportedAt,
+      songs: validation.songCount,
+      vocabulary: validation.userVocabularyCount,
+      hasSettings: backup.settings ? t('yes') : t('no'),
+    });
+  } catch {
+    backupPreview.value = '';
+    $q.notify({ type: 'negative', position: 'top-right', message: t('settingsPage.importPreviewFailed') });
+  }
 }
 
 function applyImportedPreferences(backup: BackupPayload, replace = false) {
@@ -257,26 +238,21 @@ function applyImportedPreferences(backup: BackupPayload, replace = false) {
   return true;
 }
 
-async function importBackup(mode: 'merge' | 'overwrite') {
+async function importBackup() {
   const backup = await readBackupFile();
   if (!backup) return;
   importing.value = true;
   try {
-    if (mode === 'overwrite') {
-      await deleteAllSongsData();
-      await UserVocabularyService.clearUserVocabularyWords();
-    }
-    const preferencesApplied = applyImportedPreferences(backup, mode === 'overwrite');
-    const songResult = await importSongsFromBackup(backupSongs(backup));
-    const vocabularyCount = await importVocabularyFromBackup(backupVocabulary(backup));
+    const result = await BackupApiService.restoreBackup(backup);
+    const preferencesApplied = applyImportedPreferences(backup, true);
     resetStatsAfterDataChange();
     $q.notify({
-      type: songResult.failedCount > 0 ? 'warning' : 'positive',
+      type: 'positive',
       position: 'top-right',
       message: t('settingsPage.importBackupSuccess', {
-        songs: songResult.successCount,
-        failedSongs: songResult.failedCount,
-        vocabulary: vocabularyCount,
+        songs: result.restoredSongs,
+        failedSongs: 0,
+        vocabulary: result.restoredUserVocabulary,
         settings: preferencesApplied ? t('yes') : t('no'),
       }),
     });
@@ -296,45 +272,7 @@ async function confirmOverwriteSettings() {
     message: t('settingsPage.overwriteSettingsImpact'),
     cancel: true,
     persistent: true,
-  }).onOk(() => void importBackup('overwrite'));
-}
-
-async function importSongsFromBackup(songs: SongImportRequest[]) {
-  if (songs.length === 0) return { successCount: 0, failedCount: 0 };
-  const task = await SongsService.importSongsAsync(songs);
-  for (let index = 0; index < 30; index += 1) {
-    const result = await SongsService.getImportTaskResult(task.taskId);
-    if (result.status === ImportTaskResult.status.COMPLETED || result.status === ImportTaskResult.status.FAILED) {
-      return { successCount: result.successCount, failedCount: result.failedCount };
-    }
-    await delay(500);
-  }
-  return { successCount: 0, failedCount: songs.length };
-}
-
-async function importVocabularyFromBackup(vocabulary: BackupVocabularyItem[]) {
-  let imported = 0;
-  for (const word of vocabulary) {
-    const request: { lemma: string; note?: string | null } = { lemma: word.lemma };
-    if (word.note !== undefined) request.note = word.note;
-    const saved = await UserVocabularyService.addUserVocabularyWord(request);
-    await restoreVocabularyState(saved, word);
-    imported += 1;
-  }
-  return imported;
-}
-
-async function restoreVocabularyState(saved: UserVocabulary, item: BackupVocabularyItem) {
-  if (!item.status && item.masteryScore === undefined && item.note === undefined) return;
-  const request: { status?: VocabularyStatus; masteryScore?: number; note?: string | null } = {};
-  if (item.status) request.status = item.status;
-  if (item.masteryScore !== undefined) request.masteryScore = item.masteryScore;
-  if (item.note !== undefined) request.note = item.note;
-  await UserVocabularyService.updateUserVocabularyWord(saved.id, request);
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }).onOk(() => void importBackup());
 }
 
 function resetStatsAfterDataChange() {
@@ -401,11 +339,11 @@ function estimateLocalStorageSize() {
 }
 
 async function loadDataStats() {
-  const [songs, stats] = await Promise.all([
-    SongsService.getAllSongs().catch(() => null),
+  const [count, stats] = await Promise.all([
+    SongsService.countSongs().catch(() => null),
     UserVocabularyService.getUserVocabularyStats().catch(() => null),
   ]);
-  songCount.value = songs?.length ?? null;
+  songCount.value = count;
   vocabularyStats.value = stats;
 }
 
@@ -423,15 +361,6 @@ onMounted(() => {
   margin-bottom: 28px;
 }
 
-.page-kicker,
-.panel-kicker {
-  color: var(--lv-muted);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
 .page-title {
   margin: 6px 0 0;
   color: var(--lv-ink);
@@ -442,8 +371,6 @@ onMounted(() => {
 .page-caption {
   max-width: 680px;
   margin: 12px 0 0;
-  color: var(--lv-ink-soft);
-  line-height: 1.6;
 }
 
 .management-sections {
@@ -502,14 +429,14 @@ onMounted(() => {
 }
 
 .export-panel {
-  color: var(--lv-paper);
+  color: var(--lv-on-brand);
   background: var(--lv-brand-bg);
   border-color: transparent;
 }
 
-.export-panel .panel-kicker,
+.export-panel .lv-kicker,
 .export-panel p {
-  color: rgba(255, 255, 255, 0.72);
+  color: color-mix(in srgb, var(--lv-on-brand) 72%, transparent);
 }
 
 .export-panel h2,

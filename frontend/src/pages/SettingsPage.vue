@@ -142,7 +142,7 @@
             <div class="about-grid q-mt-md">
               <div class="about-tile">
                 <div class="about-label">{{ t('settingsPage.version') }}</div>
-                <div class="about-value">0.0.1</div>
+                <div class="about-value">{{ appVersion }}</div>
               </div>
               <a class="about-tile about-link" href="https://github.com/EachYoungX/IyricVocabularyBuilder" target="_blank">
                 <div class="about-label">{{ t('settingsPage.github') }}</div>
@@ -193,6 +193,7 @@ const { t } = useI18n();
 const $q = useQuasar();
 const settings = ref<AppSettings>(loadAppSettings());
 const motionPreference = ref<MotionPreference>(getStoredMotionPreference() ?? applyMotionPreference());
+const appVersion = process.env.APP_VERSION;
 
 const option = <T extends string | boolean>(key: string, value: T): Option<T> => ({
   label: t(`settingsPage.${key}`),

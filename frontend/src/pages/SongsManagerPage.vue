@@ -5,7 +5,7 @@
 
     <!-- 主体容器 -->
     <div class="col full-width" style="display: flex">
-      <q-splitter v-model="splitterModel" :horizontal="$q.screen.lt.md" class="fit desktop-splitter" unit="%"
+      <q-splitter v-model="splitterModel" :horizontal="$q.screen.lt.md" class="fit lv-responsive-splitter" unit="%"
         :limits="[10, 90]">
 
         <!-- 左侧/上方：歌曲列表 -->
@@ -106,12 +106,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onBeforeUnmount, onMounted } from 'vue'
 import type { QTableColumn, QTable } from 'quasar';
 import { useQuasar } from 'quasar'
 import { useSongsStore } from 'src/stores/songsStore'
 import { Notify } from 'quasar'
-import type { Song } from 'src/services/api'
+import { SongsService, type Song, type SongSummary } from 'src/services/api'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import LyricEditDialog from 'components/lyric/LyricEditDialog.vue'
@@ -124,6 +124,9 @@ const songsTable = ref<QTable | null>(null)
 const splitterModel = ref(50)
 const filter = ref('')
 const lyricEditorVisible = ref(false)
+const selectedSong = ref<Song | null>(null)
+let songDetailRequestId = 0
+let isUnmounted = false
 
 // 表格列
 const columns: QTableColumn[] = [
@@ -150,12 +153,10 @@ const isBatchMode = ref(false)
 const selectionMode = computed(() => isBatchMode.value ? 'multiple' : 'single')
 
 // 选中状态
-const selectedSongs = ref<Song[]>([])
+const selectedSongs = ref<SongSummary[]>([])
 
 // 批量删除加载状态
 const deletingBatch = ref(false)
-
-const selectedSong = computed(() => selectedSongs.value[0])
 
 // 启用批量模式
 const enableBatchMode = () => {
@@ -173,7 +174,7 @@ const disableBatchMode = () => {
 }
 
 // 当选中变化时，普通模式只保留第一首。
-watch(() => selectedSongs.value, (newSelection: Song[]) => {
+watch(() => selectedSongs.value, (newSelection: SongSummary[]) => {
   if (newSelection.length > 1 && !isBatchMode.value) {
     // 在多选时（非批量模式）只保留第一个选中的
     const firstSong = newSelection[0]
@@ -181,10 +182,29 @@ watch(() => selectedSongs.value, (newSelection: Song[]) => {
       selectedSongs.value = [firstSong]
     }
   }
+  const summary = newSelection.length === 1 && !isBatchMode.value ? newSelection[0] : undefined
+  if (summary) {
+    void loadSongDetail(summary.id)
+  } else {
+    songDetailRequestId += 1
+    selectedSong.value = null
+  }
 }, { immediate: true })
 
+async function loadSongDetail(songId: number) {
+  const requestId = ++songDetailRequestId
+  try {
+    const song = await SongsService.getSongById(songId)
+    if (!isUnmounted && requestId === songDetailRequestId) selectedSong.value = song
+  } catch {
+    if (isUnmounted || requestId !== songDetailRequestId) return
+    selectedSong.value = null
+    Notify.create({ type: 'negative', message: t('fetchSongsFailed', { error: t('unknownError') }) })
+  }
+}
+
 // 点击行处理
-function onRowClick(_evt: Event, row: Song) {
+function onRowClick(_evt: Event, row: SongSummary) {
   if (isBatchMode.value) {
     // 批量模式下：切换选中状态
     const index = selectedSongs.value.findIndex((s) => s.id === row.id)
@@ -208,12 +228,12 @@ function onRowClick(_evt: Event, row: Song) {
 }
 
 function handleLyricEditorSaved(song: Song) {
-  selectedSongs.value = [song]
+  selectedSong.value = song
 }
 
 // 单曲删除
 const confirmDelete = () => {
-  const song = selectedSongs.value[0]
+  const song = selectedSong.value
   if (!song) return
   $q.dialog({
     title: t('confirmDeletion'),
@@ -280,13 +300,18 @@ async function initializeSongs() {
   if (songsStore.songs.length === 0) await songsStore.fetchAllSongs(false)
   const requestedSongId = Number(route.query.songId)
   if (Number.isFinite(requestedSongId)) {
-    const song = songsStore.songs.find((item: Song) => item.id === requestedSongId)
+    const song = songsStore.songs.find((item: SongSummary) => item.id === requestedSongId)
     if (song) selectedSongs.value = [song]
   }
 }
 
 onMounted(() => {
   void initializeSongs()
+})
+
+onBeforeUnmount(() => {
+  isUnmounted = true
+  songDetailRequestId += 1
 })
 </script>
 
@@ -394,74 +419,6 @@ onMounted(() => {
 @media (min-width: 601px) {
   .q-pa-sm-md {
     padding: 16px;
-  }
-}
-
-/* 桌面端分割器样式 - 与旧版保持一致 */
-@media (min-width: 768px) {
-  .desktop-splitter {
-    border: 1px solid var(--lv-line);
-    border-radius: var(--lv-radius-md);
-    background: var(--lv-surface-solid);
-  }
-
-  /* 隐藏桌面端的分隔线，让边框看起来是连续的 */
-  :deep(.q-splitter__separator) {
-    background-color: transparent;
-    width: 1px;
-    /* 保持很细的分隔线，但透明 */
-  }
-
-  /* 确保分隔区域仍然可拖动 */
-  :deep(.q-splitter__separator-area) {
-    cursor: col-resize;
-    z-index: 10;
-    background-color: transparent;
-
-    /* 添加悬停效果，让用户知道这里可以拖动 */
-    &:hover {
-      background-color: rgba(27, 60, 83, 0.06);
-    }
-  }
-
-  /* 为分割器面板添加内部边框，模拟旧版效果 */
-  :deep(.q-splitter__panel) {
-    &:first-child {
-      border-right: 1px solid var(--lv-line);
-    }
-  }
-}
-
-/* 移动端分割器样式 */
-@media (max-width: 767px) {
-  .desktop-splitter {
-    border: 1px solid var(--lv-line);
-    border-radius: var(--lv-radius-md);
-    background: var(--lv-surface-solid);
-    overflow: hidden;
-  }
-
-  :deep(.q-splitter__separator) {
-    background-color: var(--lv-line);
-
-    /* 移动端添加水平分割线样式 */
-    &::before {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      height: 4px;
-      width: 40px;
-      background-color: var(--lv-line-strong);
-      border-radius: 2px;
-      opacity: 0.7;
-    }
-  }
-
-  :deep(.q-splitter__separator-area) {
-    cursor: row-resize;
-    z-index: 10;
   }
 }
 

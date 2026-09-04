@@ -15,6 +15,8 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   const currentWordPage = ref<number>(0);
   const wordPageSize = ref<number>(50);
   const wordSearchPrefix = ref<string>('');
+  let wordsRequestId = 0;
+  let occurrenceRequestId = 0;
 
   // Getters
   const getSelectedWord = computed(() => selectedWord.value);
@@ -32,6 +34,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
 
   // Actions
   async function fetchWords(params: FetchWordsParams) {
+    const requestId = ++wordsRequestId;
     isLoading.value = true;
     try {
       const { page, size, prefix } = params;
@@ -44,6 +47,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
         recommendedOnly,
         settings.lemmaSearch,
       );
+      if (requestId !== wordsRequestId) return;
       if (page === 0) {
         words.value = wordPage.content ?? [];
       } else {
@@ -55,16 +59,19 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       wordPageSize.value = wordPage.size;
       wordSearchPrefix.value = prefix || '';
     } catch (error) {
+      if (requestId !== wordsRequestId) return;
       console.error('Failed to fetch words:', error);
     } finally {
-      isLoading.value = false;
+      if (requestId === wordsRequestId) isLoading.value = false;
     }
   }
 
   async function fetchWordOccurrences(word: string) {
+    const requestId = ++occurrenceRequestId;
     isLoading.value = true;
     try {
       const occurrences: WordOccurrence[] = await VocabularyService.getWordOccurrences(word);
+      if (requestId !== occurrenceRequestId) return;
       wordOccurrences.value = occurrences;
       selectedWord.value = word;
 
@@ -72,12 +79,13 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
       const dictionaryStore = useDictionaryStore();
       await dictionaryStore.lookupWord(word);
     } catch (error) {
+      if (requestId !== occurrenceRequestId) return;
       console.error(`Failed to fetch occurrences for word ${word}:`, error);
       wordOccurrences.value = [];
       selectedWord.value = word;
       // 这里可以添加错误处理，比如显示通知
     } finally {
-      isLoading.value = false;
+      if (requestId === occurrenceRequestId) isLoading.value = false;
     }
   }
 
@@ -86,6 +94,7 @@ export const useVocabularyStore = defineStore('vocabulary', () => {
   }
 
   function clearSelectedWord() {
+    occurrenceRequestId += 1;
     selectedWord.value = '';
     wordOccurrences.value = [];
   }

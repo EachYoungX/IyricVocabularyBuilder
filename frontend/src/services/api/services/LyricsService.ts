@@ -31,9 +31,9 @@ export class LyricsService {
         });
     }
     /**
-     * 从原始歌词重新解析编辑预览，不写入歌曲 / Preview a fresh parse without changing the song
+     * 从原始来源重新解析歌词预览 / Preview lyrics parsed from the raw source
      * @param songId
-     * @returns LyricDocument 基于原始内容的解析结果 / Parsed result from the raw source
+     * @returns LyricDocument 重新解析但尚未保存的结构化歌词 / Reparsed structured lyrics without persistence
      * @throws ApiError
      */
     public static getRawSourcePreview(
@@ -46,7 +46,6 @@ export class LyricsService {
                 'songId': songId,
             },
             errors: {
-                400: `原始歌词不可用 / Original lyrics unavailable`,
                 404: `资源未找到 / Resource not found`,
             },
         });

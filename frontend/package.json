@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A personalized vocabulary learning tool based on song lyrics.",
   "productName": "Lyric Vocabulary Builder",
   "author": "17LiQi <yzh859708106@outlook.com>",
@@ -9,7 +9,7 @@
   "scripts": {
     "lint": "eslint -c ./eslint.config.js \"./src*/**/*.{ts,js,cjs,mjs,vue}\"",
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
-    "test": "echo \"No test specified\" && exit 0",
+    "test": "vitest run",
     "dev": "quasar dev",
     "build": "quasar build",
     "gen-api": "npx openapi-typescript-codegen --input ../backend/src/main/resources/api-docs.yaml --output ./src/services/api --client axios && node ./scripts/patch-generated-api.mjs",
@@ -39,6 +39,7 @@
     "openapi-typescript-codegen": "^0.29.0",
     "prettier": "^3.3.3",
     "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
     "vite-plugin-checker": "^0.11.0",
     "vue-eslint-parser": "^10.2.0",
     "vue-tsc": "^3.0.7"

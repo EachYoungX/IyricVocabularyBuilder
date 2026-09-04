@@ -3,6 +3,8 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { UserVocabulary } from '../models/UserVocabulary';
+import type { UserVocabularyBatchUpdate } from '../models/UserVocabularyBatchUpdate';
+import type { UserVocabularyImportItem } from '../models/UserVocabularyImportItem';
 import type { UserVocabularyRequest } from '../models/UserVocabularyRequest';
 import type { UserVocabularyReviewItem } from '../models/UserVocabularyReviewItem';
 import type { UserVocabularyStats } from '../models/UserVocabularyStats';
@@ -101,6 +103,57 @@ export class UserVocabularyService {
             },
             errors: {
                 404: `资源未找到 / Resource not found`,
+            },
+        });
+    }
+    /**
+     * 批量更新个人词条 / Update personal vocabulary in one transaction
+     * @param requestBody
+     * @returns UserVocabulary 更新后的词条
+     * @throws ApiError
+     */
+    public static updateUserVocabularyWordsBatch(
+        requestBody: Array<UserVocabularyBatchUpdate>,
+    ): CancelablePromise<Array<UserVocabulary>> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/user-vocabulary/batch',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+    /**
+     * 批量删除个人词条 / Delete personal vocabulary in one transaction
+     * @param requestBody
+     * @returns void
+     * @throws ApiError
+     */
+    public static deleteUserVocabularyWordsBatch(
+        requestBody: Array<number>,
+    ): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/user-vocabulary/batch',
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+    /**
+     * 批量导入个人词条 / Import personal vocabulary in one transaction
+     * @param requestBody
+     * @returns UserVocabulary 已导入词条
+     * @throws ApiError
+     */
+    public static importUserVocabularyWords(
+        requestBody: Array<UserVocabularyImportItem>,
+    ): CancelablePromise<Array<UserVocabulary>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/user-vocabulary/import',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                400: `请求参数错误 / Invalid request parameters`,
             },
         });
     }

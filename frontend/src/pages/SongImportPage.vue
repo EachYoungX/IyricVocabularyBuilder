@@ -462,7 +462,7 @@ function finishImport() {
   padding: 16px;
   background: var(--lv-surface);
   border: 1px solid var(--lv-line);
-  border-radius: 8px;
+  border-radius: var(--lv-radius-sm);
 }
 
 .import-workspace {
@@ -478,7 +478,7 @@ function finishImport() {
 .no-active-draft {
   background: var(--lv-surface);
   border: 1px solid var(--lv-line);
-  border-radius: 8px;
+  border-radius: var(--lv-radius-sm);
 }
 
 .draft-list {
@@ -490,7 +490,7 @@ function finishImport() {
 
 .active-draft {
   color: var(--lv-ink);
-  background: rgba(27, 60, 83, 0.08);
+  background: var(--lv-hover);
 }
 
 .empty-drafts,
@@ -559,7 +559,7 @@ function finishImport() {
   color: var(--lv-ink);
   background: var(--lv-surface);
   border-top: 1px solid var(--lv-line);
-  box-shadow: 0 -10px 24px rgba(27, 60, 83, 0.08);
+  box-shadow: var(--lv-shadow-soft);
 }
 
 .import-failure-list {

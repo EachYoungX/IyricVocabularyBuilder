@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import {
   SongsService,
   type Song,
+  type SongSummary,
   type SongImportRequest,
   type ImportTaskResult,
   type SongUpdateRequest,
@@ -16,7 +17,7 @@ export const useSongsStore = defineStore('songs', () => {
   const { t } = useI18n();
 
   // State
-  const songs = ref<Song[]>([]);
+  const songs = ref<SongSummary[]>([]);
   const isLoading = ref<boolean>(false);
   const error = ref<string | null>(null);
   const importTask = ref<ImportTaskResult | null>(null);
@@ -32,7 +33,7 @@ export const useSongsStore = defineStore('songs', () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const songList: Song[] = await SongsService.getAllSongs();
+      const songList: SongSummary[] = await SongsService.getAllSongs();
       songs.value = songList;
       if (showSuccessNotify) {
         Notify.create({
@@ -94,9 +95,14 @@ export const useSongsStore = defineStore('songs', () => {
     try {
       const updatedSong: Song = await SongsService.updateSong(id, songUpdate);
       // 更新歌曲列表中的歌曲
-      const index = songs.value.findIndex((song: Song) => song.id === id);
+      const index = songs.value.findIndex((song) => song.id === id);
       if (index !== -1) {
-        songs.value[index] = updatedSong;
+        songs.value[index] = {
+          id: updatedSong.id,
+          title: updatedSong.title,
+          artist: updatedSong.artist,
+          ...(updatedSong.album !== undefined ? { album: updatedSong.album } : {}),
+        };
       }
       Notify.create({
         type: 'positive',
@@ -121,7 +127,7 @@ export const useSongsStore = defineStore('songs', () => {
     try {
       await SongsService.deleteSong(id);
       // 从歌曲列表中移除歌曲
-      songs.value = songs.value.filter((song: Song) => song.id !== id);
+      songs.value = songs.value.filter((song) => song.id !== id);
       Notify.create({ type: 'positive', message: t('songDeletedSuccessfully'), position: 'top-right' });
       return true;
     } catch (err) {
@@ -141,7 +147,7 @@ export const useSongsStore = defineStore('songs', () => {
     try {
       await SongsService.deleteSongsBatch(ids);
       // 从歌曲列表中移除歌曲
-      songs.value = songs.value.filter((song: Song) => !ids.includes(song.id));
+      songs.value = songs.value.filter((song) => !ids.includes(song.id));
       Notify.create({ type: 'positive', message: t('songsDeletedSuccessfully'), position: 'top-right' });
       return true;
     } catch (err) {

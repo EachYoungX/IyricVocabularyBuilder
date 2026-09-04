@@ -1,18 +1,8 @@
 import {
   DictionaryService,
   VocabularyStatus,
-  type SongImportRequest,
   type UserVocabulary,
 } from 'src/services/api';
-import type { MotionPreference } from 'src/utils/motionPreference';
-
-export type BackupPayload = {
-  settings?: unknown;
-  motionPreference?: MotionPreference;
-  songs?: unknown[];
-  vocabulary?: unknown[];
-  exportedAt?: string;
-};
 
 export type BackupVocabularyItem = {
   lemma: string;
@@ -63,40 +53,6 @@ export async function vocabularyToAnkiTsv(words: UserVocabulary[]) {
   return rows.join('\n');
 }
 
-export function backupSongs(backup: BackupPayload): SongImportRequest[] {
-  if (!Array.isArray(backup.songs)) return [];
-  return backup.songs
-    .filter(isRecord)
-    .map((song) => ({
-      title: typeof song.title === 'string' ? song.title.trim() : '',
-      artist: typeof song.artist === 'string' ? song.artist.trim() : '',
-      lyrics: typeof song.lyrics === 'string' ? song.lyrics : '',
-    }))
-    .filter((song) => song.title && song.artist && song.lyrics.trim());
-}
-
-export function backupVocabulary(backup: BackupPayload): BackupVocabularyItem[] {
-  if (!Array.isArray(backup.vocabulary)) return [];
-  const statuses = new Set<string>(Object.values(VocabularyStatus));
-  return backup.vocabulary
-    .filter(isRecord)
-    .map((word) => {
-      const status = typeof word.status === 'string' && statuses.has(word.status)
-        ? word.status as VocabularyStatus
-        : undefined;
-      const masteryScore = typeof word.masteryScore === 'number' && word.masteryScore >= 0 && word.masteryScore <= 1
-        ? word.masteryScore
-        : undefined;
-      return {
-        lemma: typeof word.lemma === 'string' ? word.lemma.trim() : '',
-        status,
-        masteryScore,
-        note: typeof word.note === 'string' ? word.note : null,
-      };
-    })
-    .filter((word) => word.lemma);
-}
-
 export function parseVocabularyText(content: string, fileName: string): BackupVocabularyItem[] {
   const delimiter = fileName.toLowerCase().endsWith('.tsv') ? '\t' : ',';
   const rows = content
@@ -125,10 +81,6 @@ export function parseVocabularyText(content: string, fileName: string): BackupVo
       };
     })
     .filter((word) => word.lemma);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
 }
 
 function csvCell(value: string | number | boolean | null | undefined) {

@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 const requestPath = fileURLToPath(
   new URL('../src/services/api/core/request.ts', import.meta.url),
 );
+const openApiPath = fileURLToPath(
+  new URL('../src/services/api/core/OpenAPI.ts', import.meta.url),
+);
 const original = await readFile(requestPath, 'utf8');
 const generatedLine = '        return response.data;';
 const formDataImport = "import FormData from 'form-data';\n";
@@ -30,3 +33,11 @@ await writeFile(
     .replace(generatedLine, envelopeAwareBlock),
   'utf8',
 );
+
+const openApi = await readFile(openApiPath, 'utf8');
+const generatedBase = "    BASE: 'http://localhost:8080',";
+const environmentBase = "    BASE: import.meta.env.VITE_API_BASE_URL?.replace(/\\\/$/, '') || (import.meta.env.DEV ? 'http://localhost:8080' : ''),";
+if (!openApi.includes(generatedBase)) {
+  throw new Error('Generated OpenAPI.ts base URL changed; environment patch was not applied.');
+}
+await writeFile(openApiPath, openApi.replace(generatedBase, environmentBase), 'utf8');

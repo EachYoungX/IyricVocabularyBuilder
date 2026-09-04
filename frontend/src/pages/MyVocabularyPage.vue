@@ -26,7 +26,7 @@
       <div class="q-pa-md data-actions">
         <div class="row q-col-gutter-md">
           <div class="col-12 col-md-6">
-            <div class="section-label">{{ t('exportData') }}</div>
+            <div class="lv-section-label">{{ t('exportData') }}</div>
             <div class="row q-gutter-sm">
               <q-btn outline no-caps icon="download" :loading="isMutating" :label="t('exportVocabularyCsv')" @click="exportVocabularyCsv" />
               <q-btn outline no-caps icon="download" :loading="isMutating" :label="t('exportAnki')" @click="exportVocabularyAnkiTsv" />
@@ -34,7 +34,7 @@
             </div>
           </div>
           <div class="col-12 col-md-6">
-            <div class="section-label">{{ t('importData') }}</div>
+            <div class="lv-section-label">{{ t('importData') }}</div>
             <div class="row q-col-gutter-sm items-start">
               <div class="col-12 col-sm">
                 <q-file
@@ -179,7 +179,7 @@
 
     <div class="toolbar row items-center q-col-gutter-sm q-mt-md" style="order: 4">
       <div class="col-12 col-md-4">
-        <q-input v-model="searchText" dense outlined clearable debounce="150" class="vocabulary-input" :placeholder="t('searchPersonalVocabulary')">
+        <q-input v-model="searchText" dense outlined clearable debounce="200" class="vocabulary-input" :placeholder="t('searchPersonalVocabulary')">
           <template #prepend>
             <q-icon name="search" />
           </template>
@@ -326,7 +326,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Dialog, Notify, type QTableColumn } from 'quasar';
 import { useUserVocabularyStore } from 'src/stores/userVocabularyStore';
@@ -335,8 +335,7 @@ import {
   VocabularyStatus,
   UserVocabularyService,
   type UserVocabulary,
-  type UserVocabularyRequest,
-  type UserVocabularyUpdateRequest,
+  type UserVocabularyImportItem,
   type VocabularyQualityCandidate,
   type WordOccurrence,
 } from 'src/services/api';
@@ -368,6 +367,8 @@ const occurrencesLoading = ref(false);
 const qualityLoading = ref(false);
 const occurrenceError = ref('');
 const isMutating = ref(false);
+let occurrenceRequestId = 0;
+let isUnmounted = false;
 
 const activeStatuses = [
   VocabularyStatus.NEW,
@@ -483,15 +484,19 @@ function handleRowClick(_: Event, row: UserVocabulary) {
 }
 
 async function loadOccurrences(lemma: string) {
+  const requestId = ++occurrenceRequestId;
   occurrencesLoading.value = true;
   occurrenceError.value = '';
   try {
-    occurrences.value = await VocabularyService.getWordOccurrences(lemma);
+    const result = await VocabularyService.getWordOccurrences(lemma);
+    if (isUnmounted || requestId !== occurrenceRequestId) return;
+    occurrences.value = result;
   } catch {
+    if (isUnmounted || requestId !== occurrenceRequestId) return;
     occurrences.value = [];
     occurrenceError.value = t('loadOccurrencesFailed');
   } finally {
-    occurrencesLoading.value = false;
+    if (requestId === occurrenceRequestId) occurrencesLoading.value = false;
   }
 }
 
@@ -574,18 +579,12 @@ async function importVocabularyFile() {
   isMutating.value = true;
   try {
     const parsed = parseVocabularyText(await vocabularyImportFile.value.text(), vocabularyImportFile.value.name);
-    for (const item of parsed) {
-      const addRequest: UserVocabularyRequest = { lemma: item.lemma };
-      if (item.note !== undefined) addRequest.note = item.note;
-      const saved = await UserVocabularyService.addUserVocabularyWord(addRequest);
-      if (item.status || item.masteryScore !== undefined || item.note !== undefined) {
-        const updateRequest: UserVocabularyUpdateRequest = {};
-        if (item.status) updateRequest.status = item.status;
-        if (item.masteryScore !== undefined) updateRequest.masteryScore = item.masteryScore;
-        if (item.note !== undefined) updateRequest.note = item.note;
-        await UserVocabularyService.updateUserVocabularyWord(saved.id, updateRequest);
-      }
-    }
+    const items: UserVocabularyImportItem[] = parsed.map((item) => ({
+      lemma: item.lemma,
+      ...(item.status ? { status: item.status } : {}),
+      ...(item.note !== undefined ? { note: item.note } : {}),
+    }));
+    await UserVocabularyService.importUserVocabularyWords(items);
     vocabularyImportFile.value = null;
     await store.fetchDashboard();
     Notify.create({ type: 'positive', message: t('importVocabularySuccess', { count: parsed.length }) });
@@ -710,7 +709,6 @@ async function ignoreCandidates(words: string[]) {
       const saved = existing ?? await UserVocabularyService.addUserVocabularyWord({ lemma: word });
       await UserVocabularyService.updateUserVocabularyWord(saved.id, {
         status: VocabularyStatus.IGNORED,
-        masteryScore: 0,
       });
     }
     removeQualityCandidates(words);
@@ -773,7 +771,7 @@ function saveKeptCleanupWords(words: Set<string>) {
 async function updateStatus(id: number, status: VocabularyStatus) {
   isMutating.value = true;
   try {
-    await store.updateWord(id, status, masteryScoreForStatus(status));
+    await store.updateWord(id, status);
     syncActiveWord();
     Notify.create({ type: 'positive', message: t('vocabularyStatusUpdated') });
   } catch {
@@ -844,20 +842,10 @@ function syncActiveWord() {
   activeWord.value = store.words.find((word: UserVocabulary) => word.id === activeWord.value?.id) ?? activeWord.value;
 }
 
-function masteryScoreForStatus(status: VocabularyStatus) {
-  switch (status) {
-    case VocabularyStatus.NEW:
-      return 0;
-    case VocabularyStatus.LEARNING:
-      return 0.25;
-    case VocabularyStatus.MASTERED:
-      return 1;
-    case VocabularyStatus.IGNORED:
-      return 0;
-    default:
-      return 0;
-  }
-}
+onBeforeUnmount(() => {
+  isUnmounted = true;
+  occurrenceRequestId += 1;
+});
 
 function buildVocabularyCsv(rows: UserVocabulary[]) {
   const header = ['lemma', 'status', 'masteryScore', 'note', 'firstSeenAt', 'lastSeenAt', 'reviewDueAt'];
@@ -1008,7 +996,7 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
   padding: 12px 14px;
   background: var(--lv-surface);
   border: 1px solid var(--lv-line);
-  border-radius: 8px;
+  border-radius: var(--lv-radius-sm);
 }
 
 .stat-value {
@@ -1071,7 +1059,7 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 .status-select :deep(.q-field__control) {
   min-height: 36px;
   padding: 0 8px;
-  border-radius: 8px;
+  border-radius: var(--lv-radius-sm);
   background: var(--lv-surface-muted);
 }
 
@@ -1098,7 +1086,7 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
   padding: 8px 10px;
   background: var(--lv-surface);
   border: 1px solid var(--lv-line);
-  border-radius: 8px;
+  border-radius: var(--lv-radius-sm);
 }
 
 .cleanup-summary-value {
@@ -1110,13 +1098,6 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
 .cleanup-summary-label {
   color: var(--lv-ink-soft);
   font-size: 12px;
-}
-
-.section-label {
-  color: var(--lv-ink);
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 8px;
 }
 
 .content-splitter {
@@ -1166,7 +1147,7 @@ function normalizeStatus(value: string): VocabularyStatus | undefined {
   order: 6;
   background: var(--lv-surface-solid);
   border: 1px solid var(--lv-line);
-  border-radius: 8px;
+  border-radius: var(--lv-radius-sm);
 }
 
 .data-management-panel {

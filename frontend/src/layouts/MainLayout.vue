@@ -147,14 +147,14 @@ function toggleLanguage() {
   width: 34px;
   height: 34px;
   place-items: center;
-  color: var(--lv-paper);
+  color: var(--lv-on-brand);
   font-family: var(--lv-font-serif);
   font-size: 17px;
   line-height: 1;
   background: var(--lv-brand-bg);
-  border: 1px solid rgba(27, 60, 83, 0.18);
+  border: 1px solid var(--lv-line);
   border-radius: 50%;
-  box-shadow: 0 8px 18px rgba(27, 60, 83, 0.12);
+  box-shadow: var(--lv-shadow-soft);
 }
 
 .brand-title {

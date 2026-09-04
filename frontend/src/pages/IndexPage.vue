@@ -2,7 +2,7 @@
   <q-page class="window-height column no-wrap overflow-hidden q-pa-sm-md">
     <div class="page-masthead col-auto q-mb-md">
       <div>
-        <div class="masthead-kicker">{{ t('englishLearningWorkspace') }}</div>
+        <div class="lv-kicker">{{ t('englishLearningWorkspace') }}</div>
         <div class="masthead-title serif-display">{{ t('totalVocabulary') }}</div>
       </div>
       <div class="masthead-accent" aria-hidden="true"></div>
@@ -12,7 +12,7 @@
     <div class="col overflow-hidden">
       <q-splitter
         v-model="splitterModel"
-        class="fit desktop-splitter vocabulary-splitter"
+        class="fit lv-responsive-splitter vocabulary-splitter"
         unit="%"
         :horizontal="$q.screen.lt.md"
         :limits="[20, 80]"
@@ -62,7 +62,7 @@
                 </q-list>
               </q-card>
 
-              <q-input dense outlined v-model="searchTerm" :label="t('searchVocabularyPlaceholder')" clearable
+              <q-input dense outlined v-model="searchTerm" :label="t('searchVocabularyPlaceholder')" clearable debounce="200"
                 @update:model-value="onSearchInput" class="q-mb-sm" />
             </div>
 
@@ -263,7 +263,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { useVocabularyExplorer } from 'src/composables/useVocabularyExplorer';
@@ -312,6 +312,9 @@ const phraseOccurrenceError = ref('');
 const personalActionLoading = ref(false);
 const learningValueLoading = ref(false);
 const appSettings = ref<AppSettings>(loadAppSettings());
+let phraseListRequestId = 0;
+let phraseOccurrenceRequestId = 0;
+let isUnmounted = false;
 
 const lyricLineSegments = (occurrence: ExplorerOccurrence): LyricLineSegment[] => {
   const line = occurrence.lyricLine || '';
@@ -402,11 +405,7 @@ async function updateSelectedWordStatus(status: VocabularyStatus) {
   if (!selectedUserWord.value?.id) return;
   personalActionLoading.value = true;
   try {
-    await userVocabularyStore.updateWord(
-      selectedUserWord.value.id,
-      status,
-      masteryScoreForStatus(status),
-    );
+    await userVocabularyStore.updateWord(selectedUserWord.value.id, status);
     $q.notify({ type: 'positive', position: 'top-right', message: t('vocabularyStatusUpdated') });
   } catch {
     $q.notify({ type: 'negative', position: 'top-right', message: t('vocabularyStatusUpdateFailed') });
@@ -440,20 +439,23 @@ function handleContentModeChange(mode: VocabularyMode) {
 }
 
 async function fetchPhrases(page: number, query: string) {
+  const requestId = ++phraseListRequestId;
   phraseLoading.value = true;
   try {
     const result = await PhrasesService.listPhrases(query.trim() || undefined, page, 50);
+    if (isUnmounted || requestId !== phraseListRequestId) return;
     phraseRows.value = result.content ?? [];
     phraseTotal.value = result.totalElements;
     phraseTotalPages.value = result.totalPages;
     currentPage.value = result.number + 1;
   } catch (error) {
+    if (isUnmounted || requestId !== phraseListRequestId) return;
     phraseRows.value = [];
     phraseTotal.value = 0;
     phraseTotalPages.value = 0;
     console.error('Failed to fetch phrases:', error);
   } finally {
-    phraseLoading.value = false;
+    if (requestId === phraseListRequestId) phraseLoading.value = false;
   }
 }
 
@@ -467,20 +469,23 @@ function handlePageChange(page: number) {
 
 function selectPhrase(phrase: DictionaryPhrase) {
   if (phrase.id == null) return;
+  const requestId = ++phraseOccurrenceRequestId;
   selectedPhrase.value = phrase;
   phraseOccurrences.value = [];
   phraseOccurrenceError.value = '';
   phraseOccurrenceLoading.value = true;
   void PhrasesService.getPhraseOccurrences(phrase.id)
     .then((occurrences) => {
+      if (isUnmounted || requestId !== phraseOccurrenceRequestId) return;
       phraseOccurrences.value = occurrences;
     })
     .catch((error) => {
+      if (isUnmounted || requestId !== phraseOccurrenceRequestId) return;
       phraseOccurrenceError.value = t('loadOccurrencesFailed');
       console.error(`Failed to fetch phrase occurrences for ${phrase.id}:`, error);
     })
     .finally(() => {
-      phraseOccurrenceLoading.value = false;
+      if (requestId === phraseOccurrenceRequestId) phraseOccurrenceLoading.value = false;
     });
 }
 
@@ -520,20 +525,11 @@ function openOccurrenceSong(songId?: number) {
   if (songId) void router.push({ path: '/songs', query: { songId: String(songId) } });
 }
 
-function masteryScoreForStatus(status: VocabularyStatus) {
-  switch (status) {
-    case VocabularyStatus.NEW:
-      return 0;
-    case VocabularyStatus.LEARNING:
-      return 0.35;
-    case VocabularyStatus.MASTERED:
-      return 1;
-    case VocabularyStatus.FAMILIAR:
-    case VocabularyStatus.BOOKMARK_ONLY:
-    case VocabularyStatus.IGNORED:
-      return 0;
-  }
-}
+onBeforeUnmount(() => {
+  isUnmounted = true;
+  phraseListRequestId += 1;
+  phraseOccurrenceRequestId += 1;
+});
 </script>
 
 <style lang="scss" scoped>
@@ -542,14 +538,6 @@ function masteryScoreForStatus(status: VocabularyStatus) {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-}
-
-.masthead-kicker {
-  color: var(--lv-ink-soft);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
 }
 
 .masthead-title {
@@ -577,7 +565,7 @@ function masteryScoreForStatus(status: VocabularyStatus) {
 
 .vocabulary-list-header :deep(.q-btn-toggle) {
   border: 1px solid var(--lv-line);
-  border-radius: 8px;
+  border-radius: var(--lv-radius-sm);
   overflow: hidden;
 }
 
@@ -621,66 +609,6 @@ function masteryScoreForStatus(status: VocabularyStatus) {
   }
 }
 
-/* 桌面端：整体边框 + 圆角 + 内部面板分隔 */
-@media (min-width: 768px) {
-  .desktop-splitter {
-    border: 1px solid var(--lv-line);
-    border-radius: var(--lv-radius-md);
-    background: var(--lv-surface-solid);
-    overflow: hidden;
-  }
-
-  /* 隐藏默认分隔线，用边框模拟 */
-  :deep(.q-splitter__separator) {
-    background-color: transparent;
-    width: 1px;
-  }
-
-  :deep(.q-splitter__separator-area) {
-    cursor: col-resize;
-    z-index: 10;
-    background-color: transparent;
-    &:hover {
-      background-color: rgba(27, 60, 83, 0.06);
-    }
-  }
-
-  /* 左侧面板右边框 */
-  :deep(.q-splitter__panel:first-child) {
-    border-right: 1px solid var(--lv-line);
-  }
-}
-
-/* 移动端：水平分割 */
-@media (max-width: 767px) {
-  .desktop-splitter {
-    border: 1px solid var(--lv-line);
-    border-radius: var(--lv-radius-md);
-    background: var(--lv-surface-solid);
-    overflow: hidden;
-  }
-
-  :deep(.q-splitter__separator) {
-    background-color: var(--lv-line);
-    height: 8px;
-    &::before {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      height: 4px;
-      width: 40px;
-      background-color: var(--lv-line-strong);
-      border-radius: 2px;
-      opacity: 0.7;
-    }
-  }
-
-  :deep(.q-splitter__separator-area) {
-    cursor: row-resize;
-  }
-}
 
 @media (max-width: 1023px) and (orientation: portrait) {
   .vocabulary-splitter {

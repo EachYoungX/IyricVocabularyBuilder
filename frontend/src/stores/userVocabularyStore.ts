@@ -46,7 +46,6 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
     const word = targetStatus
       ? await UserVocabularyService.updateUserVocabularyWord(saved.id, {
         status: targetStatus,
-        masteryScore: masteryScoreForRequiredStatus(targetStatus),
       })
       : saved;
     upsert(word);
@@ -64,9 +63,8 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
     }
   }
 
-  async function updateWord(id: number, status: VocabularyStatus, masteryScore?: number) {
-    const request = masteryScore === undefined ? { status } : { status, masteryScore };
-    const saved = await UserVocabularyService.updateUserVocabularyWord(id, request);
+  async function updateWord(id: number, status: VocabularyStatus) {
+    const saved = await UserVocabularyService.updateUserVocabularyWord(id, { status });
     upsert(saved);
     await refreshStats();
     return saved;
@@ -79,12 +77,8 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
   }
 
   async function updateWords(ids: number[], status: VocabularyStatus) {
-    const savedWords = await Promise.all(
-      ids.map((id) =>
-        UserVocabularyService.updateUserVocabularyWord(id, {
-          status,
-          masteryScore: masteryScoreForRequiredStatus(status),
-        })),
+    const savedWords = await UserVocabularyService.updateUserVocabularyWordsBatch(
+      ids.map((id) => ({ id, status })),
     );
     savedWords.forEach(upsert);
     await refreshStats();
@@ -92,7 +86,7 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
   }
 
   async function deleteWords(ids: number[]) {
-    await Promise.all(ids.map((id) => UserVocabularyService.deleteUserVocabularyWord(id)));
+    await UserVocabularyService.deleteUserVocabularyWordsBatch(ids);
     const idSet = new Set(ids);
     words.value = words.value.filter((item) => !idSet.has(item.id));
     await refreshStats();
@@ -114,28 +108,6 @@ export const useUserVocabularyStore = defineStore('userVocabulary', () => {
     } else {
       words.value.unshift(word);
     }
-  }
-
-  function masteryScoreForStatus(status: VocabularyStatus) {
-    switch (status) {
-      case VocabularyStatus.NEW:
-        return 0;
-      case VocabularyStatus.LEARNING:
-        return 0.25;
-      case VocabularyStatus.FAMILIAR:
-        return 0.6;
-      case VocabularyStatus.MASTERED:
-        return 1;
-      case VocabularyStatus.BOOKMARK_ONLY:
-      case VocabularyStatus.IGNORED:
-        return 0;
-      default:
-        return undefined;
-    }
-  }
-
-  function masteryScoreForRequiredStatus(status: VocabularyStatus) {
-    return masteryScoreForStatus(status) ?? 0;
   }
 
   return {

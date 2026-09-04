@@ -6,6 +6,7 @@ import type { ImportTaskResult } from '../models/ImportTaskResult';
 import type { Song } from '../models/Song';
 import type { SongImportRequest } from '../models/SongImportRequest';
 import type { SongImportTaskResponse } from '../models/SongImportTaskResponse';
+import type { SongSummary } from '../models/SongSummary';
 import type { SongUpdateRequest } from '../models/SongUpdateRequest';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
@@ -13,10 +14,10 @@ import { request as __request } from '../core/request';
 export class SongsService {
     /**
      * 获取所有歌曲 / Get all songs
-     * @returns Song 歌曲列表
+     * @returns SongSummary 歌曲列表
      * @throws ApiError
      */
-    public static getAllSongs(): CancelablePromise<Array<Song>> {
+    public static getAllSongs(): CancelablePromise<Array<SongSummary>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/songs',
@@ -170,6 +171,17 @@ export class SongsService {
             errors: {
                 404: `资源未找到 / Resource not found`,
             },
+        });
+    }
+    /**
+     * 获取歌曲数量 / Count songs without loading song content
+     * @returns number 歌曲数量
+     * @throws ApiError
+     */
+    public static countSongs(): CancelablePromise<number> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/songs/count',
         });
     }
 }
