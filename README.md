@@ -166,7 +166,7 @@ The default deployment target is localhost or a trusted LAN. The backend has no 
 
 ## Backup And Restore
 
-The Data Management page exports a versioned full backup containing source songs, structured lyrics and user corrections, credits, personal vocabulary, user phrases, and persistent vocabulary overrides. Restore validates the complete backup before mutation and supports transactional overwrite restore. Derived vocabulary and phrase caches are rebuilt after restore.
+The Data Management page exports a versioned full backup containing source songs, structured lyrics and user corrections, credits, personal vocabulary, user phrases, persistent vocabulary overrides, locale, motion settings, and retained cleanup decisions. Restore validates the complete backup before mutation and supports transactional overwrite restore. Derived vocabulary and phrase caches are rebuilt after restore. Personal-vocabulary CSV files are a lightweight migration format containing `lemma`, `status`, and `note`; use the full JSON backup when exact timestamps and learning state must round-trip.
 
 ## Data And Copyright Boundary
 

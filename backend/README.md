@@ -97,6 +97,7 @@ GET    /api/dictionary/{word}
 GET    /api/backup/export
 POST   /api/backup/validate
 POST   /api/backup/restore
+DELETE /api/data/all
 ```
 
 ## Local Development
