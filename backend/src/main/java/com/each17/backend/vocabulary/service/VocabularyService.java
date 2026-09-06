@@ -15,5 +15,6 @@ public interface VocabularyService {
     int deleteWords(List<String> words);
     VocabularyQualityCandidateDto updateLearningValue(String word, boolean recommended);
     UUID refreshVocabularyIndexAsync();
+    void requestVocabularyIndexRefreshAfterCommit();
     VocabularyRebuildTaskDto getRefreshTaskStatus(UUID taskId);
 }

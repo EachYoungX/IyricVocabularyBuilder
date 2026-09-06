@@ -1,6 +1,7 @@
 package com.each17.backend.backup;
 
 import com.each17.backend.common.exception.ValidationException;
+import com.each17.backend.data.LocalDataService;
 import com.each17.backend.lyric.entity.LyricClassificationSource;
 import com.each17.backend.lyric.entity.LyricLemmaStatus;
 import com.each17.backend.lyric.entity.LyricLineType;
@@ -29,13 +30,16 @@ public class BackupService {
 
     private final JdbcTemplate jdbcTemplate;
     private final String appVersion;
+    private final LocalDataService localDataService;
 
     public BackupService(
             @Qualifier("appJdbcTemplate") JdbcTemplate jdbcTemplate,
-            @Value("${app.version}") String appVersion
+            @Value("${app.version}") String appVersion,
+            LocalDataService localDataService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.appVersion = appVersion;
+        this.localDataService = localDataService;
     }
 
     @Transactional(readOnly = true)
@@ -85,7 +89,7 @@ public class BackupService {
         });
 
         return new BackupPayloadDto(SCHEMA_VERSION, appVersion, OffsetDateTime.now().toString(),
-                songs, vocabulary, phrases, overrides);
+                songs, vocabulary, phrases, overrides, null, null, null);
     }
 
     public BackupValidationResultDto validate(BackupPayloadDto backup) {
@@ -97,7 +101,7 @@ public class BackupService {
     @Transactional
     public BackupValidationResultDto restoreOverwrite(BackupPayloadDto backup) {
         validatePayload(backup);
-        clearSourceAndDerivedData();
+        localDataService.clearAll();
         restoreSongs(backup.songs());
         restoreUserVocabulary(backup.userVocabulary());
         restoreUserPhrases(backup.userPhrases());
@@ -295,14 +299,6 @@ public class BackupService {
             if (!lemmas.add(item.lemma())) throw invalid("Duplicate vocabulary override: " + item.lemma());
             if (item.excluded() == null) throw invalid("vocabularyOverride.excluded is required");
             requireText(item.updatedAt(), "vocabularyOverride.updatedAt");
-        }
-    }
-
-    private void clearSourceAndDerivedData() {
-        for (String table : List.of("phrase_occurrence", "phrase_cache_state", "vocabulary_occurrences", "song_credit",
-                "lyric_tokens", "lyric_lines", "songs", "user_phrase", "user_vocabulary",
-                "vocabulary_override", "vocabulary")) {
-            jdbcTemplate.update("DELETE FROM " + table);
         }
     }
 

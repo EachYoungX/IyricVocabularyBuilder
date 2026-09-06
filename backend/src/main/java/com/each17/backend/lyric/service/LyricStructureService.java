@@ -125,7 +125,7 @@ public class LyricStructureService {
     public LyricDocumentDto importLyrics(Long songId, LyricImportRequestDto request) {
         Song song = getSong(songId);
         LyricDocumentDto result = structureSong(song, request.lyrics(), request.overwrite());
-        vocabularyService.refreshVocabularyIndexAsync();
+        vocabularyService.requestVocabularyIndexRefreshAfterCommit();
         return result;
     }
 
@@ -251,6 +251,7 @@ public class LyricStructureService {
             if (isTokenizable(savedLine)) lyricTokenRepository.saveAll(tokenizationService.tokenize(savedLine));
             if (phraseOccurrenceService != null) phraseOccurrenceService.invalidateSong(songId);
         }
+        vocabularyService.requestVocabularyIndexRefreshAfterCommit();
         return toLineDto(savedLine);
     }
 

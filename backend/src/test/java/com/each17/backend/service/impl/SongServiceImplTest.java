@@ -125,7 +125,7 @@ class SongServiceImplTest {
         verify(songRepository, times(1)).save(song);
         verify(songMapper, times(1)).toDto(savedSong);
         verify(lyricStructureService).structureSong(savedSong, requestDto.getLyrics(), true);
-        verify(vocabularyService, times(1)).refreshVocabularyIndexAsync();
+        verify(vocabularyService, times(1)).requestVocabularyIndexRefreshAfterCommit();
     }
 
     @Test
@@ -154,7 +154,7 @@ class SongServiceImplTest {
         verify(songMapper, times(1)).updateEntityFromDto(requestDto, existingSong);
         verify(songMapper, times(1)).toDto(updatedSong);
         verify(lyricStructureService).structureSong(updatedSong, requestDto.getLyrics(), true, true);
-        verify(vocabularyService, times(1)).refreshVocabularyIndexAsync();
+        verify(vocabularyService, times(1)).requestVocabularyIndexRefreshAfterCommit();
     }
 
     @Test
@@ -186,7 +186,7 @@ class SongServiceImplTest {
         verify(songRepository, times(1)).existsById(songId);
         verify(lyricStructureService).deleteLinesForSong(songId);
         verify(songRepository, times(1)).deleteById(songId);
-        verify(vocabularyService, times(1)).refreshVocabularyIndexAsync();
+        verify(vocabularyService, times(1)).requestVocabularyIndexRefreshAfterCommit();
     }
 
     @Test

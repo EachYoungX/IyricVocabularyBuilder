@@ -9,7 +9,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,32 +28,32 @@ public class SongImportWorker {
             return;
         }
         registry.recordWorkerThread(taskId, Thread.currentThread().getName());
-        task.setStatus("RUNNING");
+        registry.markRunning(taskId);
         log.info("[Task {}] Import worker started on thread {}", taskId, Thread.currentThread().getName());
 
         for (int index = 0; index < songs.size(); index++) {
             SongImportRequestDto song = songs.get(index);
             try {
                 transaction.importOne(song, autoAddToPersonalVocabulary);
-                task.setSuccessCount(task.getSuccessCount() + 1);
+                registry.recordSuccess(taskId);
             } catch (DataIntegrityViolationException exception) {
-                recordFailure(task, index, song, "Song already exists with different lyrics");
+                recordFailure(taskId, index, song, "Song already exists with different lyrics");
             } catch (Exception exception) {
                 log.warn("[Task {}] Song import failed at index {}", taskId, index, exception);
-                recordFailure(task, index, song, exception.getMessage());
+                recordFailure(taskId, index, song, exception.getMessage());
             }
         }
 
-        task.setStatus("COMPLETED");
-        task.setFinishedAt(LocalDateTime.now());
+        registry.markCompleted(taskId);
+        task = registry.get(taskId);
+        if (task == null) return;
         if (task.getSuccessCount() > 0) vocabularyService.refreshVocabularyIndexAsync();
         log.info("[Task {}] Import finished: {} succeeded, {} failed",
                 taskId, task.getSuccessCount(), task.getFailedCount());
     }
 
-    private void recordFailure(ImportTaskResultDto task, int index, SongImportRequestDto song, String error) {
-        task.setFailedCount(task.getFailedCount() + 1);
-        task.getFailedItems().add(ImportTaskResultDto.FailedItemDto.builder()
+    private void recordFailure(UUID taskId, int index, SongImportRequestDto song, String error) {
+        registry.recordFailure(taskId, ImportTaskResultDto.FailedItemDto.builder()
                 .index(index)
                 .title(song == null ? null : song.getTitle())
                 .artist(song == null ? null : song.getArtist())

@@ -38,12 +38,14 @@ class BackupServiceIntegrationTest {
     @Test
     void validatesSchemaBeforeRestore() {
         BackupPayloadDto missingVersion = new BackupPayloadDto(
-                null, "1.0.0", "2026-09-04T00:00:00Z", List.of(), List.of(), List.of(), List.of());
+                null, "1.0.0", "2026-09-04T00:00:00Z", List.of(), List.of(), List.of(), List.of(),
+                null, null, null);
         assertThrows(ValidationException.class, () -> backupService.restoreOverwrite(missingVersion));
         assertEquals(1, count("songs"));
 
         BackupPayloadDto unsupported = new BackupPayloadDto(
-                99, "1.0.0", "2026-09-04T00:00:00Z", List.of(), List.of(), List.of(), List.of());
+                99, "1.0.0", "2026-09-04T00:00:00Z", List.of(), List.of(), List.of(), List.of(),
+                null, null, null);
         assertThrows(ValidationException.class, () -> backupService.restoreOverwrite(unsupported));
         assertEquals(1, count("songs"));
     }

@@ -48,7 +48,7 @@ public class LyricTokenMigrationRunner implements ApplicationRunner {
         for (Song song : songRepository.findAll()) lyricStructureService.reclassifySong(song.getId());
         jdbcTemplate.update("INSERT OR REPLACE INTO app_meta(key, value) VALUES ('lyric.token.migration', ?)", VERSION);
         writeVersionMetadata();
-        if (!songRepository.findAll().isEmpty()) vocabularyService.refreshVocabularyIndexAsync();
+        if (!songRepository.findAll().isEmpty()) vocabularyService.requestVocabularyIndexRefreshAfterCommit();
     }
 
     private void writeVersionMetadata() {

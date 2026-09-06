@@ -107,7 +107,7 @@ public class SongServiceImpl implements SongService {
         
         // 创建歌曲后自动刷新词汇索引
         log.info("Song created, triggering vocabulary index refresh...");
-        vocabularyService.refreshVocabularyIndexAsync();
+        vocabularyService.requestVocabularyIndexRefreshAfterCommit();
         
         return songMapper.toDto(savedSong);
     }
@@ -131,7 +131,7 @@ public class SongServiceImpl implements SongService {
         
         // 更新歌曲后自动刷新词汇索引
         log.info("Song updated, triggering vocabulary index refresh...");
-        vocabularyService.refreshVocabularyIndexAsync();
+        vocabularyService.requestVocabularyIndexRefreshAfterCommit();
         
         return songMapper.toDto(updatedSong);
     }
@@ -147,7 +147,7 @@ public class SongServiceImpl implements SongService {
         
         // 删除歌曲后自动刷新词汇索引
         log.info("Song deleted, triggering vocabulary index refresh...");
-        vocabularyService.refreshVocabularyIndexAsync();
+        vocabularyService.requestVocabularyIndexRefreshAfterCommit();
     }
 
     @Override
@@ -174,7 +174,7 @@ public class SongServiceImpl implements SongService {
         // 批量删除歌曲
         ids.forEach(lyricStructureService::deleteLinesForSong);
         songRepository.deleteAllById(ids);
-        vocabularyService.refreshVocabularyIndexAsync();
+        vocabularyService.requestVocabularyIndexRefreshAfterCommit();
     }
 
     private void validateSong(String title, String artist, String lyrics) {

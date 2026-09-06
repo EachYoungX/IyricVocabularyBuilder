@@ -1,7 +1,11 @@
 package com.each17.backend.backup;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.util.List;
+import java.util.Map;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record BackupPayloadDto(
         Integer schemaVersion,
         String appVersion,
@@ -9,8 +13,19 @@ public record BackupPayloadDto(
         List<SongBackup> songs,
         List<UserVocabularyBackup> userVocabulary,
         List<UserPhraseBackup> userPhrases,
-        List<VocabularyOverrideBackup> vocabularyOverrides
+        List<VocabularyOverrideBackup> vocabularyOverrides,
+        BackupPreferences preferences,
+        Map<String, Object> settings,
+        String motionPreference
 ) {
+    public record BackupPreferences(
+            Map<String, Object> settings,
+            String motionPreference,
+            String locale,
+            List<String> keptCleanupWords
+    ) {
+    }
+
     public record SongBackup(
             Long id,
             String title,

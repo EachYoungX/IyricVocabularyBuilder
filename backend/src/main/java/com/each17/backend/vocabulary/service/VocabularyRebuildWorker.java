@@ -26,11 +26,15 @@ public class VocabularyRebuildWorker {
         registry.markRunning(taskId);
         log.info("[Refresh Task {}] Rebuilding vocabulary index", taskId);
         try {
-            List<Song> songs = songRepository.findAll();
-            List<Vocabulary> generated = indexBuilder.rebuildFromSongs(songs);
-            int saved = rebuildTransaction.replace(generated);
-            registry.markCompleted(taskId);
-            log.info("[Refresh Task {}] Vocabulary rebuilt successfully: {} words", taskId, saved);
+            boolean runAgain;
+            do {
+                List<Song> songs = songRepository.findAll();
+                List<Vocabulary> generated = indexBuilder.rebuildFromSongs(songs);
+                int saved = rebuildTransaction.replace(generated);
+                runAgain = registry.completeOrContinue(taskId);
+                log.info("[Refresh Task {}] Vocabulary rebuild round completed: {} words{}",
+                        taskId, saved, runAgain ? "; newer changes queued, rebuilding again" : "");
+            } while (runAgain);
         } catch (Exception exception) {
             registry.markFailed(taskId, exception.getMessage());
             log.error("[Refresh Task {}] Rebuild failed", taskId, exception);
