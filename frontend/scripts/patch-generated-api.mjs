@@ -44,8 +44,10 @@ await writeFile(openApiPath, openApi.replace(generatedBase, environmentBase), 'u
 
 const normalizedModelFiles = [
   'BackupPayload.ts',
+  'BackupPreferences.ts',
   'BackupRestoreResult.ts',
   'BackupValidationResult.ts',
+  'LocalDataResetResult.ts',
   'SongSummary.ts',
   'UserVocabularyBatchUpdate.ts',
   'UserVocabularyImportItem.ts',

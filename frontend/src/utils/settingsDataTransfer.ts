@@ -1,5 +1,4 @@
 import {
-  DictionaryService,
   VocabularyStatus,
   type UserVocabulary,
 } from 'src/services/api';
@@ -7,7 +6,6 @@ import {
 export type BackupVocabularyItem = {
   lemma: string;
   status?: VocabularyStatus | undefined;
-  masteryScore?: number | undefined;
   note?: string | null;
 };
 
@@ -26,30 +24,24 @@ export function downloadTextFile(filename: string, content: string, type: string
 }
 
 export function vocabularyToCsv(words: UserVocabulary[]) {
-  const headers = ['lemma', 'status', 'masteryScore', 'firstSeenAt', 'lastSeenAt', 'reviewDueAt', 'note'];
+  const headers = ['lemma', 'status', 'note'];
   const rows = words.map((word) => [
     word.lemma,
     word.status,
-    word.masteryScore,
-    word.firstSeenAt,
-    word.lastSeenAt,
-    word.reviewDueAt,
     word.note,
   ]);
   return [headers, ...rows].map((row) => row.map(csvCell).join(',')).join('\n');
 }
 
-export async function vocabularyToAnkiTsv(words: UserVocabulary[]) {
-  const rows = await Promise.all(words.map(async (word) => {
-    const entry = await DictionaryService.lookupDictionaryWord(word.lemma).catch(() => null);
-    return [
-      word.lemma,
-      entry?.definition ?? '',
-      entry?.translation ?? '',
-      word.status,
-      word.note ?? '',
-    ].map(tsvCell).join('\t');
-  }));
+export function vocabularyToAnkiTsv(
+  words: UserVocabulary[],
+  formatStatus: (status: VocabularyStatus) => string = (status) => status,
+) {
+  const rows = words.map((word) => [
+    word.lemma,
+    formatStatus(word.status),
+    word.note ?? '',
+  ].map(tsvCell).join('\t'));
   return rows.join('\n');
 }
 
@@ -67,8 +59,8 @@ export function parseVocabularyText(content: string, fileName: string): BackupVo
   const hasHeader = header.some((cell) => ['lemma', 'word', '单词', 'status', '状态'].includes(cell));
   const dataRows = hasHeader ? rows.slice(1) : rows;
   const lemmaIndex = hasHeader ? firstHeaderIndex(header, ['lemma', 'word', '单词']) : 0;
-  const statusIndex = hasHeader ? firstHeaderIndex(header, ['status', '状态']) : 3;
-  const noteIndex = hasHeader ? firstHeaderIndex(header, ['note', '备注']) : 4;
+  const statusIndex = hasHeader ? firstHeaderIndex(header, ['status', '状态']) : 1;
+  const noteIndex = hasHeader ? firstHeaderIndex(header, ['note', '备注']) : 2;
   const statuses = new Set<string>(Object.values(VocabularyStatus));
 
   return dataRows

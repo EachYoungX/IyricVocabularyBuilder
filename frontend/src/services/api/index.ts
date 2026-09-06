@@ -8,12 +8,14 @@ export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
 export { BackupPayload } from './models/BackupPayload';
+export { BackupPreferences } from './models/BackupPreferences';
 export type { BackupRestoreResult } from './models/BackupRestoreResult';
 export type { BackupValidationResult } from './models/BackupValidationResult';
 export type { DictionaryEntry } from './models/DictionaryEntry';
 export type { DictionaryPhrase } from './models/DictionaryPhrase';
 export type { ErrorResponse } from './models/ErrorResponse';
 export { ImportTaskResult } from './models/ImportTaskResult';
+export type { LocalDataResetResult } from './models/LocalDataResetResult';
 export { LyricClassificationSource } from './models/LyricClassificationSource';
 export type { LyricDocument } from './models/LyricDocument';
 export type { LyricImportRequest } from './models/LyricImportRequest';
@@ -50,6 +52,7 @@ export type { WordOccurrence } from './models/WordOccurrence';
 export type { WordPage } from './models/WordPage';
 
 export { BackupService } from './services/BackupService';
+export { DataService } from './services/DataService';
 export { DictionaryService } from './services/DictionaryService';
 export { LyricsService } from './services/LyricsService';
 export { PhrasesService } from './services/PhrasesService';

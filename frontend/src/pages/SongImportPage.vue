@@ -536,8 +536,8 @@ function finishImport() {
 
 .import-boundary-banner {
   color: var(--lv-ink);
-  background: rgba(212, 167, 98, 0.14);
-  border: 1px solid rgba(212, 167, 98, 0.32);
+  background: var(--lv-warning-bg);
+  border: 1px solid var(--lv-warning-line);
 }
 
 .non-english-warning {

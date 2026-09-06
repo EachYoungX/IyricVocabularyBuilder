@@ -98,12 +98,12 @@
             </div>
             <div class="danger-item">
               <div class="action-copy">
-                <div class="action-title">{{ t('settingsPage.deleteAccountData') }}</div>
-                <div class="action-description">{{ t('settingsPage.deleteAccountDataImpact') }}</div>
+                <div class="action-title">{{ t('settingsPage.clearAllLocalData') }}</div>
+                <div class="action-description">{{ t('settingsPage.clearAllLocalDataImpact') }}</div>
               </div>
               <q-btn outline no-caps color="negative" icon="delete_forever"
-                :label="t('settingsPage.deleteAccountData')"
-                @click="confirmDanger('deleteAccountDataImpact', deleteAccountAndAllData)" />
+                :label="t('settingsPage.clearAllLocalData')"
+                @click="confirmDanger('clearAllLocalDataImpact', clearAllLocalData)" />
             </div>
           </div>
         </section>
@@ -126,30 +126,38 @@ import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import SettingsSectionHeading from 'components/SettingsSectionHeading.vue';
 import {
+  DataService,
   SongsService,
   UserVocabularyService,
   type UserVocabularyStats,
 } from 'src/services/api';
 import { BackupApiService, type BackupPayload } from 'src/services/backupService';
 import {
-  APP_SETTINGS_STORAGE_KEY,
+  applyAppSettings,
   loadAppSettings,
-  normalizeAppSettings,
   saveAppSettings,
 } from 'src/utils/appSettings';
 import {
   applyMotionPreference,
   getStoredMotionPreference,
-  MOTION_STORAGE_KEY,
   setMotionPreference,
   type MotionPreference,
 } from 'src/utils/motionPreference';
+import {
+  APP_LOCALE_STORAGE_KEY,
+  clearClientPreferences,
+  createClientPreferences,
+  extractClientPreferences,
+  loadKeptCleanupWords,
+  saveKeptCleanupWords,
+  SEARCH_HISTORY_STORAGE_KEY,
+} from 'src/utils/clientPreferences';
 import {
   downloadTextFile,
   timestampForFilename,
 } from 'src/utils/settingsDataTransfer';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const $q = useQuasar();
 
 const settings = ref(loadAppSettings());
@@ -180,8 +188,12 @@ async function exportCompleteBackupJson() {
     const backendBackup = await BackupApiService.exportBackup();
     const backup: BackupPayload = {
       ...backendBackup,
-      settings: settings.value,
-      motionPreference: motionPreference.value,
+      preferences: createClientPreferences(
+        settings.value,
+        motionPreference.value,
+        locale.value,
+        loadKeptCleanupWords(),
+      ),
     };
     downloadTextFile(
       `lyric-vocabulary-backup-${timestampForFilename()}.json`,
@@ -217,7 +229,7 @@ async function previewBackupImport() {
       exportedAt: backup.exportedAt,
       songs: validation.songCount,
       vocabulary: validation.userVocabularyCount,
-      hasSettings: backup.settings ? t('yes') : t('no'),
+      hasSettings: extractClientPreferences(backup)?.settings ? t('yes') : t('no'),
     });
   } catch {
     backupPreview.value = '';
@@ -226,14 +238,21 @@ async function previewBackupImport() {
 }
 
 function applyImportedPreferences(backup: BackupPayload, replace = false) {
-  const importedSettings = normalizeAppSettings(backup.settings);
-  if (!importedSettings && !backup.motionPreference) return false;
-  if (importedSettings) {
-    settings.value = replace ? importedSettings : { ...settings.value, ...importedSettings };
+  const imported = extractClientPreferences(backup);
+  if (!imported) return false;
+  if (imported.settings) {
+    settings.value = replace ? imported.settings : { ...settings.value, ...imported.settings };
     saveAppSettings(settings.value);
   }
-  if (backup.motionPreference === 'on' || backup.motionPreference === 'off') {
-    motionPreference.value = setMotionPreference(backup.motionPreference);
+  if (imported.motionPreference) {
+    motionPreference.value = setMotionPreference(imported.motionPreference);
+  }
+  if (imported.locale) {
+    locale.value = imported.locale;
+    window.localStorage.setItem(APP_LOCALE_STORAGE_KEY, imported.locale);
+  }
+  if (imported.keptCleanupWords) {
+    saveKeptCleanupWords(imported.keptCleanupWords);
   }
   return true;
 }
@@ -280,8 +299,8 @@ function resetStatsAfterDataChange() {
 }
 
 function clearSearchHistory() {
-  window.localStorage.removeItem('lv-search-history');
-  window.sessionStorage.removeItem('lv-search-history');
+  window.localStorage.removeItem(SEARCH_HISTORY_STORAGE_KEY);
+  window.sessionStorage.removeItem(SEARCH_HISTORY_STORAGE_KEY);
   $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
 }
 
@@ -305,15 +324,14 @@ async function deleteAllSongsData() {
   if (songs.length > 0) await SongsService.deleteSongsBatch(songs.map((song) => song.id));
 }
 
-async function deleteAccountAndAllData() {
+async function clearAllLocalData() {
   try {
-    await deleteAllSongsData();
-    await UserVocabularyService.clearUserVocabularyWords();
-    window.localStorage.removeItem(APP_SETTINGS_STORAGE_KEY);
-    window.localStorage.removeItem(MOTION_STORAGE_KEY);
-    window.localStorage.removeItem('app-locale');
+    await DataService.clearAllLocalData();
+    clearClientPreferences();
     window.sessionStorage.clear();
+    locale.value = 'en-US';
     settings.value = loadAppSettings();
+    applyAppSettings(settings.value);
     motionPreference.value = applyMotionPreference();
     $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.clearSuccess') });
     resetStatsAfterDataChange();

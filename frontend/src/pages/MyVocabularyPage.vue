@@ -341,12 +341,22 @@ import {
 } from 'src/services/api';
 import SemanticChip from 'src/components/SemanticChip.vue';
 import SettingsSelect from 'src/components/SettingsSelect.vue';
+import {
+  downloadTextFile,
+  parseVocabularyText,
+  timestampForFilename,
+  vocabularyToAnkiTsv,
+  vocabularyToCsv,
+} from 'src/utils/settingsDataTransfer';
+import {
+  loadKeptCleanupWords,
+  saveKeptCleanupWords,
+} from 'src/utils/clientPreferences';
 import { useRouter } from 'vue-router';
 
 const { t } = useI18n();
 const store = useUserVocabularyStore();
 const router = useRouter();
-const KEPT_CLEANUP_WORDS_STORAGE_KEY = 'lv-kept-cleanup-candidate-words';
 
 function openOccurrenceSong(songId?: number) {
   if (songId) void router.push({ path: '/songs', query: { songId: String(songId) } });
@@ -370,12 +380,7 @@ const isMutating = ref(false);
 let occurrenceRequestId = 0;
 let isUnmounted = false;
 
-const activeStatuses = [
-  VocabularyStatus.NEW,
-  VocabularyStatus.LEARNING,
-  VocabularyStatus.MASTERED,
-  VocabularyStatus.IGNORED,
-];
+const activeStatuses = Object.values(VocabularyStatus);
 
 const statusOptions = computed(() =>
   activeStatuses.map((status) => ({
@@ -433,6 +438,7 @@ const statsCards = computed(() => [
   { key: 'total', label: t('totalWordsLabel'), value: store.stats?.totalCount ?? 0 },
   { key: 'new', label: statusLabel(VocabularyStatus.NEW), value: store.stats?.newCount ?? 0 },
   { key: 'learning', label: statusLabel(VocabularyStatus.LEARNING), value: store.stats?.learningCount ?? 0 },
+  { key: 'familiar', label: statusLabel(VocabularyStatus.FAMILIAR), value: store.stats?.familiarCount ?? 0 },
   { key: 'mastered', label: statusLabel(VocabularyStatus.MASTERED), value: store.stats?.masteredCount ?? 0 },
   { key: 'ignored', label: statusLabel(VocabularyStatus.IGNORED), value: store.stats?.ignoredCount ?? 0 },
 ]);
@@ -529,7 +535,7 @@ async function exportVocabularyCsv() {
   isMutating.value = true;
   try {
     const rows = await UserVocabularyService.listUserVocabularyWords();
-    downloadTextFile(`lyric-vocabulary-${timestampForFilename()}.csv`, buildVocabularyCsv(rows), 'text/csv;charset=utf-8');
+    downloadTextFile(`lyric-vocabulary-${timestampForFilename()}.csv`, vocabularyToCsv(rows), 'text/csv;charset=utf-8');
     Notify.create({ type: 'positive', message: t('exportSuccess') });
   } catch {
     Notify.create({ type: 'negative', message: t('exportFailed') });
@@ -542,7 +548,7 @@ async function exportVocabularyAnkiTsv() {
   isMutating.value = true;
   try {
     const rows = await UserVocabularyService.listUserVocabularyWords();
-    const body = rows.map((word) => [word.lemma, statusLabel(word.status), word.note ?? ''].map(tsvCell).join('\t')).join('\n');
+    const body = vocabularyToAnkiTsv(rows, statusLabel);
     downloadTextFile(`lyric-vocabulary-anki-${timestampForFilename()}.tsv`, body, 'text/tab-separated-values;charset=utf-8');
     Notify.create({ type: 'positive', message: t('exportSuccess') });
   } catch {
@@ -704,13 +710,12 @@ function confirmIgnoreCandidates(candidates: VocabularyQualityCandidate[]) {
 async function ignoreCandidates(words: string[]) {
   isMutating.value = true;
   try {
-    for (const word of words) {
-      const existing = store.words.find((item: UserVocabulary) => item.lemma === word);
-      const saved = existing ?? await UserVocabularyService.addUserVocabularyWord({ lemma: word });
-      await UserVocabularyService.updateUserVocabularyWord(saved.id, {
+    await UserVocabularyService.importUserVocabularyWords(
+      words.map((lemma) => ({
+        lemma,
         status: VocabularyStatus.IGNORED,
-      });
-    }
+      })),
+    );
     removeQualityCandidates(words);
     await store.fetchDashboard();
     Notify.create({
@@ -752,20 +757,6 @@ function cleanupImpactMessage(key: string, candidates: VocabularyQualityCandidat
     occurrences: impact.occurrences,
     songs: impact.songs,
   });
-}
-
-function loadKeptCleanupWords() {
-  try {
-    const stored = window.localStorage.getItem(KEPT_CLEANUP_WORDS_STORAGE_KEY);
-    const parsed: unknown = stored ? JSON.parse(stored) : [];
-    return new Set(Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []);
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function saveKeptCleanupWords(words: Set<string>) {
-  window.localStorage.setItem(KEPT_CLEANUP_WORDS_STORAGE_KEY, JSON.stringify([...words].sort()));
 }
 
 async function updateStatus(id: number, status: VocabularyStatus) {
@@ -847,120 +838,6 @@ onBeforeUnmount(() => {
   occurrenceRequestId += 1;
 });
 
-function buildVocabularyCsv(rows: UserVocabulary[]) {
-  const header = ['lemma', 'status', 'masteryScore', 'note', 'firstSeenAt', 'lastSeenAt', 'reviewDueAt'];
-  const body = rows.map((word) => [
-    word.lemma,
-    word.status,
-    String(word.masteryScore),
-    word.note ?? '',
-    word.firstSeenAt,
-    word.lastSeenAt,
-    word.reviewDueAt ?? '',
-  ].map(csvCell).join(','));
-  return [header.join(','), ...body].join('\n');
-}
-
-function csvCell(value: string) {
-  return `"${value.replace(/"/g, '""')}"`;
-}
-
-function tsvCell(value: string) {
-  return value.replace(/\t/g, ' ').replace(/\r?\n/g, ' ');
-}
-
-function downloadTextFile(filename: string, content: string, type: string) {
-  const blob = new Blob([content], { type });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  window.URL.revokeObjectURL(url);
-}
-
-function timestampForFilename() {
-  return new Date().toISOString().replace(/[:.]/g, '-');
-}
-
-type VocabularyImportItem = {
-  lemma: string;
-  status?: VocabularyStatus;
-  masteryScore?: number;
-  note?: string | null;
-};
-
-function parseVocabularyText(text: string, filename: string): VocabularyImportItem[] {
-  const delimiter = filename.toLowerCase().endsWith('.tsv') ? '\t' : ',';
-  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  if (lines.length === 0) {
-    return [];
-  }
-
-  const firstLine = lines[0];
-  if (!firstLine) {
-    return [];
-  }
-  const firstCells = splitDelimitedLine(firstLine, delimiter).map((cell) => cell.trim().toLowerCase());
-  const hasHeader = firstCells.includes('lemma') || firstCells.includes('word');
-  const headers = hasHeader ? firstCells : ['lemma', 'status', 'masteryscore', 'note'];
-  const dataLines = hasHeader ? lines.slice(1) : lines;
-
-  return dataLines.map((line) => {
-    const cells = splitDelimitedLine(line, delimiter);
-    const item: VocabularyImportItem = { lemma: valueForColumn(cells, headers, ['lemma', 'word']) };
-    const status = normalizeStatus(valueForColumn(cells, headers, ['status']));
-    const masteryScore = Number(valueForColumn(cells, headers, ['masteryscore', 'mastery_score']));
-    const note = valueForColumn(cells, headers, ['note']);
-    if (status) item.status = status;
-    if (Number.isFinite(masteryScore)) item.masteryScore = Math.min(1, Math.max(0, masteryScore));
-    if (note) item.note = note;
-    return item;
-  }).filter((item) => item.lemma);
-}
-
-function splitDelimitedLine(line: string, delimiter: string) {
-  if (delimiter === '\t') {
-    return line.split('\t').map((cell) => cell.trim());
-  }
-
-  const cells: string[] = [];
-  let current = '';
-  let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-    if (char === '"' && quoted && next === '"') {
-      current += '"';
-      index += 1;
-    } else if (char === '"') {
-      quoted = !quoted;
-    } else if (char === delimiter && !quoted) {
-      cells.push(current.trim());
-      current = '';
-    } else {
-      current += char;
-    }
-  }
-  cells.push(current.trim());
-  return cells;
-}
-
-function valueForColumn(cells: string[], headers: string[], keys: string[]) {
-  const index = headers.findIndex((header) => keys.includes(header));
-  return index >= 0 ? cells[index]?.trim() ?? '' : '';
-}
-
-function normalizeStatus(value: string): VocabularyStatus | undefined {
-  const normalized = value.trim().toUpperCase();
-  const statuses: Record<string, VocabularyStatus> = {
-    NEW: VocabularyStatus.NEW,
-    LEARNING: VocabularyStatus.LEARNING,
-    MASTERED: VocabularyStatus.MASTERED,
-    IGNORED: VocabularyStatus.IGNORED,
-  };
-  return statuses[normalized];
-}
 </script>
 
 <style lang="scss" scoped>

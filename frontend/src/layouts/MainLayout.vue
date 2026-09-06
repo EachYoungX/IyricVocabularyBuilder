@@ -117,6 +117,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useVocabularyRebuild } from 'src/composables/useVocabularyRebuild'
+import { APP_LOCALE_STORAGE_KEY } from 'src/utils/clientPreferences'
 
 const { t, locale } = useI18n()
 const { requestVocabularyRebuild } = useVocabularyRebuild()
@@ -130,7 +131,7 @@ function toggleLeftDrawer() {
 
 function toggleLanguage() {
   locale.value = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
-  localStorage.setItem('app-locale', locale.value)
+  localStorage.setItem(APP_LOCALE_STORAGE_KEY, locale.value)
 }
 </script>
 

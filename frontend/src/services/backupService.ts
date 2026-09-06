@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { OpenAPI } from 'src/services/api';
+import type { ClientPreferences } from 'src/utils/clientPreferences';
 
 export type BackupPayload = {
   schemaVersion: number;
@@ -9,6 +10,8 @@ export type BackupPayload = {
   userVocabulary: unknown[];
   userPhrases: unknown[];
   vocabularyOverrides: unknown[];
+  preferences?: ClientPreferences;
+  /** Legacy fields kept for backups exported before the preferences wrapper. */
   settings?: unknown;
   motionPreference?: 'on' | 'off';
 };

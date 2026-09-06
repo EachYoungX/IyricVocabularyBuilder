@@ -250,7 +250,7 @@ async function saveSong() {
 .lyric-dialog-header {
   flex: 0 0 auto;
   background:
-    linear-gradient(90deg, rgba(210, 193, 182, 0.18), transparent),
+    linear-gradient(90deg, var(--lv-accent-soft), transparent),
     var(--lv-surface-solid);
 }
 

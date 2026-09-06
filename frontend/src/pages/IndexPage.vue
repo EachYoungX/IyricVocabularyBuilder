@@ -339,12 +339,7 @@ const contentModeOptions = computed(() => [
   { label: t('wordsTab'), value: 'words' },
   { label: t('phrasesTab'), value: 'phrases' },
 ]);
-const learningStatuses = [
-  VocabularyStatus.NEW,
-  VocabularyStatus.LEARNING,
-  VocabularyStatus.MASTERED,
-  VocabularyStatus.IGNORED,
-];
+const learningStatuses = Object.values(VocabularyStatus);
 
 const selectedUserWord = computed(() => userVocabularyStore.findByLemma(vocabularyStore.getSelectedWord));
 const showLyricContext = computed(() => appSettings.value.dictionaryDisplay.includes('LYRIC_CONTEXT'));
