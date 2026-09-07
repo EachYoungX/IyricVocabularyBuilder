@@ -47,11 +47,7 @@ export function vocabularyToAnkiTsv(
 
 export function parseVocabularyText(content: string, fileName: string): BackupVocabularyItem[] {
   const delimiter = fileName.toLowerCase().endsWith('.tsv') ? '\t' : ',';
-  const rows = content
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .split('\n')
-    .map((line) => parseDelimitedLine(line, delimiter))
+  const rows = parseDelimitedRows(content, delimiter)
     .filter((row) => row.some((cell) => cell.trim()));
   if (rows.length === 0) return [];
 
@@ -86,28 +82,41 @@ function tsvCell(value: string | number | boolean | null | undefined) {
     .replace(/\t/g, ' ');
 }
 
-function parseDelimitedLine(line: string, delimiter: string) {
-  if (delimiter === '\t') return line.split('\t').map((cell) => cell.replaceAll('<br>', '\n').trim());
-  const cells: string[] = [];
+function parseDelimitedRows(content: string, delimiter: string) {
+  const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  if (delimiter === '\t') {
+    return normalized
+      .split('\n')
+      .map((line) => line.split('\t').map((cell) => cell.replaceAll('<br>', '\n').trim()));
+  }
+
+  const rows: string[][] = [];
+  let row: string[] = [];
   let current = '';
   let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
-    if (char === '"' && next === '"') {
+  for (let index = 0; index < normalized.length; index += 1) {
+    const char = normalized[index];
+    const next = normalized[index + 1];
+    if (char === '"' && quoted && next === '"') {
       current += '"';
       index += 1;
     } else if (char === '"') {
       quoted = !quoted;
     } else if (char === ',' && !quoted) {
-      cells.push(current.trim());
+      row.push(current.trim());
+      current = '';
+    } else if (char === '\n' && !quoted) {
+      row.push(current.trim());
+      rows.push(row);
+      row = [];
       current = '';
     } else {
       current += char;
     }
   }
-  cells.push(current.trim());
-  return cells;
+  row.push(current.trim());
+  rows.push(row);
+  return rows;
 }
 
 function firstHeaderIndex(header: string[], candidates: string[]) {

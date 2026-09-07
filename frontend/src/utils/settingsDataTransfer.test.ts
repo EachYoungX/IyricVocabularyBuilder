@@ -63,4 +63,24 @@ describe('parseVocabularyText', () => {
     expect(csv).toBe('"lemma","status","note"\n"journey","LEARNING","chorus"');
     expect(csv).not.toContain('masteryScore');
   });
+
+  it('round-trips multiline quoted CSV notes', () => {
+    const csv = vocabularyToCsv([{
+      id: 1,
+      userId: 'local',
+      lemma: 'journey',
+      status: VocabularyStatus.LEARNING,
+      masteryScore: 0,
+      firstSeenAt: '2026-09-01T00:00:00Z',
+      lastSeenAt: '2026-09-01T00:00:00Z',
+      reviewDueAt: null,
+      note: 'first line\nsecond line',
+    }]);
+
+    expect(parseVocabularyText(csv, 'vocabulary.csv')).toEqual([{
+      lemma: 'journey',
+      status: VocabularyStatus.LEARNING,
+      note: 'first line\nsecond line',
+    }]);
+  });
 });
