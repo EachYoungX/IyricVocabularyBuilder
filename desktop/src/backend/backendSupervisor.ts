@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createWriteStream, type WriteStream } from 'node:fs';
 import { access, mkdir } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { findAvailablePort } from './portResolver';
 import { waitForHealth, type BackendHealth } from './healthClient';
@@ -14,6 +14,7 @@ export type BackendLaunchOptions = {
   backendJar: string;
   webRoot: string;
   dataRoot: string;
+  databaseFile: string;
   logsDir: string;
   host?: string;
   preferredPort?: number;
@@ -114,7 +115,7 @@ export class BackendSupervisor {
     await Promise.all([
       access(this.options.backendJar, constants.R_OK),
       access(this.options.webRoot, constants.R_OK),
-      mkdir(join(this.options.dataRoot, 'data'), { recursive: true }),
+      mkdir(dirname(this.options.databaseFile), { recursive: true }),
       mkdir(this.options.logsDir, { recursive: true }),
     ]);
     if (isAbsolute(this.options.javaExecutable)) {
@@ -123,14 +124,13 @@ export class BackendSupervisor {
   }
 
   private backendEnvironment(host: string, port: number): NodeJS.ProcessEnv {
-    const databaseFile = join(resolve(this.options.dataRoot), 'data', 'app.db');
     return {
       ...process.env,
       ...this.options.environment,
       SERVER_ADDRESS: host,
       SERVER_PORT: String(port),
       APP_DATA_ROOT: resolve(this.options.dataRoot),
-      APP_DATA_DB_URL: toSqliteJdbcUrl(databaseFile),
+      APP_DATA_DB_URL: toSqliteJdbcUrl(resolve(this.options.databaseFile)),
       APP_DICTIONARY_ENABLED: 'false',
       APP_DICTIONARY_DB_URL: 'jdbc:sqlite:file:dictionary-disabled?mode=memory&cache=shared',
       APP_WEB_ROOT: resolve(this.options.webRoot),

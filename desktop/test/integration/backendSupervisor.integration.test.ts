@@ -23,6 +23,7 @@ describe('BackendSupervisor integration', () => {
       backendJar: join(repositoryRoot, 'backend', 'target', 'backend-1.0.0.jar'),
       webRoot: join(repositoryRoot, 'frontend', 'dist', 'spa'),
       dataRoot: temporaryRoot,
+      databaseFile: join(temporaryRoot, 'data', 'app.db'),
       logsDir: join(temporaryRoot, 'logs'),
       startupTimeoutMs: 40_000,
     });

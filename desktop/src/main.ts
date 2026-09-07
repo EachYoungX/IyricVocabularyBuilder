@@ -1,16 +1,48 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import { join, resolve } from 'node:path';
 import { BackendSupervisor } from './backend/backendSupervisor';
+import { RuntimeConfigStore } from './config/runtimeConfig';
 import { registerIpc } from './ipc/registerIpc';
+import {
+  configureElectronDataPaths,
+  prepareAppPaths,
+  resolveAppPaths,
+  type AppPaths,
+} from './paths/appPaths';
+import { resolveDesktopMode } from './paths/modeResolver';
 
 let mainWindow: BrowserWindow | null = null;
 let backendSupervisor: BackendSupervisor | null = null;
 let shutdownStarted = false;
 
-const singleInstanceLock = app.requestSingleInstanceLock();
-if (!singleInstanceLock) {
-  app.quit();
-} else {
+void initializeAndLaunch().catch(failStartup);
+
+async function initializeAndLaunch() {
+  const repositoryRoot = resolveRepositoryRoot();
+  const mode = resolveDesktopMode({
+    isPackaged: app.isPackaged,
+    executablePath: process.execPath,
+  });
+  const appPaths = resolveAppPaths({
+    mode,
+    executablePath: process.execPath,
+    localAppData: process.env.LOCALAPPDATA,
+    repositoryRoot,
+  });
+  prepareAppPaths(appPaths);
+  configureElectronDataPaths(app, appPaths);
+
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+    return;
+  }
+  registerApplicationEvents();
+  await new RuntimeConfigStore(appPaths.runtimeConfigFile).load();
+  await app.whenReady();
+  await startApplication(appPaths, repositoryRoot);
+}
+
+function registerApplicationEvents() {
   app.on('second-instance', () => {
     if (!mainWindow) return;
     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -27,40 +59,30 @@ if (!singleInstanceLock) {
   app.on('window-all-closed', () => app.quit());
   process.once('SIGINT', () => app.quit());
   process.once('SIGTERM', () => app.quit());
-  void app.whenReady().then(startApplication);
 }
 
-async function startApplication() {
-  try {
-    const resources = resolveRuntimeResources();
-    backendSupervisor = new BackendSupervisor({
-      javaExecutable: resources.javaExecutable,
-      backendJar: resources.backendJar,
-      webRoot: resources.webRoot,
-      dataRoot: resources.dataRoot,
-      logsDir: join(resources.dataRoot, 'logs'),
-      onUnexpectedExit: (error) => {
-        dialog.showErrorBox('Lyric Vocabulary Builder backend stopped', error.message);
-        app.quit();
-      },
-    });
-    const backend = await backendSupervisor.start();
-    registerIpc({
-      appVersion: app.getVersion(),
-      backendUrl: backend.baseUrl,
-      backendVersion: backend.health.version,
-      shellMode: app.isPackaged ? 'packaged' : 'development',
-    });
-    await createMainWindow(backend.baseUrl);
-  } catch (error) {
-    dialog.showErrorBox(
-      'Lyric Vocabulary Builder failed to start',
-      error instanceof Error ? error.message : String(error),
-    );
-    shutdownStarted = true;
-    await backendSupervisor?.stop();
-    app.exit(1);
-  }
+async function startApplication(appPaths: AppPaths, repositoryRoot: string) {
+  const resources = resolveRuntimeResources(repositoryRoot);
+  backendSupervisor = new BackendSupervisor({
+    javaExecutable: resources.javaExecutable,
+    backendJar: resources.backendJar,
+    webRoot: resources.webRoot,
+    dataRoot: appPaths.root,
+    databaseFile: appPaths.databaseFile,
+    logsDir: appPaths.logsDir,
+    onUnexpectedExit: (error) => {
+      dialog.showErrorBox('Lyric Vocabulary Builder backend stopped', error.message);
+      app.quit();
+    },
+  });
+  const backend = await backendSupervisor.start();
+  registerIpc({
+    appVersion: app.getVersion(),
+    backendUrl: backend.baseUrl,
+    backendVersion: backend.health.version,
+    mode: appPaths.mode,
+  });
+  await createMainWindow(backend.baseUrl);
 }
 
 async function createMainWindow(baseUrl: string) {
@@ -91,18 +113,15 @@ async function createMainWindow(baseUrl: string) {
   await window.loadURL(baseUrl);
 }
 
-function resolveRuntimeResources() {
+function resolveRuntimeResources(repositoryRoot: string) {
   if (app.isPackaged) {
     return {
       javaExecutable: join(process.resourcesPath, 'runtime', 'bin', 'java.exe'),
       backendJar: join(process.resourcesPath, 'backend', 'backend-1.0.0.jar'),
       webRoot: join(process.resourcesPath, 'web'),
-      dataRoot: app.getPath('userData'),
     };
   }
 
-  const desktopRoot = resolve(__dirname, '..');
-  const repositoryRoot = resolve(desktopRoot, '..');
   return {
     javaExecutable: process.env.DESKTOP_JAVA_EXECUTABLE || 'java',
     backendJar: process.env.DESKTOP_BACKEND_JAR
@@ -111,6 +130,19 @@ function resolveRuntimeResources() {
     webRoot: process.env.DESKTOP_WEB_ROOT
       ? resolve(process.env.DESKTOP_WEB_ROOT)
       : join(repositoryRoot, 'frontend', 'dist', 'spa'),
-    dataRoot: join(repositoryRoot, '.desktop-dev'),
   };
+}
+
+function resolveRepositoryRoot() {
+  return resolve(__dirname, '..', '..');
+}
+
+async function failStartup(error: unknown) {
+  dialog.showErrorBox(
+    'Lyric Vocabulary Builder failed to start',
+    error instanceof Error ? error.message : String(error),
+  );
+  shutdownStarted = true;
+  await backendSupervisor?.stop();
+  app.exit(1);
 }

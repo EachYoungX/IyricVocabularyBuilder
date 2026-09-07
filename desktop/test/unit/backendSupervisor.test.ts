@@ -23,6 +23,7 @@ describe('BackendSupervisor', () => {
       backendJar,
       webRoot,
       dataRoot: temporaryRoot,
+      databaseFile: join(temporaryRoot, 'data', 'app.db'),
       logsDir: join(temporaryRoot, 'logs'),
       startupTimeoutMs: 1_000,
     });

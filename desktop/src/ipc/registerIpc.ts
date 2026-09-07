@@ -1,10 +1,11 @@
 import { ipcMain } from 'electron';
+import type { DesktopMode } from '../paths/modeResolver';
 
 export type DesktopRuntimeInfo = {
   appVersion: string;
   backendUrl: string;
   backendVersion: string;
-  shellMode: 'development' | 'packaged';
+  mode: DesktopMode;
 };
 
 export function registerIpc(runtimeInfo: DesktopRuntimeInfo) {
