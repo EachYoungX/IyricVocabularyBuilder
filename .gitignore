@@ -82,6 +82,7 @@ pnpm-debug.log*
 **/src-capacitor/www/
 
 # Runtime and generated databases
+.desktop-dev/
 backend/data/*.db
 backend/data/*.db-*
 backend/data/*.sqlite

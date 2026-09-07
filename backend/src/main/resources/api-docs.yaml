@@ -20,6 +20,8 @@ servers:
     description: 本地开发服务器 / Local development server
 
 tags:
+  - name: Runtime
+    description: 运行时健康状态 / Runtime health status
   - name: Vocabulary
     description: 词汇索引相关操作 / Vocabulary index operations
   - name: Songs
@@ -36,6 +38,19 @@ tags:
     description: 完整用户源数据备份、校验与事务恢复 / Full backup validation and transactional restore
 
 paths:
+  /api/health:
+    get:
+      tags: [Runtime]
+      summary: 查询后端健康状态 / Get backend health status
+      operationId: getHealth
+      responses:
+        '200':
+          description: 后端已就绪 / Backend is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
   # ===============================================================
   # Vocabulary Endpoints
   # ===============================================================
@@ -1046,6 +1061,13 @@ components:
             data: null
 
   schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status: {type: string, enum: [UP]}
+        version: {type: string}
+      required: [status, version]
+
     LyricLineType:
       type: string
       enum: [LYRIC, CREDIT, METADATA, SECTION_LABEL, SPEAKER_LABEL, PERFORMANCE_NOTE, META_INFO, EMPTY, UNKNOWN]

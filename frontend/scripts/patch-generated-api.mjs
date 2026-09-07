@@ -47,6 +47,7 @@ const normalizedModelFiles = [
   'BackupPreferences.ts',
   'BackupRestoreResult.ts',
   'BackupValidationResult.ts',
+  'HealthResponse.ts',
   'LocalDataResetResult.ts',
   'SongSummary.ts',
   'UserVocabularyBatchUpdate.ts',
