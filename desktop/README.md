@@ -40,6 +40,12 @@ An external dataset is referenced in place and is never copied, moved, or delete
 
 SQLite table, column, metadata, schema-version, and package-version compatibility is implemented once in the backend. The desktop shell invokes the same backend JAR with `APP_DICTIONARY_PROBE_ONLY=true` instead of duplicating these rules in TypeScript. Active dictionary connections use SQLite read-only mode.
 
+## Local network access
+
+The backend binds `127.0.0.1` by default. The Settings page can explicitly enable LAN access, which persists `lan.enabled`, restarts the backend on `0.0.0.0`, and displays the host's non-loopback IPv4 URLs. The desktop window continues to use its loopback URL. A failed bind restores the previous setting and backend.
+
+LAN browsers receive the same SPA and HTTP API but no `desktopBridge`, host paths, file pickers, managed-dataset deletion, or other native capabilities. The backend has no user authentication, so the UI warns that LAN mode is only for trusted private networks.
+
 ## Windows production resources
 
 Production builds bundle a Java 25 runtime generated with `jlink`; they never resolve Java from `JAVA_HOME` or `PATH`. Download and extract the Microsoft OpenJDK 25 Windows x64 ZIP, then provide its directory explicitly:

@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { BackendSupervisor } from '../../src/backend/backendSupervisor';
+import { backendAccessHost, BackendSupervisor } from '../../src/backend/backendSupervisor';
 
 let temporaryRoot: string | null = null;
 
@@ -12,6 +12,11 @@ afterEach(async () => {
 });
 
 describe('BackendSupervisor', () => {
+  it('uses loopback for desktop access when the backend binds all interfaces', () => {
+    expect(backendAccessHost('0.0.0.0')).toBe('127.0.0.1');
+    expect(backendAccessHost('127.0.0.1')).toBe('127.0.0.1');
+  });
+
   it('reports a readable failure when Java cannot be started', async () => {
     temporaryRoot = await mkdtemp(join(tmpdir(), 'lyric-vocabulary-supervisor-'));
     const backendJar = join(temporaryRoot, 'backend.jar');

@@ -40,6 +40,8 @@ interface DesktopRuntimeInfo {
   backendUrl: string;
   backendVersion: string;
   mode: 'development' | 'installed' | 'portable';
+  lanEnabled: boolean;
+  lanUrls: string[];
 }
 
 interface DesktopBridge {
@@ -54,6 +56,7 @@ interface DesktopBridge {
   clearExternalDataset(): Promise<DesktopDatasetState>;
   removeManagedDataset(fileName: string): Promise<DesktopDatasetState>;
   restartBackend(): Promise<DesktopRuntimeInfo>;
+  setLanEnabled(enabled: boolean): Promise<DesktopRuntimeInfo>;
 }
 
 interface Window {

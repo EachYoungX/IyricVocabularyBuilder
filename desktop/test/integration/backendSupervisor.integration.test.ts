@@ -40,4 +40,25 @@ describe('BackendSupervisor integration', () => {
     expect(await readFile(join(temporaryRoot, 'logs', 'backend.log'), 'utf8'))
       .toContain('Shutdown completed');
   }, 60_000);
+
+  it('binds all interfaces for LAN mode while keeping desktop access on loopback', async () => {
+    const repositoryRoot = resolve(process.cwd(), '..');
+    temporaryRoot = await mkdtemp(join(tmpdir(), 'lyric-vocabulary-desktop-lan-'));
+    supervisor = new BackendSupervisor({
+      javaExecutable: process.env.DESKTOP_JAVA_EXECUTABLE || 'java',
+      backendJar: join(repositoryRoot, 'backend', 'target', 'backend-1.0.0.jar'),
+      webRoot: join(repositoryRoot, 'frontend', 'dist', 'spa'),
+      dataRoot: temporaryRoot,
+      databaseFile: join(temporaryRoot, 'data', 'app.db'),
+      logsDir: join(temporaryRoot, 'logs'),
+      host: '0.0.0.0',
+      startupTimeoutMs: 40_000,
+    });
+
+    const runtime = await supervisor.start();
+
+    expect(runtime.host).toBe('0.0.0.0');
+    expect(runtime.baseUrl).toMatch(/^http:\/\/127\.0\.0\.1:/);
+    expect((await fetch(runtime.baseUrl)).ok).toBe(true);
+  }, 60_000);
 });

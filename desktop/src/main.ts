@@ -5,6 +5,8 @@ import { RuntimeConfigStore } from './config/runtimeConfig';
 import { DatasetManager, type DatasetState } from './dataset/datasetManager';
 import { DictionaryProbe } from './dataset/dictionaryProbe';
 import { registerIpc, type DesktopRuntimeInfo } from './ipc/registerIpc';
+import { lanUrlsForPort } from './lan/lanAddresses';
+import { LanManager } from './lan/lanManager';
 import {
   configureElectronDataPaths,
   prepareAppPaths,
@@ -51,16 +53,28 @@ async function initializeAndLaunch() {
       javaExecutable: resources.javaExecutable,
       backendJar: resources.backendJar,
     }),
-    (dictionaryFile) => restartBackend(appPaths, resources, dictionaryFile),
+    async (dictionaryFile) => restartBackend(
+      appPaths,
+      resources,
+      dictionaryFile,
+      (await configStore.load()).lan.enabled,
+    ),
   );
   currentDatasetState = await datasetManager.initialize();
+  const lanManager = new LanManager(
+    configStore,
+    () => datasetManager.activeDictionaryFile(),
+    (dictionaryFile, enabled) => restartBackend(appPaths, resources, dictionaryFile, enabled),
+  );
   await app.whenReady();
+  const config = await configStore.load();
   const backend = await startBackend(
     appPaths,
     resources,
     currentDatasetState.dictionaryEnabled ? currentDatasetState.active?.path ?? null : null,
+    config.lan.enabled,
   );
-  registerDesktopIpc(appPaths, datasetManager);
+  registerDesktopIpc(appPaths, datasetManager, lanManager, configStore);
   await createMainWindow(backend.baseUrl);
 }
 
@@ -89,6 +103,7 @@ async function startBackend(
   appPaths: AppPaths,
   resources: RuntimeResources,
   dictionaryFile: string | null,
+  lanEnabled: boolean,
 ) {
   const supervisor = new BackendSupervisor({
     javaExecutable: resources.javaExecutable,
@@ -98,6 +113,7 @@ async function startBackend(
     databaseFile: appPaths.databaseFile,
     dictionaryFile,
     logsDir: appPaths.logsDir,
+    host: lanEnabled ? '0.0.0.0' : '127.0.0.1',
     onUnexpectedExit: (error) => {
       dialog.showErrorBox('Lyric Vocabulary Builder backend stopped', error.message);
       app.quit();
@@ -110,6 +126,8 @@ async function startBackend(
     backendUrl: backend.baseUrl,
     backendVersion: backend.health.version,
     mode: appPaths.mode,
+    lanEnabled,
+    lanUrls: lanEnabled ? lanUrlsForPort(backend.port) : [],
   };
   allowedBackendOrigin = new URL(backend.baseUrl).origin;
   return backend;
@@ -119,9 +137,10 @@ async function restartBackend(
   appPaths: AppPaths,
   resources: RuntimeResources,
   dictionaryFile: string | null,
+  lanEnabled: boolean,
 ) {
   await backendSupervisor?.stop();
-  await startBackend(appPaths, resources, dictionaryFile);
+  await startBackend(appPaths, resources, dictionaryFile, lanEnabled);
 }
 
 async function createMainWindow(baseUrl: string) {
@@ -151,7 +170,12 @@ async function createMainWindow(baseUrl: string) {
   await window.loadURL(baseUrl);
 }
 
-function registerDesktopIpc(appPaths: AppPaths, datasetManager: DatasetManager) {
+function registerDesktopIpc(
+  appPaths: AppPaths,
+  datasetManager: DatasetManager,
+  lanManager: LanManager,
+  configStore: RuntimeConfigStore,
+) {
   let mutationQueue: Promise<unknown> = Promise.resolve();
   const mutate = <T>(operation: () => Promise<T>) => {
     const result = mutationQueue.then(operation, operation);
@@ -207,7 +231,15 @@ function registerDesktopIpc(appPaths: AppPaths, datasetManager: DatasetManager) 
     restartBackend: () => mutate(async () => {
       const dictionaryFile = await datasetManager.activeDictionaryFile();
       const resources = resolveRuntimeResources(resolveRepositoryRoot());
-      await restartBackend(appPaths, resources, dictionaryFile);
+      const config = await configStore.load();
+      await restartBackend(appPaths, resources, dictionaryFile, config.lan.enabled);
+      if (!currentRuntimeInfo) throw new Error('Desktop runtime failed to restart');
+      scheduleRendererReload();
+      return currentRuntimeInfo;
+    }),
+    setLanEnabled: (enabled) => mutate(async () => {
+      if (typeof enabled !== 'boolean') throw new Error('LAN enabled value must be a boolean');
+      await lanManager.setEnabled(enabled);
       if (!currentRuntimeInfo) throw new Error('Desktop runtime failed to restart');
       scheduleRendererReload();
       return currentRuntimeInfo;

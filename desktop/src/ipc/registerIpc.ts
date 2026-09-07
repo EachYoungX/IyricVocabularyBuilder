@@ -7,6 +7,8 @@ export type DesktopRuntimeInfo = {
   backendUrl: string;
   backendVersion: string;
   mode: DesktopMode;
+  lanEnabled: boolean;
+  lanUrls: string[];
 };
 
 export type DesktopIpcHandlers = {
@@ -21,6 +23,7 @@ export type DesktopIpcHandlers = {
   clearExternalDataset(): Promise<DatasetState>;
   removeManagedDataset(fileName: string): Promise<DatasetState>;
   restartBackend(): Promise<DesktopRuntimeInfo>;
+  setLanEnabled(enabled: boolean): Promise<DesktopRuntimeInfo>;
 };
 
 const channels = [
@@ -35,6 +38,7 @@ const channels = [
   'desktop:clear-external-dataset',
   'desktop:remove-managed-dataset',
   'desktop:restart-backend',
+  'desktop:set-lan-enabled',
 ] as const;
 
 export function registerIpc(handlers: DesktopIpcHandlers) {
@@ -54,4 +58,7 @@ export function registerIpc(handlers: DesktopIpcHandlers) {
     handlers.removeManagedDataset(fileName)
   ));
   ipcMain.handle('desktop:restart-backend', () => handlers.restartBackend());
+  ipcMain.handle('desktop:set-lan-enabled', (_event, enabled: boolean) => (
+    handlers.setLanEnabled(enabled)
+  ));
 }

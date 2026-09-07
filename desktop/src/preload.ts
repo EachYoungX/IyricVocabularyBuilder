@@ -24,4 +24,7 @@ contextBridge.exposeInMainWorld('desktopBridge', {
     ipcRenderer.invoke('desktop:remove-managed-dataset', fileName)
   ),
   restartBackend: (): Promise<DesktopRuntimeInfo> => ipcRenderer.invoke('desktop:restart-backend'),
+  setLanEnabled: (enabled: boolean): Promise<DesktopRuntimeInfo> => (
+    ipcRenderer.invoke('desktop:set-lan-enabled', enabled)
+  ),
 });

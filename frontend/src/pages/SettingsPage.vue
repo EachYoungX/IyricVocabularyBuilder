@@ -167,6 +167,37 @@
           </q-card-section>
         </q-card>
 
+        <q-card flat bordered class="settings-card">
+          <q-card-section>
+            <SettingsSectionHeading icon="o_wifi" :title="t('settingsPage.lanTitle')"
+              :caption="t('settingsPage.lanCaption')" />
+            <q-linear-progress v-if="lanBusy" indeterminate rounded color="primary" class="q-mt-md" />
+            <template v-if="isDesktop">
+              <q-toggle :model-value="runtimeInfo?.lanEnabled ?? false" color="primary" class="q-mt-md"
+                :label="t('settingsPage.lanEnabled')" :disable="lanBusy || !runtimeInfo"
+                @update:model-value="setLanEnabled" />
+              <q-banner rounded class="settings-info q-mt-md">
+                <template #avatar><q-icon name="o_warning_amber" color="warning" /></template>
+                {{ t('settingsPage.lanSecurityWarning') }}
+              </q-banner>
+              <template v-if="runtimeInfo?.lanEnabled">
+                <div class="about-label q-mt-md">{{ t('settingsPage.lanAddresses') }}</div>
+                <q-list v-if="runtimeInfo.lanUrls.length" bordered separator class="settings-list q-mt-sm">
+                  <q-item v-for="url in runtimeInfo.lanUrls" :key="url">
+                    <q-item-section>
+                      <q-item-label class="text-weight-medium">{{ url }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+                <div v-else class="settings-help q-mt-sm">{{ t('settingsPage.lanNoAddress') }}</div>
+              </template>
+            </template>
+            <q-banner v-else rounded class="settings-info q-mt-md">
+              {{ t('settingsPage.lanHostOnly') }}
+            </q-banner>
+          </q-card-section>
+        </q-card>
+
         <SettingsSection icon="o_menu_book" :title="t('settingsPage.dictionaryDisplaySectionTitle')"
           :caption="t('settingsPage.dictionaryDisplaySectionCaption')">
           <SettingRow :title="t('settingsPage.definitionLanguage')">
@@ -275,6 +306,8 @@ const desktopBridge = window.desktopBridge;
 const isDesktop = Boolean(desktopBridge);
 const datasetState = ref<DesktopDatasetState | null>(null);
 const datasetBusy = ref(false);
+const runtimeInfo = ref<DesktopRuntimeInfo | null>(null);
+const lanBusy = ref(false);
 
 const option = <T extends string | boolean>(key: string, value: T): Option<T> => ({
   label: t(`settingsPage.${key}`),
@@ -370,7 +403,34 @@ function setDisplayContent(value: DictionaryDisplayItem[]) {
 
 onMounted(() => {
   void loadDesktopDatasetState();
+  void loadDesktopRuntimeInfo();
 });
+
+async function loadDesktopRuntimeInfo() {
+  if (!desktopBridge) return;
+  try {
+    runtimeInfo.value = await desktopBridge.getRuntimeInfo();
+  } catch (error) {
+    notifyDatasetError(error);
+  }
+}
+
+async function setLanEnabled(enabled: boolean) {
+  if (!desktopBridge) return;
+  lanBusy.value = true;
+  try {
+    runtimeInfo.value = await desktopBridge.setLanEnabled(enabled);
+    $q.notify({
+      type: 'positive',
+      position: 'top-right',
+      message: t(enabled ? 'settingsPage.lanEnabledMessage' : 'settingsPage.lanDisabledMessage'),
+    });
+  } catch (error) {
+    notifyDatasetError(error);
+  } finally {
+    lanBusy.value = false;
+  }
+}
 
 async function loadDesktopDatasetState() {
   if (!desktopBridge) return;

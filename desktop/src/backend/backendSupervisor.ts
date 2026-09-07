@@ -65,7 +65,7 @@ export class BackendSupervisor {
         this.options.preferredPort ?? 17843,
         this.options.portAttempts ?? 20,
       );
-      const baseUrl = `http://${host}:${port}`;
+      const baseUrl = `http://${backendAccessHost(host)}:${port}`;
       this.logStream = createWriteStream(join(this.options.logsDir, 'backend.log'), { flags: 'a' });
       this.logStream.write(`\n[desktop] starting backend at ${new Date().toISOString()} on ${baseUrl}\n`);
 
@@ -253,4 +253,8 @@ function waitForBackendReady(child: ChildProcess, baseUrl: string, timeoutMs: nu
 
 function formatError(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+export function backendAccessHost(bindHost: string) {
+  return bindHost === '0.0.0.0' ? '127.0.0.1' : bindHost;
 }
