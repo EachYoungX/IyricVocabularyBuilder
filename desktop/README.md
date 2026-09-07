@@ -32,6 +32,14 @@ Development mode uses the system `java` executable. All mutable state is isolate
 
 The shell owns `<data-root>/config/runtime.json`. The schema-versioned file records whether the dictionary dataset is managed by the application or selected from an absolute external path. Managed datasets store only a file name so a portable directory remains movable. Configuration updates use a temporary file followed by an atomic rename.
 
+## Dictionary datasets
+
+The Settings page scans only the application-managed `datasets` directory. A single compatible managed file is selected automatically; multiple compatible files require an explicit choice. Import first copies into `datasets/.incoming/*.partial`, validates the closed copy through the backend probe mode, and then atomically renames it into place.
+
+An external dataset is referenced in place and is never copied, moved, or deleted by the application. If it disappears, startup continues in no-dictionary mode. Dataset switches persist configuration, gracefully restart the backend, wait for health, and reload the renderer; a failed switch restores the previous configuration and backend.
+
+SQLite table, column, metadata, schema-version, and package-version compatibility is implemented once in the backend. The desktop shell invokes the same backend JAR with `APP_DICTIONARY_PROBE_ONLY=true` instead of duplicating these rules in TypeScript. Active dictionary connections use SQLite read-only mode.
+
 ## Windows production resources
 
 Production builds bundle a Java 25 runtime generated with `jlink`; they never resolve Java from `JAVA_HOME` or `PATH`. Download and extract the Microsoft OpenJDK 25 Windows x64 ZIP, then provide its directory explicitly:

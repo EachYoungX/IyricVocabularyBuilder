@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron';
+import type { DatasetState } from '../dataset/datasetManager';
 import type { DesktopMode } from '../paths/modeResolver';
 
 export type DesktopRuntimeInfo = {
@@ -8,7 +9,49 @@ export type DesktopRuntimeInfo = {
   mode: DesktopMode;
 };
 
-export function registerIpc(runtimeInfo: DesktopRuntimeInfo) {
-  ipcMain.removeHandler('desktop:get-runtime-info');
-  ipcMain.handle('desktop:get-runtime-info', () => runtimeInfo);
+export type DesktopIpcHandlers = {
+  getRuntimeInfo(): DesktopRuntimeInfo;
+  getDatasetState(): Promise<DatasetState>;
+  openDataDirectory(): Promise<void>;
+  openDatasetDirectory(): Promise<void>;
+  rescanDatasets(): Promise<DatasetState>;
+  importDatasetToManagedDirectory(): Promise<DatasetState | null>;
+  selectExternalDataset(): Promise<DatasetState | null>;
+  activateManagedDataset(fileName: string): Promise<DatasetState>;
+  clearExternalDataset(): Promise<DatasetState>;
+  removeManagedDataset(fileName: string): Promise<DatasetState>;
+  restartBackend(): Promise<DesktopRuntimeInfo>;
+};
+
+const channels = [
+  'desktop:get-runtime-info',
+  'desktop:get-dataset-state',
+  'desktop:open-data-directory',
+  'desktop:open-dataset-directory',
+  'desktop:rescan-datasets',
+  'desktop:import-managed-dataset',
+  'desktop:select-external-dataset',
+  'desktop:activate-managed-dataset',
+  'desktop:clear-external-dataset',
+  'desktop:remove-managed-dataset',
+  'desktop:restart-backend',
+] as const;
+
+export function registerIpc(handlers: DesktopIpcHandlers) {
+  for (const channel of channels) ipcMain.removeHandler(channel);
+  ipcMain.handle('desktop:get-runtime-info', () => handlers.getRuntimeInfo());
+  ipcMain.handle('desktop:get-dataset-state', () => handlers.getDatasetState());
+  ipcMain.handle('desktop:open-data-directory', () => handlers.openDataDirectory());
+  ipcMain.handle('desktop:open-dataset-directory', () => handlers.openDatasetDirectory());
+  ipcMain.handle('desktop:rescan-datasets', () => handlers.rescanDatasets());
+  ipcMain.handle('desktop:import-managed-dataset', () => handlers.importDatasetToManagedDirectory());
+  ipcMain.handle('desktop:select-external-dataset', () => handlers.selectExternalDataset());
+  ipcMain.handle('desktop:activate-managed-dataset', (_event, fileName: string) => (
+    handlers.activateManagedDataset(fileName)
+  ));
+  ipcMain.handle('desktop:clear-external-dataset', () => handlers.clearExternalDataset());
+  ipcMain.handle('desktop:remove-managed-dataset', (_event, fileName: string) => (
+    handlers.removeManagedDataset(fileName)
+  ));
+  ipcMain.handle('desktop:restart-backend', () => handlers.restartBackend());
 }

@@ -90,6 +90,83 @@
           </q-card-section>
         </q-card>
 
+        <q-card flat bordered class="settings-card">
+          <q-card-section>
+            <SettingsSectionHeading icon="o_storage" :title="t('settingsPage.datasetTitle')"
+              :caption="t('settingsPage.datasetCaption')" />
+            <q-linear-progress v-if="datasetBusy" indeterminate rounded color="primary" class="q-mt-md" />
+            <template v-if="isDesktop">
+              <q-banner rounded class="settings-info q-mt-md">
+                {{ t('settingsPage.externalDatasetWarning') }}
+              </q-banner>
+              <div class="dataset-status q-mt-md">
+                <div>
+                  <div class="about-label">{{ t('settingsPage.activeDataset') }}</div>
+                  <div class="text-subtitle1 text-weight-medium">
+                    {{ datasetState?.active?.fileName || t('settingsPage.noActiveDataset') }}
+                  </div>
+                  <div v-if="datasetState?.active" class="settings-help">
+                    {{ datasetSourceLabel(datasetState.active.source) }} ·
+                    {{ datasetStatusLabel(datasetState.active.status) }}
+                    <template v-if="datasetState.active.datasetVersion">
+                      · {{ t('settingsPage.datasetVersion', { version: datasetState.active.datasetVersion }) }}
+                    </template>
+                  </div>
+                </div>
+                <q-chip :color="datasetState?.dictionaryEnabled ? 'positive' : 'warning'" text-color="white">
+                  {{ datasetState?.dictionaryEnabled
+                    ? t('settingsPage.dictionaryEnabled')
+                    : t('settingsPage.dictionaryDisabled') }}
+                </q-chip>
+              </div>
+              <div class="row q-gutter-sm q-mt-md">
+                <q-btn outline color="primary" icon="o_folder_open" :label="t('settingsPage.openDatasetDirectory')"
+                  :disable="datasetBusy" @click="openDatasetDirectory" />
+                <q-btn outline color="primary" icon="o_refresh" :label="t('settingsPage.rescanDatasets')"
+                  :disable="datasetBusy" @click="rescanDatasets" />
+                <q-btn color="primary" icon="o_drive_folder_upload" :label="t('settingsPage.importManagedDataset')"
+                  :disable="datasetBusy" @click="importManagedDataset" />
+                <q-btn outline color="primary" icon="o_insert_drive_file"
+                  :label="t('settingsPage.selectExternalDataset')" :disable="datasetBusy"
+                  @click="selectExternalDataset" />
+              </div>
+              <q-list v-if="datasetState?.managed.length" bordered separator class="settings-list q-mt-md">
+                <q-item v-for="dataset in datasetState.managed" :key="dataset.path">
+                  <q-item-section>
+                    <q-item-label>{{ dataset.fileName }}</q-item-label>
+                    <q-item-label caption>
+                      {{ datasetStatusLabel(dataset.status) }} · {{ formatDatasetSize(dataset.size) }}
+                      <template v-if="dataset.datasetVersion">
+                        · {{ t('settingsPage.datasetVersion', { version: dataset.datasetVersion }) }}
+                      </template>
+                    </q-item-label>
+                    <q-item-label v-if="dataset.message" caption class="text-negative">
+                      {{ dataset.message }}
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side class="row items-center no-wrap q-gutter-xs">
+                    <q-btn v-if="dataset.status === 'valid' && !isActiveManagedDataset(dataset)" flat dense
+                      color="primary" icon="o_check_circle" :label="t('settingsPage.useDataset')"
+                      :disable="datasetBusy" @click="activateManagedDataset(dataset.fileName)" />
+                    <q-chip v-else-if="isActiveManagedDataset(dataset)" dense color="positive" text-color="white">
+                      {{ t('settingsPage.inUse') }}
+                    </q-chip>
+                    <q-btn flat round dense color="negative" icon="o_delete" :aria-label="t('settingsPage.removeDataset')"
+                      :disable="datasetBusy" @click="removeManagedDataset(dataset.fileName)" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+              <div v-else class="settings-help q-mt-md">{{ t('settingsPage.noManagedDatasets') }}</div>
+              <q-btn v-if="datasetState?.active?.source === 'external'" flat color="negative" class="q-mt-sm"
+                icon="o_link_off" :label="t('settingsPage.clearExternalDataset')" :disable="datasetBusy"
+                @click="clearExternalDataset" />
+            </template>
+            <q-banner v-else rounded class="settings-info q-mt-md">
+              {{ t('settingsPage.datasetHostOnly') }}
+            </q-banner>
+          </q-card-section>
+        </q-card>
+
         <SettingsSection icon="o_menu_book" :title="t('settingsPage.dictionaryDisplaySectionTitle')"
           :caption="t('settingsPage.dictionaryDisplaySectionCaption')">
           <SettingRow :title="t('settingsPage.definitionLanguage')">
@@ -167,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import SettingRow from 'components/SettingRow.vue';
@@ -194,6 +271,10 @@ const $q = useQuasar();
 const settings = ref<AppSettings>(loadAppSettings());
 const motionPreference = ref<MotionPreference>(getStoredMotionPreference() ?? applyMotionPreference());
 const appVersion = process.env.APP_VERSION;
+const desktopBridge = window.desktopBridge;
+const isDesktop = Boolean(desktopBridge);
+const datasetState = ref<DesktopDatasetState | null>(null);
+const datasetBusy = ref(false);
 
 const option = <T extends string | boolean>(key: string, value: T): Option<T> => ({
   label: t(`settingsPage.${key}`),
@@ -286,6 +367,119 @@ function setDisplayContent(value: DictionaryDisplayItem[]) {
   settings.value.dictionaryDisplay = [definitionMode.value, ...value];
   persistSettings();
 }
+
+onMounted(() => {
+  void loadDesktopDatasetState();
+});
+
+async function loadDesktopDatasetState() {
+  if (!desktopBridge) return;
+  try {
+    datasetState.value = await desktopBridge.getDatasetState();
+    if (datasetState.value.autoSelected && datasetState.value.active) {
+      $q.notify({
+        type: 'info',
+        position: 'top-right',
+        message: t('settingsPage.datasetAutoSelected', { fileName: datasetState.value.active.fileName }),
+      });
+    }
+  } catch (error) {
+    notifyDatasetError(error);
+  }
+}
+
+async function openDatasetDirectory() {
+  if (!desktopBridge) return;
+  await runDatasetAction(async () => {
+    await desktopBridge.openDatasetDirectory();
+  }, false);
+}
+
+async function rescanDatasets() {
+  if (!desktopBridge) return;
+  await runDatasetAction(async () => {
+    datasetState.value = await desktopBridge.rescanDatasets();
+  });
+}
+
+async function importManagedDataset() {
+  if (!desktopBridge) return;
+  await runDatasetAction(async () => {
+    const result = await desktopBridge.importDatasetToManagedDirectory();
+    if (result) datasetState.value = result;
+  });
+}
+
+async function selectExternalDataset() {
+  if (!desktopBridge) return;
+  await runDatasetAction(async () => {
+    const result = await desktopBridge.selectExternalDataset();
+    if (result) datasetState.value = result;
+  });
+}
+
+async function activateManagedDataset(fileName: string) {
+  if (!desktopBridge) return;
+  await runDatasetAction(async () => {
+    datasetState.value = await desktopBridge.activateManagedDataset(fileName);
+  });
+}
+
+async function clearExternalDataset() {
+  if (!desktopBridge) return;
+  await runDatasetAction(async () => {
+    datasetState.value = await desktopBridge.clearExternalDataset();
+  });
+}
+
+async function removeManagedDataset(fileName: string) {
+  if (!desktopBridge) return;
+  await runDatasetAction(async () => {
+    datasetState.value = await desktopBridge.removeManagedDataset(fileName);
+  });
+}
+
+async function runDatasetAction(action: () => Promise<void>, notifySuccess = true) {
+  datasetBusy.value = true;
+  try {
+    await action();
+    if (notifySuccess) {
+      $q.notify({ type: 'positive', position: 'top-right', message: t('settingsPage.datasetActionComplete') });
+    }
+  } catch (error) {
+    notifyDatasetError(error);
+  } finally {
+    datasetBusy.value = false;
+  }
+}
+
+function notifyDatasetError(error: unknown) {
+  $q.notify({
+    type: 'negative',
+    position: 'top-right',
+    message: error instanceof Error ? error.message : t('settingsPage.datasetActionFailed'),
+  });
+}
+
+function datasetSourceLabel(source: DesktopDatasetDescriptor['source']) {
+  return t(source === 'managed' ? 'settingsPage.datasetManaged' : 'settingsPage.datasetExternal');
+}
+
+function datasetStatusLabel(status: DesktopDatasetDescriptor['status']) {
+  return t(`settingsPage.datasetStatus${status[0]!.toUpperCase()}${status.slice(1)}`);
+}
+
+function isActiveManagedDataset(dataset: DesktopDatasetDescriptor) {
+  return datasetState.value?.active?.source === 'managed'
+    && datasetState.value.active.path === dataset.path
+    && datasetState.value.active.status === 'valid';
+}
+
+function formatDatasetSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 </script>
 
 <style scoped lang="scss">
@@ -343,6 +537,13 @@ function setDisplayContent(value: DictionaryDisplayItem[]) {
 
 .settings-info p {
   margin: 0 0 8px;
+}
+
+.dataset-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .about-grid {

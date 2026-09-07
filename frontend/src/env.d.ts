@@ -16,6 +16,50 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
+interface DesktopDatasetDescriptor {
+  source: 'managed' | 'external';
+  path: string;
+  fileName: string;
+  datasetVersion?: string;
+  schemaVersion?: string;
+  size: number;
+  lastModified: number;
+  status: 'valid' | 'invalid' | 'missing' | 'incompatible';
+  message?: string;
+}
+
+interface DesktopDatasetState {
+  active: DesktopDatasetDescriptor | null;
+  managed: DesktopDatasetDescriptor[];
+  dictionaryEnabled: boolean;
+  autoSelected: boolean;
+}
+
+interface DesktopRuntimeInfo {
+  appVersion: string;
+  backendUrl: string;
+  backendVersion: string;
+  mode: 'development' | 'installed' | 'portable';
+}
+
+interface DesktopBridge {
+  getRuntimeInfo(): Promise<DesktopRuntimeInfo>;
+  getDatasetState(): Promise<DesktopDatasetState>;
+  openDataDirectory(): Promise<void>;
+  openDatasetDirectory(): Promise<void>;
+  rescanDatasets(): Promise<DesktopDatasetState>;
+  importDatasetToManagedDirectory(): Promise<DesktopDatasetState | null>;
+  selectExternalDataset(): Promise<DesktopDatasetState | null>;
+  activateManagedDataset(fileName: string): Promise<DesktopDatasetState>;
+  clearExternalDataset(): Promise<DesktopDatasetState>;
+  removeManagedDataset(fileName: string): Promise<DesktopDatasetState>;
+  restartBackend(): Promise<DesktopRuntimeInfo>;
+}
+
+interface Window {
+  desktopBridge?: DesktopBridge;
+}
+
 // Vue 类型声明
 declare module 'vue' {
   export interface Ref<T> {

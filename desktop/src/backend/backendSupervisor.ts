@@ -4,6 +4,7 @@ import { access, mkdir } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { findAvailablePort } from './portResolver';
 import { waitForHealth, type BackendHealth } from './healthClient';
 
@@ -15,6 +16,7 @@ export type BackendLaunchOptions = {
   webRoot: string;
   dataRoot: string;
   databaseFile: string;
+  dictionaryFile?: string | null;
   logsDir: string;
   host?: string;
   preferredPort?: number;
@@ -128,6 +130,7 @@ export class BackendSupervisor {
   }
 
   private backendEnvironment(host: string, port: number): NodeJS.ProcessEnv {
+    const dictionaryFile = this.options.dictionaryFile;
     return {
       ...process.env,
       ...this.options.environment,
@@ -135,8 +138,10 @@ export class BackendSupervisor {
       SERVER_PORT: String(port),
       APP_DATA_ROOT: resolve(this.options.dataRoot),
       APP_DATA_DB_URL: toSqliteJdbcUrl(resolve(this.options.databaseFile)),
-      APP_DICTIONARY_ENABLED: 'false',
-      APP_DICTIONARY_DB_URL: 'jdbc:sqlite:file:dictionary-disabled?mode=memory&cache=shared',
+      APP_DICTIONARY_ENABLED: String(Boolean(dictionaryFile)),
+      APP_DICTIONARY_DB_URL: dictionaryFile
+        ? sqliteReadOnlyJdbcUrl(dictionaryFile)
+        : 'jdbc:sqlite:file:dictionary-disabled?mode=memory&cache=shared',
       APP_WEB_ROOT: resolve(this.options.webRoot),
       APP_DESKTOP_MODE: 'true',
       APP_DESKTOP_SHUTDOWN_TOKEN: this.shutdownToken,
@@ -194,6 +199,10 @@ export class BackendSupervisor {
     this.logStream?.end();
     this.logStream = null;
   }
+}
+
+function sqliteReadOnlyJdbcUrl(databaseFile: string) {
+  return `jdbc:sqlite:${pathToFileURL(resolve(databaseFile)).href}?mode=ro`;
 }
 
 function toSqliteJdbcUrl(databaseFile: string) {

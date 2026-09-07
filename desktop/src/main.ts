@@ -1,8 +1,10 @@
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog, shell } from 'electron';
 import { join, resolve } from 'node:path';
 import { BackendSupervisor } from './backend/backendSupervisor';
 import { RuntimeConfigStore } from './config/runtimeConfig';
-import { registerIpc } from './ipc/registerIpc';
+import { DatasetManager, type DatasetState } from './dataset/datasetManager';
+import { DictionaryProbe } from './dataset/dictionaryProbe';
+import { registerIpc, type DesktopRuntimeInfo } from './ipc/registerIpc';
 import {
   configureElectronDataPaths,
   prepareAppPaths,
@@ -13,6 +15,9 @@ import { resolveDesktopMode } from './paths/modeResolver';
 
 let mainWindow: BrowserWindow | null = null;
 let backendSupervisor: BackendSupervisor | null = null;
+let currentRuntimeInfo: DesktopRuntimeInfo | null = null;
+let currentDatasetState: DatasetState | null = null;
+let allowedBackendOrigin: string | null = null;
 let shutdownStarted = false;
 
 void initializeAndLaunch().catch(failStartup);
@@ -37,9 +42,26 @@ async function initializeAndLaunch() {
     return;
   }
   registerApplicationEvents();
-  await new RuntimeConfigStore(appPaths.runtimeConfigFile).load();
+  const resources = resolveRuntimeResources(repositoryRoot);
+  const configStore = new RuntimeConfigStore(appPaths.runtimeConfigFile);
+  const datasetManager = new DatasetManager(
+    appPaths,
+    configStore,
+    new DictionaryProbe({
+      javaExecutable: resources.javaExecutable,
+      backendJar: resources.backendJar,
+    }),
+    (dictionaryFile) => restartBackend(appPaths, resources, dictionaryFile),
+  );
+  currentDatasetState = await datasetManager.initialize();
   await app.whenReady();
-  await startApplication(appPaths, repositoryRoot);
+  const backend = await startBackend(
+    appPaths,
+    resources,
+    currentDatasetState.dictionaryEnabled ? currentDatasetState.active?.path ?? null : null,
+  );
+  registerDesktopIpc(appPaths, datasetManager);
+  await createMainWindow(backend.baseUrl);
 }
 
 function registerApplicationEvents() {
@@ -61,28 +83,45 @@ function registerApplicationEvents() {
   process.once('SIGTERM', () => app.quit());
 }
 
-async function startApplication(appPaths: AppPaths, repositoryRoot: string) {
-  const resources = resolveRuntimeResources(repositoryRoot);
-  backendSupervisor = new BackendSupervisor({
+type RuntimeResources = ReturnType<typeof resolveRuntimeResources>;
+
+async function startBackend(
+  appPaths: AppPaths,
+  resources: RuntimeResources,
+  dictionaryFile: string | null,
+) {
+  const supervisor = new BackendSupervisor({
     javaExecutable: resources.javaExecutable,
     backendJar: resources.backendJar,
     webRoot: resources.webRoot,
     dataRoot: appPaths.root,
     databaseFile: appPaths.databaseFile,
+    dictionaryFile,
     logsDir: appPaths.logsDir,
     onUnexpectedExit: (error) => {
       dialog.showErrorBox('Lyric Vocabulary Builder backend stopped', error.message);
       app.quit();
     },
   });
-  const backend = await backendSupervisor.start();
-  registerIpc({
+  backendSupervisor = supervisor;
+  const backend = await supervisor.start();
+  currentRuntimeInfo = {
     appVersion: app.getVersion(),
     backendUrl: backend.baseUrl,
     backendVersion: backend.health.version,
     mode: appPaths.mode,
-  });
-  await createMainWindow(backend.baseUrl);
+  };
+  allowedBackendOrigin = new URL(backend.baseUrl).origin;
+  return backend;
+}
+
+async function restartBackend(
+  appPaths: AppPaths,
+  resources: RuntimeResources,
+  dictionaryFile: string | null,
+) {
+  await backendSupervisor?.stop();
+  await startBackend(appPaths, resources, dictionaryFile);
 }
 
 async function createMainWindow(baseUrl: string) {
@@ -101,16 +140,136 @@ async function createMainWindow(baseUrl: string) {
   });
   mainWindow = window;
   window.setMenu(null);
-  const allowedOrigin = new URL(baseUrl).origin;
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, targetUrl) => {
-    if (new URL(targetUrl).origin !== allowedOrigin) event.preventDefault();
+    if (new URL(targetUrl).origin !== allowedBackendOrigin) event.preventDefault();
   });
   window.once('ready-to-show', () => window.show());
   window.once('closed', () => {
     if (mainWindow === window) mainWindow = null;
   });
   await window.loadURL(baseUrl);
+}
+
+function registerDesktopIpc(appPaths: AppPaths, datasetManager: DatasetManager) {
+  let mutationQueue: Promise<unknown> = Promise.resolve();
+  const mutate = <T>(operation: () => Promise<T>) => {
+    const result = mutationQueue.then(operation, operation);
+    mutationQueue = result.then(() => undefined, () => undefined);
+    return result;
+  };
+  const remember = (datasetState: DatasetState) => {
+    currentDatasetState = datasetState;
+    return datasetState;
+  };
+  const rememberAndReload = (datasetState: DatasetState) => {
+    remember(datasetState);
+    scheduleRendererReload();
+    return datasetState;
+  };
+
+  registerIpc({
+    getRuntimeInfo: () => {
+      if (!currentRuntimeInfo) throw new Error('Desktop runtime is not ready');
+      return currentRuntimeInfo;
+    },
+    getDatasetState: async () => {
+      if (!currentDatasetState) currentDatasetState = await datasetManager.getState();
+      const result = currentDatasetState;
+      currentDatasetState = { ...result, autoSelected: false };
+      return result;
+    },
+    openDataDirectory: () => openDirectory(appPaths.root),
+    openDatasetDirectory: () => openDirectory(appPaths.datasetsDir),
+    rescanDatasets: () => mutate(async () => remember(await datasetManager.getState())),
+    importDatasetToManagedDirectory: () => mutate(async () => {
+      const selected = await selectDatasetFile('Import dictionary into the managed directory');
+      if (!selected) return null;
+      const imported = await datasetManager.importManaged(selected);
+      return rememberAndReload(await datasetManager.activateManaged(imported.fileName));
+    }),
+    selectExternalDataset: () => mutate(async () => {
+      const selected = await selectDatasetFile('Select an external dictionary');
+      if (!selected) return null;
+      return rememberAndReload(await datasetManager.activateExternal(selected));
+    }),
+    activateManagedDataset: (fileName) => mutate(async () => (
+      rememberAndReload(await datasetManager.activateManaged(requireFileName(fileName)))
+    )),
+    clearExternalDataset: () => mutate(async () => (
+      rememberAndReload(await datasetManager.clearExternalReference())
+    )),
+    removeManagedDataset: (fileName) => mutate(async () => {
+      const safeFileName = requireFileName(fileName);
+      if (!await confirmManagedRemoval(safeFileName)) return datasetManager.getState();
+      return rememberAndReload(await datasetManager.removeManaged(safeFileName));
+    }),
+    restartBackend: () => mutate(async () => {
+      const dictionaryFile = await datasetManager.activeDictionaryFile();
+      const resources = resolveRuntimeResources(resolveRepositoryRoot());
+      await restartBackend(appPaths, resources, dictionaryFile);
+      if (!currentRuntimeInfo) throw new Error('Desktop runtime failed to restart');
+      scheduleRendererReload();
+      return currentRuntimeInfo;
+    }),
+  });
+}
+
+function scheduleRendererReload() {
+  const backendUrl = currentRuntimeInfo?.backendUrl;
+  if (!backendUrl) return;
+  const timer = setTimeout(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    void mainWindow.loadURL(backendUrl).catch((error: unknown) => {
+      dialog.showErrorBox(
+        'Lyric Vocabulary Builder failed to reload',
+        error instanceof Error ? error.message : String(error),
+      );
+    });
+  }, 0);
+  timer.unref();
+}
+
+async function openDirectory(directory: string) {
+  const error = await shell.openPath(directory);
+  if (error) throw new Error(`Cannot open directory: ${error}`);
+}
+
+async function selectDatasetFile(title: string) {
+  const options: Electron.OpenDialogOptions = {
+    title,
+    properties: ['openFile'],
+    filters: [
+      { name: 'SQLite dictionaries', extensions: ['sqlite', 'sqlite3', 'db'] },
+      { name: 'All files', extensions: ['*'] },
+    ],
+  };
+  const selection = mainWindow
+    ? await dialog.showOpenDialog(mainWindow, options)
+    : await dialog.showOpenDialog(options);
+  return selection.canceled ? null : selection.filePaths[0] ?? null;
+}
+
+async function confirmManagedRemoval(fileName: string) {
+  const options: Electron.MessageBoxOptions = {
+    type: 'warning',
+    title: 'Remove managed dictionary',
+    message: `Remove the application-managed copy “${fileName}”?`,
+    detail: 'This deletes only the copy in the managed dictionary directory.',
+    buttons: ['Cancel', 'Remove'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  };
+  const result = mainWindow
+    ? await dialog.showMessageBox(mainWindow, options)
+    : await dialog.showMessageBox(options);
+  return result.response === 1;
+}
+
+function requireFileName(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) throw new Error('A dataset fileName is required');
+  return value;
 }
 
 function resolveRuntimeResources(repositoryRoot: string) {
