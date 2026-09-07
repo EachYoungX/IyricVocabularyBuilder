@@ -1,0 +1,23 @@
+appId: com.each17.lyricvocabularybuilder
+productName: Lyric Vocabulary Builder
+asar: true
+directories:
+  output: release
+files:
+  - dist/**
+  - package.json
+extraResources:
+  - from: .stage/backend
+    to: backend
+  - from: .stage/runtime
+    to: runtime
+  - from: .stage/web
+    to: web
+  - from: .stage/resources-manifest.json
+    to: resources-manifest.json
+win:
+  executableName: LyricVocabularyBuilder
+  target:
+    - target: dir
+      arch:
+        - x64

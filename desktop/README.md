@@ -32,6 +32,30 @@ Development mode uses the system `java` executable. All mutable state is isolate
 
 The shell owns `<data-root>/config/runtime.json`. The schema-versioned file records whether the dictionary dataset is managed by the application or selected from an absolute external path. Managed datasets store only a file name so a portable directory remains movable. Configuration updates use a temporary file followed by an atomic rename.
 
+## Windows production resources
+
+Production builds bundle a Java 25 runtime generated with `jlink`; they never resolve Java from `JAVA_HOME` or `PATH`. Download and extract the Microsoft OpenJDK 25 Windows x64 ZIP, then provide its directory explicitly:
+
+```bash
+export LVB_WINDOWS_JDK_HOME=/path/to/extracted/windows-jdk-25
+pnpm runtime:build
+```
+
+Build the backend and web application, then create an unpacked Windows application:
+
+```bash
+cd ../backend
+./mvnw clean package
+
+cd ../frontend
+pnpm build
+
+cd ../desktop
+pnpm package:win:dir
+```
+
+The output is `desktop/release/win-unpacked`. Its `resources` directory contains `runtime/bin/java.exe`, `backend/backend-1.0.0.jar`, the Vue production files under `web`, and a resource manifest. Generated `.stage` and `release` directories are local build artifacts and are not committed.
+
 ## Verification
 
 ```bash

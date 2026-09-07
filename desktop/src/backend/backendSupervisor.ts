@@ -67,7 +67,11 @@ export class BackendSupervisor {
       this.logStream = createWriteStream(join(this.options.logsDir, 'backend.log'), { flags: 'a' });
       this.logStream.write(`\n[desktop] starting backend at ${new Date().toISOString()} on ${baseUrl}\n`);
 
-      const child = spawn(this.options.javaExecutable, ['-jar', resolve(this.options.backendJar)], {
+      const child = spawn(this.options.javaExecutable, [
+        '--enable-native-access=ALL-UNNAMED',
+        '-jar',
+        resolve(this.options.backendJar),
+      ], {
         shell: false,
         windowsHide: true,
         cwd: resolve(this.options.dataRoot),

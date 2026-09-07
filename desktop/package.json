@@ -2,6 +2,7 @@
   "name": "lyric-vocabulary-builder-desktop",
   "version": "1.0.0",
   "description": "Windows desktop shell for Lyric Vocabulary Builder",
+  "author": "Lyric Vocabulary Builder contributors",
   "private": true,
   "main": "dist/main.js",
   "scripts": {
@@ -10,12 +11,16 @@
     "lint": "eslint .",
     "test": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
-    "dev": "pnpm build && electron ."
+    "dev": "pnpm build && electron .",
+    "runtime:build": "node scripts/build-runtime.mjs",
+    "resources:stage": "node scripts/stage-resources.mjs",
+    "package:win:dir": "pnpm build && pnpm resources:stage && electron-builder --win dir --x64"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.4.1",
     "electron": "^44.2.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.10.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.69.0",
