@@ -7,6 +7,7 @@ import {
   MOTION_STORAGE_KEY,
   type MotionPreference,
 } from 'src/utils/motionPreference';
+import { WELCOME_DISMISSED_KEY } from 'src/utils/firstLaunch';
 
 export const APP_LOCALE_STORAGE_KEY = 'app-locale';
 export const KEPT_CLEANUP_WORDS_STORAGE_KEY = 'lv-kept-cleanup-candidate-words';
@@ -106,6 +107,7 @@ export function clearClientPreferences(storage: StorageRemover = window.localSto
     APP_LOCALE_STORAGE_KEY,
     KEPT_CLEANUP_WORDS_STORAGE_KEY,
     SEARCH_HISTORY_STORAGE_KEY,
+    WELCOME_DISMISSED_KEY,
   ]) {
     storage.removeItem(key);
   }

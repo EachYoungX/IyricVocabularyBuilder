@@ -45,6 +45,9 @@ interface DesktopRuntimeInfo {
 }
 
 interface DesktopBridge {
+  getWelcomeDismissed(): Promise<boolean>;
+  dismissWelcome(): Promise<void>;
+  openProjectPage(page: 'project' | 'dictionary'): Promise<void>;
   clearAllLocalData(): Promise<void>;
   getRuntimeInfo(): Promise<DesktopRuntimeInfo>;
   getDatasetState(): Promise<DesktopDatasetState>;

@@ -92,41 +92,32 @@
 
         <q-card flat bordered class="settings-card">
           <q-card-section>
-            <SettingsSectionHeading icon="o_storage" :title="t('settingsPage.datasetTitle')"
-              :caption="t('settingsPage.datasetCaption')" />
+            <div class="row items-center justify-between">
+              <SettingsSectionHeading icon="o_storage" :title="t('settingsPage.datasetTitle')" />
+              <q-icon name="o_info" size="18px" tabindex="0" class="text-grey-6"
+                :aria-label="t('settingsPage.datasetHelp')">
+                <q-tooltip max-width="320px">{{ t('settingsPage.datasetHelp') }}</q-tooltip>
+              </q-icon>
+            </div>
             <q-linear-progress v-if="datasetBusy" indeterminate rounded color="primary" class="q-mt-md" />
             <template v-if="isDesktop">
-              <q-banner rounded class="settings-info q-mt-md">
-                {{ t('settingsPage.externalDatasetWarning') }}
-              </q-banner>
-              <div class="dataset-status q-mt-md">
-                <div>
-                  <div class="about-label">{{ t('settingsPage.activeDataset') }}</div>
-                  <div class="text-subtitle1 text-weight-medium">
-                    {{ datasetState?.active?.fileName || t('settingsPage.noActiveDataset') }}
-                  </div>
-                  <div v-if="datasetState?.active" class="settings-help">
-                    {{ datasetSourceLabel(datasetState.active.source) }} ·
-                    {{ datasetStatusLabel(datasetState.active.status) }}
-                    <template v-if="datasetState.active.datasetVersion">
-                      · {{ t('settingsPage.datasetVersion', { version: datasetState.active.datasetVersion }) }}
-                    </template>
-                  </div>
-                </div>
-                <q-chip :color="datasetState?.dictionaryEnabled ? 'positive' : 'warning'" text-color="white">
-                  {{ datasetState?.dictionaryEnabled
-                    ? t('settingsPage.dictionaryEnabled')
-                    : t('settingsPage.dictionaryDisabled') }}
-                </q-chip>
+              <div class="settings-help q-mt-sm" aria-live="polite">
+                <template v-if="datasetState?.dictionaryEnabled && datasetState.active">
+                  {{ datasetState.active.fileName }} · {{ datasetSourceLabel(datasetState.active.source) }}
+                </template>
+                <template v-else>{{ t('settingsPage.noActiveDataset') }}</template>
+                <template v-if="datasetState?.active?.source === 'external' && !datasetState.dictionaryEnabled">
+                  · {{ datasetStatusLabel(datasetState.active.status) }}
+                </template>
               </div>
-              <div class="row q-gutter-sm q-mt-md">
-                <q-btn outline color="primary" icon="o_folder_open" :label="t('settingsPage.openDatasetDirectory')"
+              <div class="row q-gutter-sm q-mt-sm">
+                <q-btn outline dense no-caps color="primary" :label="t('settingsPage.downloadDataset')"
+                  :href="DICTIONARY_DOWNLOAD_URL" target="_blank" rel="noopener noreferrer" @click="openDictionaryDownload" />
+                <q-btn outline dense no-caps color="primary" :label="t('settingsPage.openDatasetDirectory')"
                   :disable="datasetBusy" @click="openDatasetDirectory" />
-                <q-btn outline color="primary" icon="o_refresh" :label="t('settingsPage.rescanDatasets')"
+                <q-btn outline dense no-caps color="primary" :label="t('settingsPage.rescanDatasets')"
                   :disable="datasetBusy" @click="rescanDatasets" />
-                <q-btn color="primary" icon="o_drive_folder_upload" :label="t('settingsPage.importManagedDataset')"
-                  :disable="datasetBusy" @click="importManagedDataset" />
-                <q-btn outline color="primary" icon="o_insert_drive_file"
+                <q-btn outline dense no-caps color="primary"
                   :label="t('settingsPage.selectExternalDataset')" :disable="datasetBusy"
                   @click="selectExternalDataset" />
               </div>
@@ -156,7 +147,6 @@
                   </q-item-section>
                 </q-item>
               </q-list>
-              <div v-else class="settings-help q-mt-md">{{ t('settingsPage.noManagedDatasets') }}</div>
               <q-btn v-if="datasetState?.active?.source === 'external'" flat color="negative" class="q-mt-sm"
                 icon="o_link_off" :label="t('settingsPage.clearExternalDataset')" :disable="datasetBusy"
                 @click="clearExternalDataset" />
@@ -282,6 +272,7 @@ import SettingRow from 'components/SettingRow.vue';
 import SettingsSection from 'components/SettingsSection.vue';
 import SettingsSectionHeading from 'components/SettingsSectionHeading.vue';
 import SettingsSelect from 'components/SettingsSelect.vue';
+import { DICTIONARY_DOWNLOAD_URL, openProjectPage } from 'src/utils/projectLinks';
 import {
   loadAppSettings,
   saveAppSettings,
@@ -462,12 +453,12 @@ async function rescanDatasets() {
   });
 }
 
-async function importManagedDataset() {
-  if (!desktopBridge) return;
-  await runDatasetAction(async () => {
-    const result = await desktopBridge.importDatasetToManagedDirectory();
-    if (result) datasetState.value = result;
-  });
+async function openDictionaryDownload(event: MouseEvent) {
+  try {
+    await openProjectPage(event, 'dictionary');
+  } catch (error) {
+    notifyDatasetError(error);
+  }
 }
 
 async function selectExternalDataset() {

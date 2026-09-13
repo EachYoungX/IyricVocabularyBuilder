@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, session, shell } from 'electron';
 import { join, resolve } from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
 import { BackendSupervisor } from './backend/backendSupervisor';
 import { resetDesktopData } from './data/resetDesktopData';
 import { RuntimeConfigStore } from './config/runtimeConfig';
@@ -195,6 +196,21 @@ function registerDesktopIpc(
   };
 
   registerIpc({
+    getWelcomeDismissed: async () => {
+      try {
+        return await readFile(join(appPaths.configDir, 'welcome-dismissed'), 'utf8') === 'true';
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+        throw error;
+      }
+    },
+    dismissWelcome: () => writeFile(join(appPaths.configDir, 'welcome-dismissed'), 'true', { mode: 0o600 }),
+    openProjectPage: async (page) => {
+      if (page !== 'project' && page !== 'dictionary') throw new Error('Unknown project page');
+      await shell.openExternal(page === 'project'
+        ? 'https://github.com/EachYoungX/IyricVocabularyBuilder'
+        : 'https://github.com/EachYoungX/IyricVocabularyBuilder-Dictionary/releases');
+    },
     getRuntimeInfo: () => {
       if (!currentRuntimeInfo) throw new Error('Desktop runtime is not ready');
       return currentRuntimeInfo;
@@ -207,7 +223,21 @@ function registerDesktopIpc(
     },
     openDataDirectory: () => openDirectory(appPaths.root),
     openDatasetDirectory: () => openDirectory(appPaths.datasetsDir),
-    rescanDatasets: () => mutate(async () => remember(await datasetManager.getState())),
+    rescanDatasets: () => mutate(async () => {
+      const state = await datasetManager.getState();
+      if (!currentDatasetState?.dictionaryEnabled && (await configStore.load()).dataset.mode === 'managed') {
+        const valid = state.managed.filter((dataset) => dataset.status === 'valid');
+        if (valid.length === 1) {
+          return rememberAndReload({
+            ...await datasetManager.activateManaged(valid[0]!.fileName),
+            autoSelected: true,
+          });
+        }
+        // Multiple newly discovered files still require an explicit choice.
+        return remember({ ...state, active: null, dictionaryEnabled: false });
+      }
+      return remember(state);
+    }),
     importDatasetToManagedDirectory: () => mutate(async () => {
       const selected = await selectDatasetFile('Import dictionary into the managed directory');
       if (!selected) return null;

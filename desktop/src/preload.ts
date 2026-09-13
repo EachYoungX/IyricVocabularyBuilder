@@ -3,6 +3,9 @@ import type { DatasetState } from './dataset/datasetManager';
 import type { DesktopRuntimeInfo } from './ipc/registerIpc';
 
 contextBridge.exposeInMainWorld('desktopBridge', {
+  getWelcomeDismissed: (): Promise<boolean> => ipcRenderer.invoke('desktop:get-welcome-dismissed'),
+  dismissWelcome: (): Promise<void> => ipcRenderer.invoke('desktop:dismiss-welcome'),
+  openProjectPage: (page: 'project' | 'dictionary'): Promise<void> => ipcRenderer.invoke('desktop:open-project-page', page),
   clearAllLocalData: (): Promise<void> => ipcRenderer.invoke('desktop:clear-all-local-data'),
   getRuntimeInfo: (): Promise<DesktopRuntimeInfo> => ipcRenderer.invoke('desktop:get-runtime-info'),
   getDatasetState: (): Promise<DatasetState> => ipcRenderer.invoke('desktop:get-dataset-state'),

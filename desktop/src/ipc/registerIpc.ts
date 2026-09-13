@@ -12,6 +12,9 @@ export type DesktopRuntimeInfo = {
 };
 
 export type DesktopIpcHandlers = {
+  getWelcomeDismissed(): Promise<boolean>;
+  dismissWelcome(): Promise<void>;
+  openProjectPage(page: 'project' | 'dictionary'): Promise<void>;
   getRuntimeInfo(): DesktopRuntimeInfo;
   clearAllLocalData(): Promise<void>;
   getDatasetState(): Promise<DatasetState>;
@@ -28,6 +31,9 @@ export type DesktopIpcHandlers = {
 };
 
 const channels = [
+  'desktop:get-welcome-dismissed',
+  'desktop:dismiss-welcome',
+  'desktop:open-project-page',
   'desktop:clear-all-local-data',
   'desktop:get-runtime-info',
   'desktop:get-dataset-state',
@@ -45,6 +51,9 @@ const channels = [
 
 export function registerIpc(handlers: DesktopIpcHandlers) {
   for (const channel of channels) ipcMain.removeHandler(channel);
+  ipcMain.handle('desktop:get-welcome-dismissed', () => handlers.getWelcomeDismissed());
+  ipcMain.handle('desktop:dismiss-welcome', () => handlers.dismissWelcome());
+  ipcMain.handle('desktop:open-project-page', (_event, page: 'project' | 'dictionary') => handlers.openProjectPage(page));
   ipcMain.handle('desktop:clear-all-local-data', () => handlers.clearAllLocalData());
   ipcMain.handle('desktop:get-runtime-info', () => handlers.getRuntimeInfo());
   ipcMain.handle('desktop:get-dataset-state', () => handlers.getDatasetState());

@@ -5,7 +5,7 @@
     </div>
     <div>
       <div class="section-title">{{ title }}</div>
-      <div class="section-caption">{{ caption }}</div>
+      <div v-if="caption" class="section-caption">{{ caption }}</div>
     </div>
   </div>
 </template>
@@ -14,7 +14,7 @@
 defineProps<{
   icon: string;
   title: string;
-  caption: string;
+  caption?: string;
 }>();
 </script>
 

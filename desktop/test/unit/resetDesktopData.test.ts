@@ -19,6 +19,7 @@ async function fixture() {
   await writeFile(join(root, 'backup.json'), 'backup');
   await writeFile(join(paths.datasetsDir, 'dictionary.sqlite'), 'managed');
   await writeFile(paths.databaseFile, 'transaction-owned database');
+  await writeFile(join(paths.configDir, 'welcome-dismissed'), 'true');
   await writeFile(join(paths.cacheDir, 'cache'), 'cache');
   await mkdir(join(paths.tempDir, 'nested'));
   await writeFile(join(paths.tempDir, 'nested', 'partial'), 'partial');
@@ -45,6 +46,7 @@ describe('desktop reset', () => {
       },
     });
     expect(events).toEqual(['transaction', 'stop', 'storage', 'start']);
+    await expect(readFile(join(fixtureData.paths.configDir, 'welcome-dismissed'))).rejects.toMatchObject({ code: 'ENOENT' });
     expect(await readFile(fixtureData.external, 'utf8')).toBe('external');
     expect(await readFile(join(root, 'backup.json'), 'utf8')).toBe('backup');
     expect(await readFile(join(fixtureData.paths.datasetsDir, 'dictionary.sqlite'), 'utf8')).toBe('managed');

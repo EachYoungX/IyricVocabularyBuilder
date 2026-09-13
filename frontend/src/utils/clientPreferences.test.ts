@@ -11,6 +11,7 @@ import {
 } from './clientPreferences';
 import { APP_SETTINGS_STORAGE_KEY } from './appSettings';
 import { MOTION_STORAGE_KEY } from './motionPreference';
+import { WELCOME_DISMISSED_KEY } from './firstLaunch';
 
 describe('client backup preferences', () => {
   it('builds the complete preferences wrapper used by full backup export', () => {
@@ -70,6 +71,7 @@ describe('client backup preferences', () => {
       APP_LOCALE_STORAGE_KEY,
       KEPT_CLEANUP_WORDS_STORAGE_KEY,
       SEARCH_HISTORY_STORAGE_KEY,
+      WELCOME_DISMISSED_KEY,
     ]);
   });
 });
