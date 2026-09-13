@@ -1,6 +1,7 @@
 appId: com.each17.lyricvocabularybuilder
 productName: Lyric Vocabulary Builder
 asar: true
+afterPack: ./scripts/verify-package.mjs
 directories:
   output: release
 files:
@@ -18,6 +19,18 @@ extraResources:
 win:
   executableName: LyricVocabularyBuilder
   target:
-    - target: dir
+    - target: nsis
       arch:
         - x64
+nsis:
+  oneClick: false
+  perMachine: false
+  selectPerMachineByDefault: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Lyric Vocabulary Builder
+  deleteAppDataOnUninstall: false
+  include: build/installer.nsh
+  artifactName: LyricVocabularyBuilder-Setup-${version}.${ext}

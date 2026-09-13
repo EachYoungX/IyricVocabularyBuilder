@@ -14,7 +14,9 @@
     "dev": "pnpm build && electron .",
     "runtime:build": "node scripts/build-runtime.mjs",
     "resources:stage": "node scripts/stage-resources.mjs",
-    "package:win:dir": "pnpm build && pnpm resources:stage && electron-builder --win dir --x64"
+    "package:win:dir": "pnpm build && pnpm resources:stage && electron-builder --win dir --x64",
+    "package:win:setup": "pnpm build && pnpm resources:stage && electron-builder --win nsis --x64",
+    "package:win:portable": "pnpm build && pnpm resources:stage && electron-builder --config electron-builder.portable.yml --win zip --x64"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

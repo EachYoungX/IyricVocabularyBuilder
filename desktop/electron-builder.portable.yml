@@ -1,0 +1,11 @@
+extends: ./electron-builder.yml
+extraFiles:
+  - from: build/portable.flag
+    to: portable.flag
+win:
+  executableName: LyricVocabularyBuilder
+  target:
+    - target: zip
+      arch:
+        - x64
+  artifactName: LyricVocabularyBuilder-Portable-${version}.${ext}

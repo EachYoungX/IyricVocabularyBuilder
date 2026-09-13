@@ -95,3 +95,7 @@ backend/data/
 backend/src/main/resources/dictionary.sqlite
 backend/src/test/resources/dictionary.sqlite
 local-dictionaries/
+
+# Desktop installer source assets
+!desktop/build/
+!desktop/build/**
