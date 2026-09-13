@@ -105,7 +105,10 @@ public class PhraseMatcher {
             }
             return;
         }
-        int min = Math.max(1, element.minTokens());
+        // A slot with minTokens=0 is optional. This is used by dictionary
+        // patterns such as "prevent <PERSON> from <GERUND> <THING>", where
+        // the trailing THING may be omitted entirely.
+        int min = Math.max(0, element.minTokens());
         int max = Math.max(min, element.maxTokens());
         int remainingMin = minimumTokens(pattern, patternIndex + 1);
         int upper = Math.min(max, tokens.size() - tokenIndex - remainingMin);
@@ -130,7 +133,7 @@ public class PhraseMatcher {
         int total = 0;
         for (int i = from; i < pattern.size(); i++) {
             PhrasePatternToken element = pattern.get(i);
-            total += element.isLiteral() ? 1 : Math.max(1, element.minTokens());
+            total += element.isLiteral() ? 1 : Math.max(0, element.minTokens());
         }
         return total;
     }

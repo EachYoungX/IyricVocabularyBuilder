@@ -92,6 +92,31 @@ class PhraseMatcherTest {
         assertEquals("on John's side", johnsSide.getFirst().getSurfacePhrase());
     }
 
+    @Test
+    void allowsAnOptionalThingSlotToBeOmitted() {
+        when(anchors.findByTokens(anyCollection()))
+                .thenAnswer(invocation -> invocation.<Collection<String>>getArgument(0).contains("prevent")
+                        ? List.of(new PhraseAnchor(4L, 0, "NORMALIZED", "prevent")) : List.of());
+        when(phrases.findByIds(anyCollection())).thenReturn(List.of(new PhraseEntry(4L,
+                "prevent sb. from doing sth.", "prevent <PERSON> from <GERUND> <THING>",
+                "stop someone from doing something", null, null, "PATTERN", "dictionary", 4, 9, 0)));
+        when(patterns.findByPhraseIds(anyCollection())).thenReturn(List.of(
+                literal(4L, 0, "NORMALIZED", "prevent"),
+                new PhrasePatternToken(4L, 1, "SLOT", null, null, "PERSON", 1, 1),
+                literal(4L, 2, "NORMALIZED", "from"),
+                new PhrasePatternToken(4L, 3, "SLOT", null, null, "GERUND", 1, 1),
+                new PhrasePatternToken(4L, 4, "SLOT", null, null, "THING", 0, 5)
+        ));
+
+        var result = matcher.findMatches(List.of(
+                token("prevent", "prevent", "prevent"), token("him", "him", "he"),
+                token("from", "from", "from"), token("running", "running", "run")
+        ));
+
+        assertEquals(1, result.size());
+        assertEquals("prevent him from running", result.getFirst().getSurfacePhrase());
+    }
+
     private void stubPossessivePhrase() {
         when(anchors.findByTokens(anyCollection()))
                 .thenAnswer(invocation -> invocation.<Collection<String>>getArgument(0).contains("on")
