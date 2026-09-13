@@ -22,7 +22,7 @@ pnpm install
 pnpm dev
 ```
 
-Development mode uses the system `java` executable. All mutable state is isolated under `<repository>/.desktop-dev/`, including the application database, runtime configuration, logs, cache, temporary files, and Electron profile/session data. Production builds will use the bundled runtime introduced in Desktop Phase 3.
+Development mode uses the system `java` executable. All mutable state is isolated under `<repository>/.desktop-dev/`, including the application database, runtime configuration, logs, cache, temporary files, and Electron profile/session data. Production builds use the bundled Java 25 runtime.
 
 ## Data modes
 
@@ -89,3 +89,32 @@ The integration test starts the packaged Spring Boot JAR, waits for `/api/health
 - Preload exposes only the declared `desktopBridge` methods.
 - Java starts through `spawn()` with an argument array and `shell: false`.
 - The backend shutdown endpoint exists only in desktop mode and requires a per-process random token.
+
+## Windows release artifacts
+
+After building the backend, frontend and runtime:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm package:win:setup
+pnpm package:win:portable
+```
+
+Outputs in desktop/release:
+
+- LyricVocabularyBuilder-Setup-1.0.0.exe: assisted, fixed-directory, per-user NSIS installation.
+- LyricVocabularyBuilder-Portable-1.0.0.zip: full application with portable.flag beside the executable.
+
+The portable configuration extends the common resource configuration and uses electron-builder's ZIP target. Each build creates a fresh unpacked tree. The afterPack hook checks required resources, Java 25, portable mode identity, and rejects bundled databases, user-data, runtime.json and symlinks. Build the targets sequentially because they share the staging and unpacked directories.
+
+The NSIS include is tracked source under build/. Uninstall keeps data by default; explicit selection and confirmation remove only the fixed LocalAppData application directory. Silent upgrade/uninstall preserves user data.
+
+Build NSIS on native Windows with Node and dependencies installed on a local Windows filesystem. Linux/WSL NSIS builds additionally require a working Wine installation. The directory and ZIP targets also build in WSL. When copying a WSL project to Windows for packaging, install dependencies there with pnpm install --frozen-lockfile; WSL node_modules symlinks are platform-specific.
+
+Code signing uses electron-builder's standard CSC_LINK and CSC_KEY_PASSWORD build environment variables when a certificate is supplied. Keep certificate material outside the repository. Unsigned builds remain unsigned and require normal Windows security handling.
+
+## Desktop reset
+
+The desktop data reset invokes the existing backend transaction, stops the backend, resets runtime settings (including LAN), clears Electron browser storage and cache, and cleans application cache/temp directories. It then starts the backend and reloads the window. Managed dictionary files and external files are retained. Java temporary files, including SQLite native libraries, use the mode-specific temp directory.
+
+See [Windows user guide](../docs/desktop/windows-guide.md) for installation, datasets, backup and uninstall behavior.
