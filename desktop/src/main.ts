@@ -209,7 +209,7 @@ function registerDesktopIpc(
       if (page !== 'project' && page !== 'dictionary') throw new Error('Unknown project page');
       await shell.openExternal(page === 'project'
         ? 'https://github.com/EachYoungX/IyricVocabularyBuilder'
-        : 'https://github.com/EachYoungX/IyricVocabularyBuilder-Dictionary/releases');
+        : 'https://github.com/EachYoungX/LyricVocabularyDictionary/releases');
     },
     getRuntimeInfo: () => {
       if (!currentRuntimeInfo) throw new Error('Desktop runtime is not ready');
