@@ -1,6 +1,7 @@
-import { app, BrowserWindow, dialog, shell } from 'electron';
+import { app, BrowserWindow, dialog, session, shell } from 'electron';
 import { join, resolve } from 'node:path';
 import { BackendSupervisor } from './backend/backendSupervisor';
+import { resetDesktopData } from './data/resetDesktopData';
 import { RuntimeConfigStore } from './config/runtimeConfig';
 import { DatasetManager, type DatasetState } from './dataset/datasetManager';
 import { DictionaryProbe } from './dataset/dictionaryProbe';
@@ -52,6 +53,7 @@ async function initializeAndLaunch() {
     new DictionaryProbe({
       javaExecutable: resources.javaExecutable,
       backendJar: resources.backendJar,
+      tempDir: appPaths.tempDir,
     }),
     async (dictionaryFile) => restartBackend(
       appPaths,
@@ -236,6 +238,38 @@ function registerDesktopIpc(
       if (!currentRuntimeInfo) throw new Error('Desktop runtime failed to restart');
       scheduleRendererReload();
       return currentRuntimeInfo;
+    }),
+    clearAllLocalData: () => mutate(async () => {
+      try {
+        await resetDesktopData({
+          paths: appPaths,
+          configStore,
+          clearBusinessData: async () => {
+            if (!currentRuntimeInfo) throw new Error('Desktop runtime is not ready');
+            const response = await fetch(new URL('/api/data/all', currentRuntimeInfo.backendUrl), {
+              method: 'DELETE',
+              signal: AbortSignal.timeout(60_000),
+            });
+            if (!response.ok) throw new Error('Failed to clear application data');
+          },
+          stopBackend: async () => { await backendSupervisor?.stop(); },
+          clearBrowserStorage: async () => {
+            await session.defaultSession.clearStorageData();
+            await session.defaultSession.clearCache();
+          },
+          startBackend: async () => {
+            currentDatasetState = await datasetManager.initialize();
+            const config = await configStore.load();
+            await startBackend(
+              appPaths, resolveRuntimeResources(resolveRepositoryRoot()),
+              currentDatasetState.dictionaryEnabled ? currentDatasetState.active?.path ?? null : null,
+              config.lan.enabled,
+            );
+          },
+        });
+      } finally {
+        scheduleRendererReload();
+      }
     }),
     setLanEnabled: (enabled) => mutate(async () => {
       if (typeof enabled !== 'boolean') throw new Error('LAN enabled value must be a boolean');

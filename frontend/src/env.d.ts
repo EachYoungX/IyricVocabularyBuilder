@@ -45,6 +45,7 @@ interface DesktopRuntimeInfo {
 }
 
 interface DesktopBridge {
+  clearAllLocalData(): Promise<void>;
   getRuntimeInfo(): Promise<DesktopRuntimeInfo>;
   getDatasetState(): Promise<DesktopDatasetState>;
   openDataDirectory(): Promise<void>;

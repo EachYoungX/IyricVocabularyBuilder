@@ -13,6 +13,7 @@ export type DesktopRuntimeInfo = {
 
 export type DesktopIpcHandlers = {
   getRuntimeInfo(): DesktopRuntimeInfo;
+  clearAllLocalData(): Promise<void>;
   getDatasetState(): Promise<DatasetState>;
   openDataDirectory(): Promise<void>;
   openDatasetDirectory(): Promise<void>;
@@ -27,6 +28,7 @@ export type DesktopIpcHandlers = {
 };
 
 const channels = [
+  'desktop:clear-all-local-data',
   'desktop:get-runtime-info',
   'desktop:get-dataset-state',
   'desktop:open-data-directory',
@@ -43,6 +45,7 @@ const channels = [
 
 export function registerIpc(handlers: DesktopIpcHandlers) {
   for (const channel of channels) ipcMain.removeHandler(channel);
+  ipcMain.handle('desktop:clear-all-local-data', () => handlers.clearAllLocalData());
   ipcMain.handle('desktop:get-runtime-info', () => handlers.getRuntimeInfo());
   ipcMain.handle('desktop:get-dataset-state', () => handlers.getDatasetState());
   ipcMain.handle('desktop:open-data-directory', () => handlers.openDataDirectory());

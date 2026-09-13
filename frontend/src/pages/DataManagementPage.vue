@@ -326,6 +326,10 @@ async function deleteAllSongsData() {
 
 async function clearAllLocalData() {
   try {
+    if (window.desktopBridge) {
+      await window.desktopBridge.clearAllLocalData();
+      return;
+    }
     await DataService.clearAllLocalData();
     clearClientPreferences();
     window.sessionStorage.clear();

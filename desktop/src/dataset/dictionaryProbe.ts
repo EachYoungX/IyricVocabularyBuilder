@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { mkdir } from 'node:fs/promises';
 
 export type DictionaryProbeResult = {
   status: 'valid' | 'invalid' | 'incompatible';
@@ -13,17 +14,20 @@ export type DictionaryProbeOptions = {
   javaExecutable: string;
   backendJar: string;
   timeoutMs?: number;
+  tempDir?: string;
   environment?: NodeJS.ProcessEnv;
 };
 
 export class DictionaryProbe {
   constructor(private readonly options: DictionaryProbeOptions) {}
 
-  probe(candidate: string): Promise<DictionaryProbeResult> {
+  async probe(candidate: string): Promise<DictionaryProbeResult> {
+    if (this.options.tempDir) await mkdir(this.options.tempDir, { recursive: true });
     const jdbcUrl = sqliteReadOnlyJdbcUrl(candidate);
     return new Promise((resolveProbe, rejectProbe) => {
       const child = spawn(this.options.javaExecutable, [
         '--enable-native-access=ALL-UNNAMED',
+        ...(this.options.tempDir ? [`-Djava.io.tmpdir=${resolve(this.options.tempDir)}`] : []),
         '-jar',
         resolve(this.options.backendJar),
       ], {
@@ -57,7 +61,7 @@ export class DictionaryProbe {
         clearTimeout(timer);
         rejectProbe(new Error(`Dictionary probe could not start: ${error.message}`, { cause: error }));
       });
-      child.once('exit', (code, signal) => {
+      child.once('close', (code, signal) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);

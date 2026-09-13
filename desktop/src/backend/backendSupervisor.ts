@@ -71,6 +71,7 @@ export class BackendSupervisor {
 
       const child = spawn(this.options.javaExecutable, [
         '--enable-native-access=ALL-UNNAMED',
+        `-Djava.io.tmpdir=${resolve(this.options.dataRoot, 'temp')}`,
         '-jar',
         resolve(this.options.backendJar),
       ], {
@@ -112,7 +113,10 @@ export class BackendSupervisor {
     await this.requestGracefulShutdown();
     if (!await waitForExit(child, this.options.shutdownTimeoutMs ?? 12_000)) {
       child.kill('SIGTERM');
-      if (!await waitForExit(child, 3_000)) child.kill('SIGKILL');
+      if (!await waitForExit(child, 3_000)) {
+        child.kill('SIGKILL');
+        if (!await waitForExit(child, 3_000)) throw new Error('Backend process did not exit after termination');
+      }
     }
     this.finishStoppedState();
   }
@@ -123,6 +127,7 @@ export class BackendSupervisor {
       access(this.options.webRoot, constants.R_OK),
       mkdir(dirname(this.options.databaseFile), { recursive: true }),
       mkdir(this.options.logsDir, { recursive: true }),
+      mkdir(join(this.options.dataRoot, 'temp'), { recursive: true }),
     ]);
     if (isAbsolute(this.options.javaExecutable)) {
       await access(this.options.javaExecutable, constants.X_OK);
@@ -165,7 +170,10 @@ export class BackendSupervisor {
     const child = this.child;
     if (!child || child.exitCode !== null) return;
     child.kill('SIGTERM');
-    if (!await waitForExit(child, 3_000)) child.kill('SIGKILL');
+    if (!await waitForExit(child, 3_000)) {
+      child.kill('SIGKILL');
+      if (!await waitForExit(child, 3_000)) throw new Error('Backend process did not exit after termination');
+    }
   }
 
   private onBackendExit(child: ChildProcess, code: number | null, signal: NodeJS.Signals | null) {
@@ -210,7 +218,7 @@ function toSqliteJdbcUrl(databaseFile: string) {
 }
 
 async function waitForExit(child: ChildProcess, timeoutMs: number): Promise<boolean> {
-  if (child.exitCode !== null) return true;
+  if (child.exitCode !== null || child.signalCode !== null) return true;
   return new Promise((resolveExit) => {
     const timer = setTimeout(() => {
       child.removeListener('exit', onExit);
